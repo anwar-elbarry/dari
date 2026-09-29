@@ -22,7 +22,8 @@ export type AuditAction =
   | 'property.updated'
   | 'ical_feed.created'
   | 'ical_feed.updated'
-  | 'ical_feed.deleted';
+  | 'ical_feed.deleted'
+  | 'booking.classified';
 
 export interface AuditEntry {
   accountId: string;

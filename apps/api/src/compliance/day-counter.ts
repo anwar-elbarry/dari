@@ -41,3 +41,21 @@ export function dayLevel(nights: number, t: DayCounterThresholds = DEFAULT_THRES
   if (nights >= t.amber) return 'amber';
   return 'green';
 }
+
+/**
+ * Date on which the `cap`-th night of `year` will be used, given confirmed stays sorted by check-in,
+ * or null if the cap is never reached with the stays known today. Nights already counted are included.
+ */
+export function projectedBreachDate(bookings: DateRange[], year: number, cap: number): string | null {
+  const start = toDay(`${year}-01-01`);
+  const end = toDay(`${year + 1}-01-01`);
+  const nights = new Set<number>();
+  for (const b of bookings) {
+    const from = Math.max(toDay(b.checkIn), start);
+    const to = Math.min(toDay(b.checkOut), end);
+    for (let d = from; d < to; d++) nights.add(d);
+  }
+  if (nights.size < cap) return null;
+  const sorted = [...nights].sort((a, b) => a - b);
+  return new Date(sorted[cap - 1] * DAY_MS).toISOString().slice(0, 10);
+}

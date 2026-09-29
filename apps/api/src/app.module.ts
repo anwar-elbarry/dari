@@ -8,6 +8,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { CsrfGuard } from './common/csrf.guard';
+import { ComplianceModule } from './compliance/compliance.module';
 import { ConfigModule } from './config/config.module';
 import { APP_CONFIG, AppConfig, parseEnv } from './config/env';
 import { HealthController } from './health/health.controller';
@@ -45,6 +46,7 @@ export class AppModule {
         InvitationsModule,
         PropertiesModule,
         IcalModule.register(resolved),
+        ComplianceModule,
       ],
       controllers: [HealthController],
       // Order matters: rate limit, then CSRF header, then session, then capabilities.

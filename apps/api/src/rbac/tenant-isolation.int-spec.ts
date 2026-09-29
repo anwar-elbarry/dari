@@ -14,6 +14,7 @@ interface Ids {
   propertyId: string;
   invitationId: string;
   feedId: string;
+  bookingId: string;
 }
 
 const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Promise<{ status: number }> }[] = [
@@ -27,6 +28,9 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'PATCH', route: '/api/properties/:id/feeds/:feedId', call: (c, a) => c.patch(`/api/properties/${a.propertyId}/feeds/${a.feedId}`, { url: 'https://93.184.216.34/y.ics' }) },
   { method: 'DELETE', route: '/api/properties/:id/feeds/:feedId', call: (c, a) => c.delete(`/api/properties/${a.propertyId}/feeds/${a.feedId}`) },
   { method: 'POST', route: '/api/properties/:id/feeds/:feedId/sync', call: (c, a) => c.post(`/api/properties/${a.propertyId}/feeds/${a.feedId}/sync`) },
+  { method: 'GET', route: '/api/properties/:id/day-counter', call: (c, a) => c.get(`/api/properties/${a.propertyId}/day-counter`) },
+  { method: 'GET', route: '/api/properties/:id/bookings', call: (c, a) => c.get(`/api/properties/${a.propertyId}/bookings`) },
+  { method: 'PATCH', route: '/api/bookings/:id/classification', call: (c, a) => c.patch(`/api/bookings/${a.bookingId}/classification`, { classification: 'OWNER_BLOCK' }) },
 ];
 
 describe('tenant isolation (integration)', () => {
@@ -48,7 +52,10 @@ describe('tenant isolation (integration)', () => {
       data: { accountId: a.accountId, email: 'pending@alpha.test', role: 'STAFF', tokenHash: 'h-a', invitedBy: a.users.OWNER_MANAGER.id, expiresAt: new Date(Date.now() + 86_400_000) },
     });
     const feed = await t.prisma.icalFeed.create({ data: { accountId: a.accountId, propertyId: property.id, platform: 'AIRBNB', url: 'https://93.184.216.34/a.ics' } });
-    idsA = { ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id };
+    const booking = await t.prisma.booking.create({
+      data: { accountId: a.accountId, propertyId: property.id, checkIn: new Date('2026-03-01'), checkOut: new Date('2026-03-04'), source: 'DIRECT' },
+    });
+    idsA = { ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id, bookingId: booking.id };
   });
 
   afterAll(async () => {
@@ -89,5 +96,6 @@ describe('tenant isolation (integration)', () => {
     expect((await t.prisma.property.findUniqueOrThrow({ where: { id: idsA.propertyId } })).name).toBe('Property A');
     expect((await t.prisma.invitation.findUniqueOrThrow({ where: { id: idsA.invitationId } })).revokedAt).toBeNull();
     expect((await t.prisma.icalFeed.findUniqueOrThrow({ where: { id: idsA.feedId } })).url).toBe('https://93.184.216.34/a.ics');
+    expect((await t.prisma.booking.findUniqueOrThrow({ where: { id: idsA.bookingId } })).classification).toBe('BOOKING');
   });
 });

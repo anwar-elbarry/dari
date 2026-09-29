@@ -17,6 +17,7 @@ export interface Fixtures {
   propertyId: string;
   ownerId: string;
   feedId: string;
+  bookingId: string;
   invitationId: () => Promise<string>;
   freshFeedId: () => Promise<string>;
 }
@@ -66,6 +67,11 @@ export const MATRIX: Row[] = [
   { method: 'PATCH', route: '/api/properties/:id/feeds/:feedId', url: (f) => `/api/properties/${f.propertyId}/feeds/${f.feedId}`, body: () => ({ url: 'https://93.184.216.34/z.ics' }), expect: MANAGER_ONLY(200) },
   { method: 'DELETE', route: '/api/properties/:id/feeds/:feedId', url: async (f) => `/api/properties/${f.propertyId}/feeds/${await f.freshFeedId()}`, expect: MANAGER_ONLY(204) },
   { method: 'POST', route: '/api/properties/:id/feeds/:feedId/sync', url: (f) => `/api/properties/${f.propertyId}/feeds/${f.feedId}/sync`, expect: MANAGER_ONLY(200) },
+
+  // Day counter and stays (booking:read for Staff; classification needs booking:write)
+  { method: 'GET', route: '/api/properties/:id/day-counter', url: (f) => `/api/properties/${f.propertyId}/day-counter`, expect: STAFF_READ },
+  { method: 'GET', route: '/api/properties/:id/bookings', url: (f) => `/api/properties/${f.propertyId}/bookings`, expect: STAFF_READ },
+  { method: 'PATCH', route: '/api/bookings/:id/classification', url: (f) => `/api/bookings/${f.bookingId}/classification`, body: () => ({ classification: 'OWNER_BLOCK' }), expect: MANAGER_ONLY(200) },
 ];
 
 describe('permission matrix (integration)', () => {
@@ -81,12 +87,16 @@ describe('permission matrix (integration)', () => {
       data: { accountId: acc.accountId, ownerId: owner.id, name: 'Riad', address: 'x', commune: 'Marrakech', licenseType: 'RIAD' },
     });
     const feed = await t.prisma.icalFeed.create({ data: { accountId: acc.accountId, propertyId: property.id, platform: 'AIRBNB', url: 'https://93.184.216.34/a.ics' } });
+    const booking = await t.prisma.booking.create({
+      data: { accountId: acc.accountId, propertyId: property.id, checkIn: new Date('2026-03-01'), checkOut: new Date('2026-03-04'), source: 'DIRECT' },
+    });
     let n = 0;
     f = {
       acc,
       propertyId: property.id,
       ownerId: owner.id,
       feedId: feed.id,
+      bookingId: booking.id,
       freshFeedId: async () =>
         (
           await t.prisma.icalFeed.upsert({

@@ -1,4 +1,4 @@
-import { countNights, dayLevel } from './day-counter';
+import { countNights, dayLevel, projectedBreachDate } from './day-counter';
 
 describe('countNights', () => {
   it('excludes the checkout night', () => {
@@ -28,5 +28,18 @@ describe('dayLevel', () => {
     [111, 'red'],
   ])('%i nights -> %s', (n, level) => {
     expect(dayLevel(n)).toBe(level);
+  });
+});
+
+describe('projectedBreachDate', () => {
+  it('returns the date of the cap-th night, ignoring overlaps and other years', () => {
+    const b = [
+      { checkIn: '2026-01-01', checkOut: '2026-01-03' }, // nights 1-2
+      { checkIn: '2026-01-02', checkOut: '2026-01-05' }, // nights 2-4 (2 overlaps)
+      { checkIn: '2025-12-30', checkOut: '2026-01-01' }, // previous year only
+    ];
+    expect(projectedBreachDate(b, 2026, 3)).toBe('2026-01-03');
+    expect(projectedBreachDate(b, 2026, 4)).toBe('2026-01-04');
+    expect(projectedBreachDate(b, 2026, 5)).toBeNull();
   });
 });
