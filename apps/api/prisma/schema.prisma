@@ -1,0 +1,439 @@
+// Data model per Technical Spec V2, section 5 (15 core entities + 3 fast-follow).
+// Extra: RuleConfig (config-driven rules, e.g. marital filter) — spec 1 "rules are data, not code".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER_MANAGER
+  STAFF
+  ACCOUNTANT
+}
+
+enum SubscriptionTier {
+  STARTER
+  GROWTH
+  CONCIERGERIE
+  ENTERPRISE
+}
+
+enum LicenseStatus {
+  LICENSED
+  UNLICENSED
+  PENDING
+}
+
+enum LicenseType {
+  FURNISHED_APARTMENT
+  RIAD
+  MAISON_DHOTE
+  AUBERGE
+}
+
+enum TaxRegime {
+  PROPERTY_INCOME
+  PROFESSIONAL
+  COMPANY
+}
+
+enum TaxeSejourMode {
+  INCLUDED
+  COLLECTED
+}
+
+enum Residency {
+  RESIDENT
+  NON_RESIDENT
+  MRE
+}
+
+enum BankAccountType {
+  STANDARD
+  CONVERTIBLE_DIRHAM
+  FOREIGN_CURRENCY
+}
+
+enum BookingSource {
+  AIRBNB
+  BOOKING
+  DIRECT
+  OTHER
+}
+
+enum DocType {
+  PASSPORT
+  CIN
+}
+
+enum MaritalStatus {
+  REQUIRED
+  UPLOADED
+  VERIFIED
+  EXEMPT
+}
+
+enum ShareResourceType {
+  FICHE_DE_POLICE
+  POLICE_REGISTER
+}
+
+enum Severity {
+  INFO
+  AMBER
+  RED
+}
+
+enum ChecklistStatus {
+  TODO
+  DONE
+}
+
+enum VendorType {
+  TRANSPORT
+  CATERING
+  GUIDE
+  OTHER
+}
+
+enum AddOnType {
+  TRANSFER
+  MEAL
+  ALCOHOL
+  TOUR
+  OTHER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model Account {
+  id               String           @id @default(uuid())
+  companyName      String
+  subscriptionTier SubscriptionTier @default(STARTER)
+  billingStatus    String           @default("trial")
+  seatLimit        Int              @default(1)
+  createdAt        DateTime         @default(now())
+
+  users         User[]
+  owners        PropertyOwner[]
+  properties    Property[]
+  shareLinks    ShareLink[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  vendors       Vendor[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  accountId    String
+  name         String
+  email        String   @unique
+  phone        String?
+  role         Role
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+}
+
+model PropertyOwner {
+  id              String          @id @default(uuid())
+  accountId       String
+  name            String
+  taxId           String?
+  residency       Residency
+  bankAccountType BankAccountType @default(STANDARD)
+
+  account    Account    @relation(fields: [accountId], references: [id])
+  properties Property[]
+
+  @@index([accountId])
+}
+
+model Property {
+  id             String         @id @default(uuid())
+  accountId      String
+  ownerId        String
+  name           String
+  address        String
+  commune        String
+  licenseStatus  LicenseStatus  @default(UNLICENSED)
+  licenseType    LicenseType
+  taxRegime      TaxRegime      @default(PROPERTY_INCOME)
+  taxeSejourMode TaxeSejourMode @default(COLLECTED)
+  icalUrl        String?
+  createdAt      DateTime       @default(now())
+
+  account        Account         @relation(fields: [accountId], references: [id])
+  owner          PropertyOwner   @relation(fields: [ownerId], references: [id])
+  bookings       Booking[]
+  checklistItems ChecklistItem[]
+  policeRegisters PoliceRegister[]
+  taxReports     TaxReport[]
+  notifications  Notification[]
+  addOns         AddOnService[]
+
+  @@index([accountId])
+}
+
+// Monetary amounts are Decimal(12,2) MAD.
+model Booking {
+  id                String        @id @default(uuid())
+  propertyId        String
+  checkIn           DateTime      @db.Date
+  checkOut          DateTime      @db.Date
+  partySize         Int?
+  nightlyRevenue    Decimal?      @db.Decimal(12, 2)
+  cleaningFee       Decimal?      @db.Decimal(12, 2)
+  addonRevenue      Decimal?      @db.Decimal(12, 2)
+  discounts         Decimal?      @db.Decimal(12, 2)
+  refunds           Decimal?      @db.Decimal(12, 2)
+  platformCommission Decimal?     @db.Decimal(12, 2)
+  taxeSejourAmount  Decimal?      @db.Decimal(12, 2)
+  source            BookingSource
+  externalUid       String? // iCal UID, for idempotent sync
+  isOwnerBlock      Boolean       @default(false) // excluded from the day count, shown for review
+
+  property Property        @relation(fields: [propertyId], references: [id])
+  checkIns GuestCheckIn[]
+  orders   AddOnOrder[]
+
+  @@unique([propertyId, externalUid])
+  @@index([propertyId, checkIn])
+}
+
+// Highest-risk data: ID scans are purged after the retention window (expiresAt); structured fields may be kept.
+model GuestCheckIn {
+  id                         String    @id @default(uuid())
+  bookingId                  String
+  tokenHash                  String    @unique // single-use check-in link
+  fullName                   String?
+  nationality                String?
+  declaredMoroccanNationality Boolean  @default(false)
+  docType                    DocType?
+  docNumber                  String?
+  dob                        DateTime? @db.Date
+  docFileUrl                 String? // object-storage key, never a public URL
+  ocrConfidence              Float?
+  entryStampNumber           String?
+  cityOfOrigin               String?
+  nextDestination            String?
+  profession                 String?
+  consentAt                  DateTime?
+  consentVersion             String?
+  submittedAt                DateTime?
+  expiresAt                  DateTime? // purge date for raw images
+
+  booking         Booking          @relation(fields: [bookingId], references: [id])
+  maritalDocument MaritalDocument?
+  fiche           FicheDePolice?
+
+  @@index([bookingId])
+  @@index([expiresAt])
+}
+
+model MaritalDocument {
+  id             String        @id @default(uuid())
+  guestCheckInId String        @unique
+  fileUrl        String?
+  status         MaritalStatus @default(REQUIRED)
+  verifiedBy     String?
+  exemptReason   String?
+  uploadedAt     DateTime?
+  expiresAt      DateTime?
+
+  guestCheckIn GuestCheckIn @relation(fields: [guestCheckInId], references: [id])
+}
+
+model FicheDePolice {
+  id             String   @id @default(uuid())
+  guestCheckInId String   @unique
+  pdfUrl         String
+  generatedAt    DateTime @default(now())
+
+  guestCheckIn GuestCheckIn @relation(fields: [guestCheckInId], references: [id])
+}
+
+model PoliceRegister {
+  id          String   @id @default(uuid())
+  propertyId  String
+  month       String // YYYY-MM
+  pdfUrl      String
+  generatedBy String
+  generatedAt DateTime @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId, month])
+}
+
+model ShareLink {
+  id             String            @id @default(uuid())
+  accountId      String
+  resourceType   ShareResourceType
+  resourceId     String
+  tokenHash      String            @unique // only the hash of the 256-bit token is stored
+  recipientLabel String
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  maxViews       Int?
+  viewCount      Int               @default(0)
+  createdBy      String
+  createdAt      DateTime          @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+}
+
+// Rates/thresholds are data validated by a fiduciaire — never hard-coded.
+model TaxRule {
+  id             String      @id @default(uuid())
+  commune        String
+  licenseType    LicenseType
+  taxeSejourRate Decimal     @db.Decimal(8, 2) // MAD per person per night
+  tptRate        Decimal     @db.Decimal(8, 2)
+  basis          String      @default("PER_PERSON_NIGHT")
+  effectiveFrom  DateTime    @db.Date
+  validatedBy    String?
+  validatedAt    DateTime?
+
+  @@index([commune, licenseType, effectiveFrom])
+}
+
+// Config-driven rules (marital filter conditions, mandatory fields, IR/VAT rates & thresholds, retention days).
+model RuleConfig {
+  key         String    @id
+  value       Json
+  validatedBy String?
+  validatedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+model TaxReport {
+  id                  String    @id @default(uuid())
+  propertyId          String
+  month               String // YYYY-MM
+  regime              TaxRegime
+  nightsRevenue       Decimal   @db.Decimal(12, 2)
+  addonRevenue        Decimal   @db.Decimal(12, 2)
+  grossBase           Decimal   @db.Decimal(12, 2)
+  taxeSejourDeducted  Decimal   @db.Decimal(12, 2)
+  vatTotal            Decimal   @db.Decimal(12, 2)
+  incomeTaxTotal      Decimal   @db.Decimal(12, 2)
+  localTaxTotal       Decimal   @db.Decimal(12, 2)
+  bankAccountType     BankAccountType?
+  localTaxStatementUrl String?
+  pdfUrl              String?
+  excelUrl            String?
+  disclaimerVersion   String
+  createdAt           DateTime  @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([propertyId, month])
+}
+
+model ChecklistItem {
+  id               String          @id @default(uuid())
+  propertyId       String
+  stepName         String
+  status           ChecklistStatus @default(TODO)
+  documentUrl      String?
+  cityScope        String          @default("Marrakech")
+  licenseTypeScope LicenseType?
+  condition        String? // e.g. "meals"
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  accountId  String
+  type       String
+  severity   Severity  @default(INFO)
+  propertyId String?
+  bookingId  String?
+  message    String
+  sentVia    String[]
+  readAt     DateTime?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  account  Account   @relation(fields: [accountId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
+
+  @@index([accountId, resolvedAt])
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  accountId    String
+  actorId      String?
+  action       String
+  resourceType String
+  resourceId   String
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, createdAt])
+}
+
+// ---- Fast-follow ----
+
+model Vendor {
+  id            String     @id @default(uuid())
+  accountId     String
+  type          VendorType
+  companyName   String
+  licenseNumber String?
+  driverPhone   String?
+  docUrl        String?
+  expiresAt     DateTime?
+
+  account Account        @relation(fields: [accountId], references: [id])
+  addOns  AddOnService[]
+
+  @@index([accountId])
+}
+
+model AddOnService {
+  id           String    @id @default(uuid())
+  propertyId   String
+  type         AddOnType
+  price        Decimal   @db.Decimal(12, 2)
+  vendorId     String?
+  licenseDocUrl String?
+  enabled      Boolean   @default(false)
+
+  property Property     @relation(fields: [propertyId], references: [id])
+  vendor   Vendor?      @relation(fields: [vendorId], references: [id])
+  orders   AddOnOrder[]
+}
+
+model AddOnOrder {
+  id         String      @id @default(uuid())
+  bookingId  String
+  serviceId  String
+  amount     Decimal     @db.Decimal(12, 2)
+  commission Decimal     @db.Decimal(12, 2)
+  status     OrderStatus @default(PENDING)
+
+  booking Booking      @relation(fields: [bookingId], references: [id])
+  service AddOnService @relation(fields: [serviceId], references: [id])
+}
