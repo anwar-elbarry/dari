@@ -35,6 +35,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Integration tests (Postgres)
+        run: npm run test:int
       # Known: deepmerge-ts (high) via the Prisma CLI, build-time only, no upstream fix yet.
       # Tighten to `high` as soon as Prisma ships a release that no longer depends on deepmerge-ts <8.
       - name: Dependency audit (production deps, fail on critical)

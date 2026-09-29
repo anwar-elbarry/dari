@@ -1,11 +1,10 @@
 import { Body, Controller, Get, INestApplication, Module, Post } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import { IsEmail, IsString, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import request from 'supertest';
-import { AppModule } from '../app.module';
-import { AppConfig, parseEnv } from '../config/env';
-import { configureApp } from './configure-app';
+import { Public } from '../auth/decorators';
+import { createTestApp } from '../test/test-app';
+import { CSRF_HEADER, CSRF_HEADER_VALUE } from './csrf.guard';
 
 class AddressDto {
   @IsString()
@@ -22,6 +21,7 @@ class EchoDto {
   address!: AddressDto;
 }
 
+@Public()
 @Controller('test')
 class TestController {
   @Post('echo')
@@ -38,19 +38,8 @@ class TestController {
 @Module({ controllers: [TestController] })
 class TestFeatureModule {}
 
-async function createApp(overrides: Record<string, string> = {}): Promise<INestApplication> {
-  const config: AppConfig = parseEnv({
-    NODE_ENV: 'test',
-    DATABASE_URL: 'postgresql://u:p@localhost:5432/unused',
-    ...overrides,
-  });
-  const moduleRef = await Test.createTestingModule({
-    imports: [AppModule.register(config), TestFeatureModule],
-  }).compile();
-  const app = moduleRef.createNestApplication({ logger: false });
-  configureApp(app, config);
-  await app.init();
-  return app;
+async function createApp(env: Record<string, string> = {}): Promise<INestApplication> {
+  return (await createTestApp({ env, extra: [TestFeatureModule] })).app;
 }
 
 describe('HTTP pipeline', () => {
@@ -89,6 +78,7 @@ describe('HTTP pipeline', () => {
   it('rejects invalid and unknown fields with field-level details, without echoing values', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/test/echo')
+      .set(CSRF_HEADER, CSRF_HEADER_VALUE)
       .send({ email: 'not-an-email', address: { city: 'M' }, role: 'OWNER_MANAGER' })
       .expect(400);
 
@@ -100,7 +90,17 @@ describe('HTTP pipeline', () => {
 
   it('accepts a valid body', async () => {
     const body = { email: 'a@b.test', address: { city: 'Marrakech' } };
-    await request(app.getHttpServer()).post('/api/test/echo').send(body).expect(201, body);
+    await request(app.getHttpServer()).post('/api/test/echo').set(CSRF_HEADER, CSRF_HEADER_VALUE).send(body).expect(201, body);
+  });
+
+  it('rejects state-changing requests without the CSRF header', async () => {
+    const res = await request(app.getHttpServer()).post('/api/test/echo').send({}).expect(403);
+    expect(res.body.error.code).toBe('CSRF_HEADER_MISSING');
+  });
+
+  it('requires a session on non-public routes', async () => {
+    const res = await request(app.getHttpServer()).get('/api/me').expect(401);
+    expect(res.body.error.code).toBe('UNAUTHENTICATED');
   });
 
   it('hides unexpected errors behind a generic 500', async () => {
@@ -114,7 +114,7 @@ describe('rate limiting', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    app = await createApp({ THROTTLE_LIMIT: '3', THROTTLE_TTL_MS: '60000' });
+    app = await createApp({ RATE_LIMIT_ENABLED: 'true', THROTTLE_LIMIT: '3', THROTTLE_TTL_MS: '60000' });
   });
 
   afterAll(async () => {

@@ -3,7 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "description": "Morocco STR Compliance & Tax Platform",
-  "workspaces": ["apps/api", "apps/web"],
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
   "scripts": {
     "lint": "eslint apps",
     "typecheck": "npm run typecheck --workspaces --if-present",
@@ -11,7 +14,8 @@
     "db:generate": "npm run db:generate --workspace apps/api",
     "db:validate": "npm run db:validate --workspace apps/api",
     "dev:api": "npm run start:dev --workspace apps/api",
-    "dev:web": "npm run dev --workspace apps/web"
+    "dev:web": "npm run dev --workspace apps/web",
+    "test:int": "npm run test:int --workspace apps/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

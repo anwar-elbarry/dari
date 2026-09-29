@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppConfig } from '../config/env';
 import { HttpExceptionFilter } from './http-exception.filter';
@@ -13,6 +14,7 @@ export function configureApp(app: INestApplication, config: AppConfig) {
   express.disable('x-powered-by');
   app.use(requestIdMiddleware);
   app.use(helmet());
+  app.use(cookieParser());
   app.setGlobalPrefix('api');
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());

@@ -135,7 +135,7 @@ Suggested order. Each step ends with green lint, typecheck and tests, and a comm
 |---|---|---|
 | 1.0 ✅ | **CI** (GitHub Actions: lint, typecheck, tests, `prisma validate`, Postgres service container). First migration and seed | fast |
 | 1.1 ✅ | Foundations in the API: config module with validated env, Prisma module, `MailService`, `AuditService`, global validation pipe, error format, throttler | fast |
-| 1.2 | **Auth backend**: signup, login, refresh rotation with reuse detection, logout, reset, `/me`. Argon2, cookies, rate limits | strong |
+| 1.2 ✅ | **Auth backend**: signup, login, refresh rotation with reuse detection, logout, reset, `/me`. Argon2, cookies, rate limits | strong |
 | 1.3 | **RBAC and tenant isolation**: capability map, guard, decorator, account-scoped Prisma helper. Permission-matrix test table and cross-tenant tests | strong |
 | 1.4 | Invitations API (create, list, revoke, accept) | fast |
 | 1.5 | Property and PropertyOwner API with reduced projection for Staff | fast |
