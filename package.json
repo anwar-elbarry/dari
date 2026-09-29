@@ -15,7 +15,8 @@
     "db:validate": "npm run db:validate --workspace apps/api",
     "dev:api": "npm run start:dev --workspace apps/api",
     "dev:web": "npm run dev --workspace apps/web",
-    "test:int": "npm run test:int --workspace apps/api"
+    "test:int": "npm run test:int --workspace apps/api",
+    "test:e2e": "npm run test:e2e --workspace apps/web"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

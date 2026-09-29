@@ -54,3 +54,42 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - run: pytest -q
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dari
+          POSTGRES_PASSWORD: dari
+          POSTGRES_DB: dari_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dari" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://dari:dari@localhost:5432/dari_e2e
+      E2E_DATABASE_URL: postgresql://dari:dari@localhost:5432/dari_e2e
+      E2E_MAIL_DIR: /tmp/dari-e2e-mail
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run db:deploy --workspace apps/api
+      - name: Build API and web
+        run: |
+          npm run build --workspace apps/api
+          npm run build --workspace apps/web
+      - run: npx --workspace apps/web playwright install --with-deps chromium
+      - name: End-to-end tests (phone viewport)
+        run: npm run test:e2e --workspace apps/web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+          retention-days: 7
