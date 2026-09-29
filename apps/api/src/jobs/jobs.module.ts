@@ -5,11 +5,10 @@ import { AppConfig } from '../config/env';
 /** Queue names. Payloads carry ids only: never URLs, tokens or personal data. */
 export const QUEUE_SYNC = 'ical-sync';
 export const QUEUE_ALERTS = 'alerts';
-export const QUEUES = [QUEUE_SYNC, QUEUE_ALERTS] as const;
 
 /**
- * BullMQ on Redis. Without REDIS_URL (development/test) no queue is registered; features that
- * enqueue work must inject the queue as optional and run inline or skip.
+ * BullMQ connection. Feature modules register the queues they use with `BullModule.registerQueue`
+ * only when REDIS_URL is set (development/test without Redis run inline or skip).
  */
 @Module({})
 export class JobsModule {
@@ -32,9 +31,7 @@ export class JobsModule {
           prefix: 'dari',
           defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 30_000 }, removeOnComplete: 500, removeOnFail: 1000 },
         }),
-        ...QUEUES.map((name) => BullModule.registerQueue({ name })),
       ],
-      exports: [BullModule],
     };
   }
 }

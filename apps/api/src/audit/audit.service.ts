@@ -19,7 +19,10 @@ export type AuditAction =
   | 'property_owner.created'
   | 'property_owner.updated'
   | 'property.created'
-  | 'property.updated';
+  | 'property.updated'
+  | 'ical_feed.created'
+  | 'ical_feed.updated'
+  | 'ical_feed.deleted';
 
 export interface AuditEntry {
   accountId: string;

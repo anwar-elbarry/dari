@@ -33,7 +33,8 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - `AuditService.record()` for sensitive actions; add new actions to the `AuditAction` union. Identifiers only, never secrets or guest data.
 - `MailService.send()`; the console driver is dev-only (refused in production by env validation).
 - Rate limiting: global default from env; stricter per-route limits with `@Throttle()`. Counters and the login lockout live in Redis when `REDIS_URL` is set (required in production), in memory otherwise.
-- Jobs: BullMQ queues in `jobs/jobs.module.ts` (`QUEUE_SYNC`, `QUEUE_ALERTS`); registered only with Redis. Payloads carry ids only. Inject queues as optional.
+- Jobs: BullMQ connection in `jobs/jobs.module.ts`; a feature module registers its queue with `BullModule.registerQueue({ name })` and adds its `@Processor` provider only when `config.REDIS_URL` is set (see `ical/ical.module.ts`). Payloads carry ids only. `SyncProcessor` fans out one job per feed every `ICAL_SYNC_INTERVAL_HOURS`; "sync now" runs inline.
+- Sync rules (`ical/sync.service.ts`): upsert by (feed, UID); manual classifications are never overwritten; a future event missing from the feed is cancelled; past stays are frozen; a failing feed keeps its bookings and stores a sanitised error.
 
 ## Outbound fetches (apps/api/src/ical)
 - Every user-supplied URL is fetched with `safeFetch()` only: https, host resolved and checked against `publicOnly` (no private, loopback, link-local, metadata, mapped or 6to4 addresses), connection pinned to the checked IP, redirects re-checked, 10 s / 2 MB caps. Never use `fetch`/`axios` on a user URL.

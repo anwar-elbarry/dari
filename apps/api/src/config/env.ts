@@ -35,6 +35,11 @@ const envSchema = z
     MAIL_FROM: z.string().min(3).default('Dari <no-reply@localhost>'),
     /** Tests turn this off so many requests from one IP do not trip the limits; refused off in production. */
     RATE_LIMIT_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+    /** Calendar sync: interval, fetch caps, and a dev/test switch that allows http and private hosts. */
+    ICAL_SYNC_INTERVAL_HOURS: z.coerce.number().int().min(1).max(24).default(2),
+    ICAL_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+    ICAL_MAX_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
+    ICAL_ALLOW_INSECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
     THROTTLE_TTL_MS: z.coerce.number().int().positive().default(60_000),
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(100),
   })
@@ -52,6 +57,9 @@ const envSchema = z
     }
     if (env.NODE_ENV === 'production' && !env.REDIS_URL) {
       ctx.addIssue({ code: 'custom', path: ['REDIS_URL'], message: 'required in production (rate limits, lockout and jobs must be shared)' });
+    }
+    if (env.NODE_ENV === 'production' && env.ICAL_ALLOW_INSECURE) {
+      ctx.addIssue({ code: 'custom', path: ['ICAL_ALLOW_INSECURE'], message: 'insecure calendar fetching cannot be enabled in production' });
     }
     if (env.NODE_ENV === 'production' && !env.RATE_LIMIT_ENABLED) {
       ctx.addIssue({ code: 'custom', path: ['RATE_LIMIT_ENABLED'], message: 'rate limiting cannot be disabled in production' });

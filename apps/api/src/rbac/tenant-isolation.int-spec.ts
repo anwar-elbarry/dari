@@ -13,6 +13,7 @@ interface Ids {
   ownerId: string;
   propertyId: string;
   invitationId: string;
+  feedId: string;
 }
 
 const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Promise<{ status: number }> }[] = [
@@ -21,6 +22,11 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'GET', route: '/api/properties/:id', call: (c, a) => c.get(`/api/properties/${a.propertyId}`) },
   { method: 'PATCH', route: '/api/properties/:id', call: (c, a) => c.patch(`/api/properties/${a.propertyId}`, { name: 'Hijacked' }) },
   { method: 'DELETE', route: '/api/invitations/:id', call: (c, a) => c.delete(`/api/invitations/${a.invitationId}`) },
+  { method: 'GET', route: '/api/properties/:id/feeds', call: (c, a) => c.get(`/api/properties/${a.propertyId}/feeds`) },
+  { method: 'POST', route: '/api/properties/:id/feeds', call: (c, a) => c.post(`/api/properties/${a.propertyId}/feeds`, { platform: 'DIRECT', url: 'https://93.184.216.34/x.ics' }) },
+  { method: 'PATCH', route: '/api/properties/:id/feeds/:feedId', call: (c, a) => c.patch(`/api/properties/${a.propertyId}/feeds/${a.feedId}`, { url: 'https://93.184.216.34/y.ics' }) },
+  { method: 'DELETE', route: '/api/properties/:id/feeds/:feedId', call: (c, a) => c.delete(`/api/properties/${a.propertyId}/feeds/${a.feedId}`) },
+  { method: 'POST', route: '/api/properties/:id/feeds/:feedId/sync', call: (c, a) => c.post(`/api/properties/${a.propertyId}/feeds/${a.feedId}/sync`) },
 ];
 
 describe('tenant isolation (integration)', () => {
@@ -41,7 +47,8 @@ describe('tenant isolation (integration)', () => {
     const invitation = await t.prisma.invitation.create({
       data: { accountId: a.accountId, email: 'pending@alpha.test', role: 'STAFF', tokenHash: 'h-a', invitedBy: a.users.OWNER_MANAGER.id, expiresAt: new Date(Date.now() + 86_400_000) },
     });
-    idsA = { ownerId: owner.id, propertyId: property.id, invitationId: invitation.id };
+    const feed = await t.prisma.icalFeed.create({ data: { accountId: a.accountId, propertyId: property.id, platform: 'AIRBNB', url: 'https://93.184.216.34/a.ics' } });
+    idsA = { ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id };
   });
 
   afterAll(async () => {
@@ -81,5 +88,6 @@ describe('tenant isolation (integration)', () => {
     expect((await t.prisma.propertyOwner.findUniqueOrThrow({ where: { id: idsA.ownerId } })).name).toBe('Owner A');
     expect((await t.prisma.property.findUniqueOrThrow({ where: { id: idsA.propertyId } })).name).toBe('Property A');
     expect((await t.prisma.invitation.findUniqueOrThrow({ where: { id: idsA.invitationId } })).revokedAt).toBeNull();
+    expect((await t.prisma.icalFeed.findUniqueOrThrow({ where: { id: idsA.feedId } })).url).toBe('https://93.184.216.34/a.ics');
   });
 });

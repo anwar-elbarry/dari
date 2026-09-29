@@ -16,7 +16,9 @@ export interface Fixtures {
   acc: SeededAccount;
   propertyId: string;
   ownerId: string;
+  feedId: string;
   invitationId: () => Promise<string>;
+  freshFeedId: () => Promise<string>;
 }
 
 interface Row {
@@ -57,6 +59,13 @@ export const MATRIX: Row[] = [
   },
   { method: 'GET', route: '/api/properties/:id', url: (f) => `/api/properties/${f.propertyId}`, expect: STAFF_READ },
   { method: 'PATCH', route: '/api/properties/:id', url: (f) => `/api/properties/${f.propertyId}`, body: () => ({ licenseStatus: 'PENDING' }), expect: MANAGER_ONLY(200) },
+
+  // Calendar feeds (ical:manage)
+  { method: 'GET', route: '/api/properties/:id/feeds', url: (f) => `/api/properties/${f.propertyId}/feeds`, expect: MANAGER_ONLY(200) },
+  { method: 'POST', route: '/api/properties/:id/feeds', url: (f) => `/api/properties/${f.propertyId}/feeds`, body: () => ({ platform: 'DIRECT', url: 'https://93.184.216.34/cal.ics' }), expect: MANAGER_ONLY(201) },
+  { method: 'PATCH', route: '/api/properties/:id/feeds/:feedId', url: (f) => `/api/properties/${f.propertyId}/feeds/${f.feedId}`, body: () => ({ url: 'https://93.184.216.34/z.ics' }), expect: MANAGER_ONLY(200) },
+  { method: 'DELETE', route: '/api/properties/:id/feeds/:feedId', url: async (f) => `/api/properties/${f.propertyId}/feeds/${await f.freshFeedId()}`, expect: MANAGER_ONLY(204) },
+  { method: 'POST', route: '/api/properties/:id/feeds/:feedId/sync', url: (f) => `/api/properties/${f.propertyId}/feeds/${f.feedId}/sync`, expect: MANAGER_ONLY(200) },
 ];
 
 describe('permission matrix (integration)', () => {
@@ -71,11 +80,21 @@ describe('permission matrix (integration)', () => {
     const property = await t.prisma.property.create({
       data: { accountId: acc.accountId, ownerId: owner.id, name: 'Riad', address: 'x', commune: 'Marrakech', licenseType: 'RIAD' },
     });
+    const feed = await t.prisma.icalFeed.create({ data: { accountId: acc.accountId, propertyId: property.id, platform: 'AIRBNB', url: 'https://93.184.216.34/a.ics' } });
     let n = 0;
     f = {
       acc,
       propertyId: property.id,
       ownerId: owner.id,
+      feedId: feed.id,
+      freshFeedId: async () =>
+        (
+          await t.prisma.icalFeed.upsert({
+            where: { propertyId_platform: { propertyId: property.id, platform: 'BOOKING' } },
+            update: {},
+            create: { accountId: acc.accountId, propertyId: property.id, platform: 'BOOKING', url: 'https://93.184.216.34/b.ics' },
+          })
+        ).id,
       invitationId: async () =>
         (
           await t.prisma.invitation.create({

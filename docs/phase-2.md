@@ -110,7 +110,7 @@ Staff see counters and dates, never revenue or iCal URLs.
 | 2.0 ✅ | Carry-overs: Redis + BullMQ module, limiters on Redis, production mail driver (once chosen) | fast |
 | 2.1 ✅ | Data model and migration; scope rules for new models; capabilities; seed `RuleConfig` | fast |
 | 2.2 ✅ | **Safe iCal fetcher** (SSRF rules, limits) + parser + classifier with fixture files | strong |
-| 2.3 | Sync job: schedule, upsert by UID, cancellations, frozen past, per-feed status, "sync now" | strong |
+| 2.3 ✅ | Sync job: schedule, upsert by UID, cancellations, frozen past, per-feed status, "sync now" | strong |
 | 2.4 | Day counter service (thresholds from `RuleConfig`), projected breach date, `/day-counter` | fast |
 | 2.5 | CSV import: template, mapping, preview, idempotent commit | fast |
 | 2.6 | Threshold alerts: once per threshold/year, email, dashboard feed, resolve | fast |

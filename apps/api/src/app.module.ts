@@ -11,6 +11,7 @@ import { CsrfGuard } from './common/csrf.guard';
 import { ConfigModule } from './config/config.module';
 import { APP_CONFIG, AppConfig, parseEnv } from './config/env';
 import { HealthController } from './health/health.controller';
+import { IcalModule } from './ical/ical.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { MailModule } from './mail/mail.module';
 import { CapabilitiesGuard } from './rbac/capabilities.guard';
@@ -21,13 +22,14 @@ import { PropertiesModule } from './properties/properties.module';
 export class AppModule {
   /** `config` is passed by tests; production boots from validated `process.env`. */
   static register(config?: AppConfig): DynamicModule {
+    const resolved = config ?? parseEnv(process.env);
     return {
       module: AppModule,
       imports: [
-        ConfigModule.forRoot(config),
-        // Default limit for every route; auth routes get stricter limits in step 1.2.
+        ConfigModule.forRoot(resolved),
         RedisModule,
-        JobsModule.register(config ?? parseEnv(process.env)),
+        JobsModule.register(resolved),
+        // Default limit for every route; sensitive routes set stricter limits with @Throttle().
         ThrottlerModule.forRootAsync({
           inject: [APP_CONFIG, REDIS],
           useFactory: (c: AppConfig, redis: RedisClient) => ({
@@ -42,6 +44,7 @@ export class AppModule {
         AuthModule,
         InvitationsModule,
         PropertiesModule,
+        IcalModule.register(resolved),
       ],
       controllers: [HealthController],
       // Order matters: rate limit, then CSRF header, then session, then capabilities.

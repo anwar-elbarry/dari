@@ -51,6 +51,7 @@ export function testConfig(overrides: Record<string, string> = {}): AppConfig {
     DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://u:p@localhost:5432/unused',
     ...(TEST_REDIS_URL ? { REDIS_URL: TEST_REDIS_URL } : {}),
     JWT_ACCESS_SECRET: 'test-secret-test-secret-test-secret-000',
+    ICAL_FETCH_TIMEOUT_MS: '1500',
     RATE_LIMIT_ENABLED: 'false',
     ...overrides,
   });

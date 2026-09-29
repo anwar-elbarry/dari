@@ -50,6 +50,11 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...base, NODE_ENV: 'production', MAIL_DRIVER: 'console' })).toThrow(/REDIS_URL/);
   });
 
+  it('refuses insecure calendar fetching in production', () => {
+    expect(parseEnv({ ...base, ICAL_ALLOW_INSECURE: 'true' }).ICAL_ALLOW_INSECURE).toBe(true);
+    expect(() => parseEnv({ ...base, NODE_ENV: 'production', ICAL_ALLOW_INSECURE: 'true' })).toThrow(/ICAL_ALLOW_INSECURE/);
+  });
+
   it('refuses disabled rate limiting in production', () => {
     expect(parseEnv({ ...base, RATE_LIMIT_ENABLED: 'false' }).RATE_LIMIT_ENABLED).toBe(false);
     expect(() => parseEnv({ ...base, NODE_ENV: 'production', RATE_LIMIT_ENABLED: 'false' })).toThrow(/RATE_LIMIT_ENABLED/);
