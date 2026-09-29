@@ -33,6 +33,7 @@ export type AuditAction =
   | 'checkin.link.created'
   | 'checkin.link.revoked'
   | 'checkin.submitted'
+  | 'guest.updated'
   | 'retention.purged';
 
 export interface AuditEntry {

@@ -106,17 +106,25 @@ These are not code. Until they are done, the feature stays behind `GUEST_CHECKIN
 
 | Route | Method | Access | Notes |
 |---|---|---|---|
-| `/bookings/:id/checkin-links` | POST / GET | `checkin:manage` (Owner/Manager, Staff) | Create and list links for a booking; returns the link once |
-| `/checkin-links/:id` | DELETE | `checkin:manage` | Revoke |
-| `/checkin-links/:id/resend` | POST | `checkin:manage` | Issues a fresh token, revokes the old one |
-| `/checkin/:token` | GET | public | Booking dates and property name only, consent texts, form config; `no-store`, `noindex` |
-| `/checkin/:token/document` | POST | public | Image upload → sanitised, stored, OCR run → extracted fields for review (never the stored image) |
-| `/checkin/:token/submit` | POST | public | Final fields; server enforces entry stamp number, city of origin, next destination, profession; records consent |
-| `/properties/:id/arrivals` | GET | `booking:read` | Bookings with check-in status per guest (Staff: status only) |
-| `/guests/:id` | GET | `guest:read_meta` (Staff: status; Owner/Manager: fields) | |
-| `/guests/:id/document` | GET | `id:read` (Owner/Manager) | Streams the image; audited; `no-store` |
-| `/guests/:id/fiche` | GET | `police:read` | Streams the PDF |
-| `/guests/:id/fiche/regenerate` | POST | `police:read` | After a correction |
+| `/bookings/:id/checkin-links` | POST / GET | `checkin:manage` (Owner/Manager, Staff) | Create (returns the token and URL **once**) and list links for a booking. Only for confirmed bookings of type BOOKING whose window is still open |
+| `/checkin-links/:id` | DELETE | `checkin:manage` | Revoke (idempotent) |
+| `/checkin-links/:id/resend` | POST | `checkin:manage` | Issues a fresh token and revokes the old one |
+| `/checkin` | GET | public, token in the `X-Checkin-Token` header | Property name, stay dates, consent text (`?lang=fr\|en`), limits, required fields. Nothing about other guests |
+| `/checkin/document` | POST | public | Photo upload (≤ 8 MB) → sanitised, encrypted, stored, OCR run → **suggestions** and a `draftId` (never the stored image). Max 3 photos per guest |
+| `/checkin/submit` | POST | public | Final fields, consent; server enforces the four mandatory fields |
+| `/properties/:id/arrivals` | GET | `booking:read` | Current and upcoming stays with check-in status per guest (`?days=`, default 60). Staff: status only, no names |
+| `/guests/:id` | GET | `guest:read_meta` | Staff: status only. Owner/Manager: the fields, consent and OCR flags |
+| `/guests/:id` | PATCH | `guest:write` (Owner/Manager) | Correct fields, mark VERIFIED; audited without values |
+| `/guests/:id/document` | GET | `id:read` (Owner/Manager) | Decrypts and streams the image; audited **before** any byte is returned; `no-store` |
+| `/guests/:id/fiche`, `/guests/:id/fiche/regenerate` | GET / POST | `police:read` | Step 3.5 |
+
+**Changes from the first draft of this table, and why**
+
+- **The token is in the URL fragment and the `X-Checkin-Token` header, not in a `/checkin/:token` path.** A path token lands in edge access logs and, more importantly, in the request that WhatsApp (Meta's servers) makes to build a link preview as soon as a manager pastes the link into a chat. A fragment (`/checkin#token=…`) is never sent to any server; the guest page reads it, removes it from the address bar and sends it in a header.
+- **A guest is a draft first.** The first photo creates a `PENDING` `GuestCheckIn` (that is what `draftId` names); submit turns it `SUBMITTED` and gives it its guest number, atomically with the link's counter. An unfinished draft is invisible to the team and its photo is purged with the others.
+- **`PATCH /guests/:id` and the `guest:write` capability** were added: the risk table promises that the manager can correct a field and regenerate the Fiche.
+- **Party size** is asked in the form only to guide the "add the next guest" loop; the server's limit is the link's `maxGuests` (the booking's party size, or 2, set when the link is created).
+- **Entry stamp for Moroccan nationals.** The four mandatory fields are enforced for every guest, as `CLAUDE.md` rule 5 says. Whether a Moroccan national or CIN holder should be exempt from the entry stamp is a question for counsel and the prefecture; if they are, that becomes a `RuleConfig` decision, not code.
 
 New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`. Every route goes into the permission matrix; every `:id` route into the tenant-isolation suite; the public routes get their own abuse tests.
 
@@ -141,7 +149,7 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 | 3.1 | **Storage service**: S3 client, envelope encryption, private access, streaming, `StoredObject`, audit hooks; MinIO in dev and CI — **done** (objects are buffered in memory, capped at 16 MB, which is enough for images ≤ 8 MB and PDFs; GCM needs the whole object to authenticate) | strong |
 | 3.2 | Data model, migration, capabilities, consent texts, feature flag, retention settings — **done** (see the changes from the table above, below it) | fast |
 | 3.3 | **OCR worker**: MRZ parsing with check digits, image pre-checks, CIN approach after the card test, confidence scores; synthetic ICAO specimen fixtures only | strong |
-| 3.4 | Check-in links API (create, list, resend, revoke) and the public API (view, upload with sanitising, submit with server-side rules and consent) | strong |
+| 3.4 | Check-in links API (create, list, resend, revoke) and the public API (view, upload with sanitising, submit with server-side rules and consent) — **done** (see the API changes below) | strong |
 | 3.5 | Fiche de Police PDF generator (template version, checksum, stored encrypted) | fast |
 | 3.6 | Retention job (Redis queue): purge images and artefacts after the window, keep structured records, audit | strong |
 | 3.7 | Web: arrivals, link dialog, guest list, Fiche and ID viewers | fast |

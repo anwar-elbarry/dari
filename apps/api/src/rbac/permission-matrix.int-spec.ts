@@ -5,6 +5,7 @@
  */
 import { DiscoveryModule } from '@nestjs/core';
 import { listRoutes } from '../test/routes';
+import { StorageService } from '../storage/storage.service';
 import { createTestApp, requireDatabase, resetDatabase, RoleName, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 
 requireDatabase();
@@ -21,6 +22,11 @@ export interface Fixtures {
   alertId: () => Promise<string>;
   invitationId: () => Promise<string>;
   freshFeedId: () => Promise<string>;
+  /** A confirmed booking that starts in ten days (check-in links are only issued for current and future stays). */
+  stayId: string;
+  linkId: () => Promise<string>;
+  /** A submitted guest with an encrypted ID image. */
+  guestId: string;
 }
 
 interface Row {
@@ -85,6 +91,17 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/imports/template.csv', url: () => '/api/imports/template.csv', expect: MANAGER_ONLY(200) },
   { method: 'POST', route: '/api/properties/:id/imports/preview', url: (f) => `/api/properties/${f.propertyId}/imports/preview`, csv: 'check_in,check_out\n2026-01-01,2026-01-03\n', expect: MANAGER_ONLY(200) },
   { method: 'POST', route: '/api/properties/:id/imports', url: (f) => `/api/properties/${f.propertyId}/imports`, csv: 'check_in,check_out\n2026-01-01,2026-01-03\n', expect: MANAGER_ONLY(201) },
+
+  // Guest check-in (Phase 3). Staff send links and see status; only Owner/Manager see fields, images, corrections.
+  // The public guest routes (/api/checkin...) are @Public and have their own abuse suite.
+  { method: 'POST', route: '/api/bookings/:id/checkin-links', url: (f) => `/api/bookings/${f.stayId}/checkin-links`, body: () => ({}), expect: { ANON: 401, ACCOUNTANT: 403, STAFF: 201, OWNER_MANAGER: 201 } },
+  { method: 'GET', route: '/api/bookings/:id/checkin-links', url: (f) => `/api/bookings/${f.stayId}/checkin-links`, expect: STAFF_READ },
+  { method: 'DELETE', route: '/api/checkin-links/:id', url: async (f) => `/api/checkin-links/${await f.linkId()}`, expect: { ANON: 401, ACCOUNTANT: 403, STAFF: 204, OWNER_MANAGER: 204 } },
+  { method: 'POST', route: '/api/checkin-links/:id/resend', url: async (f) => `/api/checkin-links/${await f.linkId()}/resend`, body: () => ({}), expect: { ANON: 401, ACCOUNTANT: 403, STAFF: 201, OWNER_MANAGER: 201 } },
+  { method: 'GET', route: '/api/properties/:id/arrivals', url: (f) => `/api/properties/${f.propertyId}/arrivals`, expect: STAFF_READ },
+  { method: 'GET', route: '/api/guests/:id', url: (f) => `/api/guests/${f.guestId}`, expect: STAFF_READ },
+  { method: 'PATCH', route: '/api/guests/:id', url: (f) => `/api/guests/${f.guestId}`, body: () => ({ profession: 'Engineer' }), expect: MANAGER_ONLY(200) },
+  { method: 'GET', route: '/api/guests/:id/document', url: (f) => `/api/guests/${f.guestId}/document`, expect: MANAGER_ONLY(200) },
 ];
 
 describe('permission matrix (integration)', () => {
@@ -103,8 +120,22 @@ describe('permission matrix (integration)', () => {
     const booking = await t.prisma.booking.create({
       data: { accountId: acc.accountId, propertyId: property.id, checkIn: new Date('2026-03-01'), checkOut: new Date('2026-03-04'), source: 'DIRECT' },
     });
+    const stay = await t.prisma.booking.create({
+      data: { accountId: acc.accountId, propertyId: property.id, checkIn: new Date(Date.now() + 10 * 86_400_000), checkOut: new Date(Date.now() + 13 * 86_400_000), source: 'DIRECT' },
+    });
+    const link = await t.prisma.checkInLink.create({
+      data: { accountId: acc.accountId, bookingId: stay.id, tokenHash: 'matrix-seed-link', expiresAt: new Date(Date.now() + 30 * 86_400_000), createdBy: acc.users.OWNER_MANAGER.id, maxGuests: 2 },
+    });
+    const image = await t.app.get(StorageService).put(acc.accountId, 'ID_IMAGE', Buffer.from('synthetic image bytes'));
+    const guest = await t.prisma.guestCheckIn.create({
+      data: { accountId: acc.accountId, bookingId: stay.id, propertyId: property.id, linkId: link.id, guestIndex: 1, status: 'SUBMITTED', fullName: 'Test Guest', docImageId: image.id, submittedAt: new Date() },
+    });
     let n = 0;
     f = {
+      stayId: stay.id,
+      guestId: guest.id,
+      linkId: async () =>
+        (await t.prisma.checkInLink.create({ data: { accountId: acc.accountId, bookingId: stay.id, tokenHash: `matrix-link-${n++}`, expiresAt: new Date(Date.now() + 30 * 86_400_000), createdBy: acc.users.OWNER_MANAGER.id, maxGuests: 2 } })).id,
       acc,
       propertyId: property.id,
       ownerId: owner.id,

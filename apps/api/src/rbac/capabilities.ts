@@ -20,6 +20,7 @@ export const CAPABILITIES = [
   'checkin:manage', // create, list, resend and revoke guest check-in links (Staff too: they send the link)
   'guest:read_meta', // check-in status per guest (Staff see status only, never the fields)
   'id:read', // read an ID image (Owner/Manager only; every read is audited)
+  'guest:write', // correct a guest's fields and mark them verified (Owner/Manager only)
   'police:read', // guest fields on the Fiche and its PDF (Owner/Manager only until counsel confirms Staff access)
 ] as const;
 

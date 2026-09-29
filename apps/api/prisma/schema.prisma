@@ -403,7 +403,7 @@ model GuestCheckIn {
   bookingId                   String
   propertyId                  String
   linkId                      String
-  guestIndex                  Int // 1-based position in the party
+  guestIndex                  Int? // 1-based position in the party; assigned at submission (a draft has none)
   status                      GuestCheckInStatus @default(PENDING)
   fullName                    String?
   nationality                 String?
@@ -414,7 +414,8 @@ model GuestCheckIn {
   docExpiryDate               DateTime?          @db.Date
   docImageId                  String? // StoredObject id, never a URL
   ocrConfidence               Float?
-  ocrFieldsFlagged            Json? // which fields the guest edited or the check digits flagged
+  ocrFieldsFlagged            Json? // {status, flagged, edited, suggestedHashes}: field names and hashes only, never values
+  uploadCount                 Int                @default(0) // document photos sent for this draft (max 3)
   entryStampNumber            String?
   cityOfOrigin                String?
   nextDestination             String?

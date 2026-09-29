@@ -63,6 +63,12 @@ const envSchema = z
      * ephemeral key when unset. From the secret store, never the repository.
      */
     STORAGE_MASTER_KEYS: z.string().optional(),
+    /**
+     * Document worker (services/ocr) on the private network. Optional: without it the guest types the fields
+     * (OCR is assistive). The secret must be 32+ characters and is sent in `X-Worker-Secret`.
+     */
+    OCR_SERVICE_URL: z.string().url().optional(),
+    OCR_SHARED_SECRET: z.string().min(32, 'must be at least 32 characters').optional(),
     STORAGE_MAX_BYTES: z.coerce.number().int().positive().default(16 * 1024 * 1024),
     S3_ENDPOINT: z.string().url().optional(),
     S3_REGION: z.string().min(1).default('us-east-1'),
@@ -75,6 +81,9 @@ const envSchema = z
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(100),
   })
   .superRefine((env, ctx) => {
+    if (env.OCR_SERVICE_URL && !env.OCR_SHARED_SECRET) {
+      ctx.addIssue({ code: 'custom', path: ['OCR_SHARED_SECRET'], message: 'required with OCR_SERVICE_URL' });
+    }
     if (env.STORAGE_MASTER_KEYS) {
       try {
         parseKeyring(env.STORAGE_MASTER_KEYS);

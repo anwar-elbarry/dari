@@ -44,6 +44,7 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 | `MAIL_DRIVER` | `brevo` (EU) or `resend`. `console` and `file` are refused in production. The provider choice is still open (hosting region and counsel) |
 | `MAIL_API_KEY` | Provider API key, from the secret store. Required with `brevo` / `resend`; never logged |
 | `GUEST_CHECKIN_ENABLED` | Leave unset (off) until the legal gates in `docs/phase-3.md` are closed; `true` turns the guest check-in routes on and makes the storage settings below mandatory |
+| `OCR_SERVICE_URL`, `OCR_SHARED_SECRET` | The document worker (`services/ocr`) on the private network, and its shared secret (32+ characters, from the secret store). Optional: without them guests type their details. The worker must not be reachable from the internet |
 | `STORAGE_DRIVER` | `s3` (required once the guest feature is on). `memory` is refused |
 | `STORAGE_MASTER_KEYS` | `id:base64,...`, newest first (`echo "k1:$(openssl rand -base64 32)"`), from the secret store, **never** in the repository or the database. Backed up separately from the data: without a key its objects cannot be read |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | The private bucket. `S3_ENDPOINT` must be https (leave it unset for AWS). Credentials limited to that bucket: get, put, delete, no list of other buckets |

@@ -76,6 +76,15 @@ describe('parseEnv', () => {
     });
   });
 
+  describe('document worker', () => {
+    it('needs a strong shared secret when a URL is set, and is optional otherwise', () => {
+      expect(parseEnv(base).OCR_SERVICE_URL).toBeUndefined();
+      expect(() => parseEnv({ ...base, OCR_SERVICE_URL: 'http://ocr:8001' })).toThrow(/OCR_SHARED_SECRET/);
+      expect(() => parseEnv({ ...base, OCR_SERVICE_URL: 'http://ocr:8001', OCR_SHARED_SECRET: 'short' })).toThrow(/OCR_SHARED_SECRET/);
+      expect(parseEnv({ ...base, OCR_SERVICE_URL: 'http://ocr:8001', OCR_SHARED_SECRET: 's'.repeat(32) }).OCR_SERVICE_URL).toBe('http://ocr:8001');
+    });
+  });
+
   describe('GUEST_CHECKIN_ENABLED', () => {
     it('is on in development and test, off by default in production', () => {
       expect(parseEnv(base).GUEST_CHECKIN_ENABLED).toBe(true);

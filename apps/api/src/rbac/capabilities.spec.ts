@@ -18,10 +18,11 @@ describe('role capabilities', () => {
     expect(can('STAFF', 'guest:read_meta')).toBe(true);
     expect(can('STAFF', 'id:read')).toBe(false);
     expect(can('STAFF', 'police:read')).toBe(false);
+    expect(can('STAFF', 'guest:write')).toBe(false);
   });
 
   it('keeps every guest capability away from the Accountant', () => {
-    for (const c of ['checkin:manage', 'guest:read_meta', 'id:read', 'police:read'] as const) expect(can('ACCOUNTANT', c)).toBe(false);
+    for (const c of ['checkin:manage', 'guest:read_meta', 'id:read', 'police:read', 'guest:write'] as const) expect(can('ACCOUNTANT', c)).toBe(false);
   });
 
   it('gives Accountant nothing in Phase 1 (reports arrive in Phase 5)', () => {
