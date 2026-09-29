@@ -24,6 +24,15 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 8. The marital-certificate flow (Art. 490) stays disabled by default until lawyer + CNDP review.
 9. Money: integer centimes in pure functions, `Decimal(12,2)` in the DB. Never floats.
 
+## API foundations (apps/api/src)
+- `config/env.ts`: every env variable is declared and validated there (zod). Add new variables there and in `.env.example`; never read `process.env` elsewhere. Inject with `@Inject(APP_CONFIG)`.
+- `common/configure-app.ts`: the one HTTP pipeline (prefix `/api`, helmet, request id, validation, error filter). Used by `main.ts` and HTTP tests.
+- Errors: always `{ error: { code, message, details? }, requestId }`. Throw Nest `HttpException`s; pass `{ code, message }` for a specific code. Unexpected errors become a generic 500.
+- Validation: DTOs with class-validator; unknown fields are rejected. Values are never echoed back in errors.
+- `AuditService.record()` for sensitive actions; add new actions to the `AuditAction` union. Identifiers only, never secrets or guest data.
+- `MailService.send()`; the console driver is dev-only (refused in production by env validation).
+- Rate limiting: global default from env; stricter per-route limits with `@Throttle()`.
+
 ## Conventions
 - TypeScript strict. Pure business logic (day counter, tax pipeline) lives in plain functions with unit tests next to them (`*.spec.ts`).
 - Small commits; one feature per branch/session.
