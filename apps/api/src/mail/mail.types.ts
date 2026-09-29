@@ -4,7 +4,7 @@ export interface MailMessage {
   text: string;
 }
 
-/** Transport behind MailService. Production drivers: Brevo (EU) and Resend; the provider choice is an open decision. */
+/** Transport behind MailService. Production driver: Resend. */
 export interface MailDriver {
   send(message: MailMessage & { from: string }): Promise<void>;
 }

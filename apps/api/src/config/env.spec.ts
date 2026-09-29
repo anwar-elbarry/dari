@@ -27,20 +27,20 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...base, NODE_ENV: 'production', MAIL_DRIVER: 'file' })).toThrow(/MAIL_DRIVER/);
   });
 
-  it('requires an API key with the brevo and resend drivers, and accepts them in production', () => {
-    for (const MAIL_DRIVER of ['brevo', 'resend']) {
+  it('requires an API key with the resend driver, and accepts it in production', () => {
+    for (const MAIL_DRIVER of ['resend']) {
       expect(() => parseEnv({ ...base, MAIL_DRIVER })).toThrow(/MAIL_API_KEY/);
       expect(parseEnv({ ...base, MAIL_DRIVER, MAIL_API_KEY: 'k'.repeat(20) }).MAIL_DRIVER).toBe(MAIL_DRIVER);
     }
     const storage = { STORAGE_DRIVER: 's3', S3_BUCKET: 'dari-private', S3_ACCESS_KEY: 'a', S3_SECRET_KEY: 'b', S3_SSE: 'true', STORAGE_MASTER_KEYS: `k1:${Buffer.alloc(32, 7).toString('base64')}` };
     const prod = { ...base, ...storage, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379' };
-    expect(parseEnv({ ...prod, MAIL_DRIVER: 'brevo', MAIL_API_KEY: 'k'.repeat(20) }).MAIL_DRIVER).toBe('brevo');
+    expect(parseEnv({ ...prod, MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) }).MAIL_DRIVER).toBe('resend');
   });
 
   describe('object storage', () => {
     const key = () => `k1:${Buffer.alloc(32, 7).toString('base64')}`;
     const s3 = { STORAGE_DRIVER: 's3', S3_BUCKET: 'dari-private', S3_ACCESS_KEY: 'a', S3_SECRET_KEY: 'b', STORAGE_MASTER_KEYS: key() };
-    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'brevo', MAIL_API_KEY: 'k'.repeat(20) };
+    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
 
     it('runs in development with the memory driver and no key', () => {
       expect(parseEnv(base)).toMatchObject({ STORAGE_DRIVER: 'memory', STORAGE_MAX_BYTES: 16 * 1024 * 1024, S3_FORCE_PATH_STYLE: true, S3_SSE: false });
@@ -89,7 +89,7 @@ describe('parseEnv', () => {
     it('is on in development and test, off by default in production', () => {
       expect(parseEnv(base).GUEST_CHECKIN_ENABLED).toBe(true);
       expect(parseEnv({ ...base, NODE_ENV: 'test' }).GUEST_CHECKIN_ENABLED).toBe(true);
-      const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'brevo', MAIL_API_KEY: 'k'.repeat(20) };
+      const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
       expect(parseEnv(prod).GUEST_CHECKIN_ENABLED).toBe(false);
     });
 

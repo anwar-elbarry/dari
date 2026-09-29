@@ -32,10 +32,10 @@ const envSchema = z
     COOKIE_SECURE: z.enum(['true', 'false']).optional(),
     /**
      * console / file are development and test drivers: they expose single-use links.
-     * brevo (EU) and resend (US) are the production drivers; the provider choice is still open (counsel).
+     * resend is the production driver (Resend is a US provider: covered by the cross-border position in docs/phase-3.md).
      */
-    MAIL_DRIVER: z.enum(['console', 'file', 'brevo', 'resend']).default('console'),
-    /** API key of the mail provider. Required for brevo and resend; never logged. */
+    MAIL_DRIVER: z.enum(['console', 'file', 'resend']).default('console'),
+    /** API key of the mail provider. Required for resend; never logged. */
     MAIL_API_KEY: z.string().min(8).optional(),
     MAIL_FILE_DIR: z.string().default('.mail'),
     MAIL_FROM: z.string().min(3).default('Dari <no-reply@localhost>'),
@@ -112,7 +112,7 @@ const envSchema = z
       if (!env.S3_SSE) ctx.addIssue({ code: 'custom', path: ['S3_SSE'], message: 'server-side encryption must be enabled in production' });
       if (env.S3_ENDPOINT && !env.S3_ENDPOINT.startsWith('https://')) ctx.addIssue({ code: 'custom', path: ['S3_ENDPOINT'], message: 'must be https in production' });
     }
-    if ((env.MAIL_DRIVER === 'brevo' || env.MAIL_DRIVER === 'resend') && !env.MAIL_API_KEY) {
+    if (env.MAIL_DRIVER === 'resend' && !env.MAIL_API_KEY) {
       ctx.addIssue({ code: 'custom', path: ['MAIL_API_KEY'], message: `required with the ${env.MAIL_DRIVER} mail driver` });
     }
     // The console driver prints message bodies (reset and invitation links) — development only.

@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { ConsoleMailDriver } from './console.driver';
 import { FileMailDriver } from './file.driver';
-import { BrevoMailDriver, ResendMailDriver } from './http-drivers';
+import { ResendMailDriver } from './http-drivers';
 import { MailService } from './mail.service';
 import { MAIL_DRIVER, MailDriver } from './mail.types';
 
@@ -18,8 +18,6 @@ import { MAIL_DRIVER, MailDriver } from './mail.types';
             return new ConsoleMailDriver();
           case 'file':
             return new FileMailDriver(config.MAIL_FILE_DIR);
-          case 'brevo':
-            return new BrevoMailDriver(config.MAIL_API_KEY!);
           case 'resend':
             return new ResendMailDriver(config.MAIL_API_KEY!);
         }

@@ -272,7 +272,7 @@ Nothing here is code. Until each is closed the feature stays behind `GUEST_CHECK
 | Consent wording FR/EN approved and inserted (`ConsentText`, with `approvedBy` / `approvedAt`) | Counsel | 2026-10-20 | Open |
 | Retention periods confirmed: images 30 days after checkout (`retention.id_images_days`), Fiche and monthly register | Counsel | 2026-10-20 | Open |
 | Real Moroccan CIN / CNIE cards tested for an MRZ (decides the OCR approach) | Founder | 2026-10-20 | Open |
-| Mail provider (Brevo or Resend) chosen; sender domain verified | Founder | 2026-10-10 | Open |
+| Mail provider: **Resend chosen**; sender domain verified (SPF/DKIM); cross-border position covers a US processor | Founder + counsel | 2026-10-10 | Provider chosen, domain open |
 | Incident runbook for a personal-data leak written | Founder | 2026-10-31 | Open |
 | Staff access to the Fiche PDF: status only (today) or download | Founder + counsel | with the consent wording | Open |
 | Production enablement checklist run (deployment tasks above, `GUEST_CHECKIN_ENABLED=true`, an approved consent text present) | Founder | after all of the above | Open |

@@ -1,5 +1,4 @@
 import { MailDriver, MailMessage } from './mail.types';
-import { parseSender } from './sender';
 
 type Message = MailMessage & { from: string };
 
@@ -23,20 +22,6 @@ async function post(url: string, headers: Record<string, string>, body: unknown)
     throw new Error('Mail provider unreachable or timed out');
   }
   if (!res.ok) throw new Error(`Mail provider responded with HTTP ${res.status}`);
-}
-
-/** Brevo (Sendinblue), transactional API v3. Hosted in the EU. */
-export class BrevoMailDriver implements MailDriver {
-  constructor(private readonly apiKey: string) {}
-
-  send(m: Message): Promise<void> {
-    return post('https://api.brevo.com/v3/smtp/email', { 'api-key': this.apiKey }, {
-      sender: parseSender(m.from),
-      to: [{ email: m.to }],
-      subject: m.subject,
-      textContent: m.text,
-    });
-  }
 }
 
 /** Resend, emails API. */

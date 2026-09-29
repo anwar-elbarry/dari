@@ -41,8 +41,8 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 | `APP_URL` | Public HTTPS URL of the web app (used in emailed links) |
 | `TRUST_PROXY` | `1` (see above) |
 | `REDIS_URL` | Managed Redis, private network, `rediss://` or password |
-| `MAIL_DRIVER` | `brevo` (EU) or `resend`. `console` and `file` are refused in production. The provider choice is still open (hosting region and counsel) |
-| `MAIL_API_KEY` | Provider API key, from the secret store. Required with `brevo` / `resend`; never logged |
+| `MAIL_DRIVER` | `resend`. `console` and `file` are refused in production. Resend is a US provider: reset, invitation and alert e-mails carry user addresses, so it belongs in the cross-border position with counsel |
+| `MAIL_API_KEY` | Provider API key, from the secret store. Required with `resend`; never logged |
 | `GUEST_CHECKIN_ENABLED` | Leave unset (off) until the legal gates in `docs/phase-3.md` are closed; `true` turns the guest check-in routes on and makes the storage settings below mandatory |
 | `OCR_SERVICE_URL`, `OCR_SHARED_SECRET` | The document worker (`services/ocr`) on the private network, and its shared secret (32+ characters, from the secret store). Optional: without them guests type their details. The worker must not be reachable from the internet |
 | `STORAGE_DRIVER` | `s3` (required once the guest feature is on). `memory` is refused |
