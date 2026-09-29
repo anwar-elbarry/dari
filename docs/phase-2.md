@@ -27,7 +27,7 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 - iCal feeds per property and platform (Airbnb, Booking.com, direct/other): add, edit, remove, last sync status
 - Background job runner (BullMQ + Redis) and scheduled sync every 1–4 h, plus "sync now"
 - Event classification: booking vs owner block, with a **review list** and manual override
-- Historical import since 1 January: Dari CSV template + column mapper + preview with error rows (revenue columns stored for Phase 5)
+- Historical import since 1 January: RiadTax CSV template + column mapper + preview with error rows (revenue columns stored for Phase 5)
 - Day counter per unlicensed property and calendar year; projected breach date from future bookings
 - Alerts at 90 (amber) and 110 (red) nights, once per threshold per property per year; email to Owner/Manager; dashboard feed
 - Screens: onboarding iCal step (skippable), import, dashboard, property detail (screens 4–7 of the Tech Spec)
@@ -37,7 +37,7 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 - Revenue reports and tax → Phase 5 (revenue fields are imported and stored now, not computed)
 - WhatsApp alerts → Phase 6 (email only here)
 - Notifications centre with read/unread → fast-follow
-- Parsing platform-specific earnings exports (Airbnb / Booking CSV formats) → after the pilot; the Dari template comes first
+- Parsing platform-specific earnings exports (Airbnb / Booking CSV formats) → after the pilot; the RiadTax template comes first
 
 ---
 
@@ -82,7 +82,7 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 | `/bookings/:id/classification` | PATCH | `booking:write` | Confirm booking / owner block; audited |
 | `/properties/:id/imports/preview` | POST | `booking:write` | CSV upload (≤ 1 MB), mapping → preview rows with errors, nothing saved |
 | `/properties/:id/imports` | POST | `booking:write` | Commit a previewed import; idempotent by confirmation code or dates |
-| `/imports/template.csv` | GET | `booking:write` | Dari CSV template |
+| `/imports/template.csv` | GET | `booking:write` | RiadTax CSV template |
 | `/dashboard` | GET | `booking:read` | Property cards + counters + open alerts for the account |
 | `/alerts` / `/alerts/:id` | GET / PATCH | `booking:read` | Feed; resolve (Owner/Manager) |
 

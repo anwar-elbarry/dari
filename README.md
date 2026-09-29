@@ -1,8 +1,9 @@
-# Dari
+# RiadTax
 
 Morocco STR Compliance & Tax Platform — SaaS for short-term-rental managers (3–20 properties), launching in Marrakech.
 
 Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout, commands and non-negotiable rules are in [`CLAUDE.md`](CLAUDE.md).
+Brand assets (logo, icon, colours): [`brand/`](brand/README.md).
 
 **Quick start:** `cp .env.example .env && docker compose up -d && npm install && npm run db:generate`
 **Checks:** `npm run lint` · `npm run typecheck` · `npm test` · `cd services/ocr && pytest`

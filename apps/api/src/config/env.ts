@@ -27,7 +27,7 @@ const envSchema = z
     /** console / file are development and test drivers: they expose single-use links. */
     MAIL_DRIVER: z.enum(['console', 'file']).default('console'),
     MAIL_FILE_DIR: z.string().default('.mail'),
-    MAIL_FROM: z.string().min(3).default('Dari <no-reply@localhost>'),
+    MAIL_FROM: z.string().min(3).default('RiadTax <no-reply@localhost>'),
     /** Tests turn this off so many requests from one IP do not trip the limits; refused off in production. */
     RATE_LIMIT_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     THROTTLE_TTL_MS: z.coerce.number().int().positive().default(60_000),

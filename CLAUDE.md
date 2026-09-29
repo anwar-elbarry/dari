@@ -1,4 +1,4 @@
-# Dari — Morocco STR Compliance & Tax Platform
+# RiadTax — Morocco STR Compliance & Tax Platform
 
 SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Business MVP V3 (EN/AR) and Technical Spec V2 — read them before changing behaviour.
 

@@ -135,8 +135,8 @@ export class InvitationsService {
     return {
       subject: `Invitation — ${companyName}`,
       text:
-        `${companyName} vous invite à rejoindre Dari en tant que ${label.fr}.\nPour accepter et choisir votre mot de passe :\n\n${link}\n\nCe lien expire dans ${days} jours.\n\n` +
-        `${companyName} invited you to join Dari as ${label.en}.\nTo accept and choose your password:\n\n${link}\n\nThis link expires in ${days} days.`,
+        `${companyName} vous invite à rejoindre RiadTax en tant que ${label.fr}.\nPour accepter et choisir votre mot de passe :\n\n${link}\n\nCe lien expire dans ${days} jours.\n\n` +
+        `${companyName} invited you to join RiadTax as ${label.en}.\nTo accept and choose your password:\n\n${link}\n\nThis link expires in ${days} days.`,
     };
   }
 }
