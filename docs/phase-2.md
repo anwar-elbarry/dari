@@ -113,7 +113,7 @@ Staff see counters and dates, never revenue or iCal URLs.
 | 2.3 ✅ | Sync job: schedule, upsert by UID, cancellations, frozen past, per-feed status, "sync now" | strong |
 | 2.4 ✅ | Day counter service (thresholds from `RuleConfig`), projected breach date, `/day-counter` | fast |
 | 2.5 ✅ | CSV import: template, mapping, preview, idempotent commit | fast |
-| 2.6 | Threshold alerts: once per threshold/year, email, dashboard feed, resolve | fast |
+| 2.6 ✅ | Threshold alerts: once per threshold/year, email, dashboard feed, resolve | fast |
 | 2.7 | Web: iCal step in wizard + feeds panel; import screens | fast |
 | 2.8 | Web: dashboard and property detail with review list | fast |
 | 2.9 | Hardening: SSRF tests, accuracy check against real calendars, E2E, docs, Phase 3 plan | strong |

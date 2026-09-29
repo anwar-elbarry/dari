@@ -1,9 +1,11 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { PropertyEventsModule } from './common/property-events';
 import { RedisThrottlerStorage } from './common/redis-throttler.storage';
 import { JobsModule } from './jobs/jobs.module';
 import { REDIS, RedisClient, RedisModule } from './redis/redis.module';
+import { AlertsModule } from './alerts/alerts.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthModule } from './auth/auth.module';
@@ -30,6 +32,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot(resolved),
         RedisModule,
+        PropertyEventsModule,
         JobsModule.register(resolved),
         // Default limit for every route; sensitive routes set stricter limits with @Throttle().
         ThrottlerModule.forRootAsync({
@@ -49,6 +52,7 @@ export class AppModule {
         IcalModule.register(resolved),
         ComplianceModule,
         ImportsModule,
+        AlertsModule.register(resolved),
       ],
       controllers: [HealthController],
       // Order matters: rate limit, then CSRF header, then session, then capabilities.

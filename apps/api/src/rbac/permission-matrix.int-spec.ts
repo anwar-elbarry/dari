@@ -18,6 +18,7 @@ export interface Fixtures {
   ownerId: string;
   feedId: string;
   bookingId: string;
+  alertId: () => Promise<string>;
   invitationId: () => Promise<string>;
   freshFeedId: () => Promise<string>;
 }
@@ -75,6 +76,11 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/properties/:id/bookings', url: (f) => `/api/properties/${f.propertyId}/bookings`, expect: STAFF_READ },
   { method: 'PATCH', route: '/api/bookings/:id/classification', url: (f) => `/api/bookings/${f.bookingId}/classification`, body: () => ({ classification: 'OWNER_BLOCK' }), expect: MANAGER_ONLY(200) },
 
+  // Dashboard and alerts (booking:read; closing needs alert:resolve)
+  { method: 'GET', route: '/api/dashboard', url: () => '/api/dashboard', expect: STAFF_READ },
+  { method: 'GET', route: '/api/alerts', url: () => '/api/alerts', expect: STAFF_READ },
+  { method: 'PATCH', route: '/api/alerts/:id', url: async (f) => `/api/alerts/${await f.alertId()}`, expect: MANAGER_ONLY(200) },
+
   // CSV import (booking:write)
   { method: 'GET', route: '/api/imports/template.csv', url: () => '/api/imports/template.csv', expect: MANAGER_ONLY(200) },
   { method: 'POST', route: '/api/properties/:id/imports/preview', url: (f) => `/api/properties/${f.propertyId}/imports/preview`, csv: 'check_in,check_out\n2026-01-01,2026-01-03\n', expect: MANAGER_ONLY(200) },
@@ -104,6 +110,8 @@ describe('permission matrix (integration)', () => {
       ownerId: owner.id,
       feedId: feed.id,
       bookingId: booking.id,
+      alertId: async () =>
+        (await t.prisma.notification.create({ data: { accountId: acc.accountId, propertyId: property.id, type: 'day_counter.amber', severity: 'AMBER', year: 2000 + n++, message: 'm' } })).id,
       freshFeedId: async () =>
         (
           await t.prisma.icalFeed.upsert({

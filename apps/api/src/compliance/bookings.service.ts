@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser, ClientMeta } from '../auth/auth.types';
+import { PropertyEvents } from '../common/property-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { can } from '../rbac/capabilities';
 import { countNights, dayLevel, projectedBreachDate } from './day-counter';
@@ -43,6 +44,7 @@ export class BookingsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly rules: RulesService,
+    private readonly events: PropertyEvents,
   ) {}
 
   /** Nights that count: confirmed stays classified as bookings. Blocks and uncertain events are excluded. */
@@ -100,7 +102,9 @@ export class BookingsService {
     const { count } = await db.booking.updateMany({ where: { id: bookingId }, data: { classification: dto.classification, classifiedBy: 'MANUAL' } });
     if (count === 0) throw notFound('Booking');
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'booking.classified', resourceType: 'Booking', resourceId: bookingId, ip: meta.ip });
-    return db.booking.findUniqueOrThrow({ where: { id: bookingId }, select: BASE_FIELDS });
+    const updated = await db.booking.findUniqueOrThrow({ where: { id: bookingId }, select: BASE_FIELDS });
+    await this.events.nightsChanged(user.accountId, updated.propertyId);
+    return updated;
   }
 }
 

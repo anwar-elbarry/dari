@@ -6,7 +6,7 @@ describe('role capabilities', () => {
   });
 
   it('keeps Staff away from owners, financial fields and team management', () => {
-    for (const c of ['property:read_full', 'property:write', 'owner:read', 'owner:write', 'team:manage', 'booking:write', 'ical:manage', 'revenue:read'] as const) {
+    for (const c of ['property:read_full', 'property:write', 'owner:read', 'owner:write', 'team:manage', 'booking:write', 'ical:manage', 'revenue:read', 'alert:resolve'] as const) {
       expect(can('STAFF', c)).toBe(false);
     }
     expect(can('STAFF', 'property:read')).toBe(true);

@@ -16,6 +16,7 @@ export const CAPABILITIES = [
   'booking:write', // classification overrides, CSV imports
   'ical:manage', // feeds and their URLs
   'revenue:read', // revenue fields on bookings
+  'alert:resolve', // close an alert with a reason
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];

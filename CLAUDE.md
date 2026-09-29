@@ -41,6 +41,11 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - `SafeFetchError` messages never contain the URL or host; they are safe to store and show.
 - Calendar events: `parseIcs()` (dates in `Africa/Casablanca`), `classify()` (BOOKING / OWNER_BLOCK / UNCERTAIN per platform; Booking.com "CLOSED - Not available" is UNCERTAIN by design), `storableSummary()` (only Airbnb/Booking summaries are stored).
 
+## Alerts (apps/api/src/alerts)
+- Threshold alerts are `Notification` rows of type `day_counter.amber|red`, unique per (account, type, property, year), so evaluation is idempotent. Thresholds come from `RuleConfig` via `RulesService`; the email says when they are not yet validated.
+- Anything that can change the nights of a property calls `PropertyEvents.nightsChanged(accountId, propertyId)` (sync, import, reclassification); `AlertsService` listens. Do the same for new sources of stays. An hourly job re-checks everything (Redis only).
+- `GET /dashboard` is the one endpoint the home screen needs; Staff get counters but no tax regime or feed status.
+
 ## Imports (apps/api/src/imports)
 - CSV import: `parseImport()` is pure and tested (French/English headers, `;`/`,`/tab, `DD/MM/YYYY`, `1 234,50`). Preview saves nothing; commit is idempotent by confirmation code (or dates + platform) and skips rows with errors. Only mapped columns are read: guest names and emails in a file are never stored.
 - Uploads: memory storage, 1 MB cap, one file. Anything written back to CSV goes through `csvCell()` (formula-injection safe).

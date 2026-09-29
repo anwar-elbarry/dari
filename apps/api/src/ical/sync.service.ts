@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { BookingClassification, BookingStatus, IcalFeed } from '@prisma/client';
+import { PropertyEvents } from '../common/property-events';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import { classify, storableSummary } from './classify';
@@ -29,6 +30,7 @@ export class SyncService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly events: PropertyEvents,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -56,6 +58,7 @@ export class SyncService {
     }
 
     const result = await this.reconcile(feed, events);
+    if (result.created || result.updated || result.cancelled) await this.events.nightsChanged(feed.accountId, feed.propertyId);
     await this.prisma.icalFeed.update({
       where: { id: feed.id },
       data: { lastStatus: 'OK', lastError: null, lastSyncedAt: new Date(), eventCount: events.length },

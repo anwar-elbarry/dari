@@ -15,6 +15,7 @@ interface Ids {
   invitationId: string;
   feedId: string;
   bookingId: string;
+  alertId: string;
 }
 
 const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Promise<{ status: number }> }[] = [
@@ -31,6 +32,7 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'GET', route: '/api/properties/:id/day-counter', call: (c, a) => c.get(`/api/properties/${a.propertyId}/day-counter`) },
   { method: 'GET', route: '/api/properties/:id/bookings', call: (c, a) => c.get(`/api/properties/${a.propertyId}/bookings`) },
   { method: 'PATCH', route: '/api/bookings/:id/classification', call: (c, a) => c.patch(`/api/bookings/${a.bookingId}/classification`, { classification: 'OWNER_BLOCK' }) },
+  { method: 'PATCH', route: '/api/alerts/:id', call: (c, a) => c.patch(`/api/alerts/${a.alertId}`) },
   { method: 'POST', route: '/api/properties/:id/imports/preview', call: (c, a) => c.upload(`/api/properties/${a.propertyId}/imports/preview`, 'check_in,check_out\n2026-01-01,2026-01-03\n') },
   { method: 'POST', route: '/api/properties/:id/imports', call: (c, a) => c.upload(`/api/properties/${a.propertyId}/imports`, 'check_in,check_out\n2026-01-01,2026-01-03\n') },
 ];
@@ -57,7 +59,8 @@ describe('tenant isolation (integration)', () => {
     const booking = await t.prisma.booking.create({
       data: { accountId: a.accountId, propertyId: property.id, checkIn: new Date('2026-03-01'), checkOut: new Date('2026-03-04'), source: 'DIRECT' },
     });
-    idsA = { ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id, bookingId: booking.id };
+    const alert = await t.prisma.notification.create({ data: { accountId: a.accountId, propertyId: property.id, type: 'day_counter.red', severity: 'RED', year: 2026, message: 'm' } });
+    idsA = { ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id, bookingId: booking.id, alertId: alert.id };
   });
 
   afterAll(async () => {
@@ -77,9 +80,12 @@ describe('tenant isolation (integration)', () => {
   }
 
   it('lists show nothing from the other account', async () => {
-    for (const url of ['/api/properties', '/api/property-owners', '/api/invitations']) {
+    for (const url of ['/api/properties', '/api/property-owners', '/api/invitations', '/api/alerts']) {
       expect((await b.as.OWNER_MANAGER.get(url).expect(200)).body).toEqual([]);
     }
+    const dash = (await b.as.OWNER_MANAGER.get('/api/dashboard').expect(200)).body;
+    expect(dash.properties).toEqual([]);
+    expect(dash.alerts).toEqual([]);
   });
 
   it("refuses to attach another account's owner to a property", async () => {
@@ -101,5 +107,6 @@ describe('tenant isolation (integration)', () => {
     expect((await t.prisma.booking.findUniqueOrThrow({ where: { id: idsA.bookingId } })).classification).toBe('BOOKING');
     expect(await t.prisma.booking.count({ where: { propertyId: idsA.propertyId } })).toBe(1);
     expect(await t.prisma.importBatch.count()).toBe(0);
+    expect((await t.prisma.notification.findUniqueOrThrow({ where: { id: idsA.alertId } })).resolvedAt).toBeNull();
   });
 });

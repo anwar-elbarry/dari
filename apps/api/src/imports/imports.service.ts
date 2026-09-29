@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException, PayloadTooLargeExce
 import { AuditService } from '../audit/audit.service';
 import { AuthUser, ClientMeta } from '../auth/auth.types';
 import { VALIDATION_FAILED } from '../common/http-exception.filter';
+import { PropertyEvents } from '../common/property-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { IMPORT_FIELDS, ImportField, Mapping, parseImport, ParsedImport, REQUIRED_FIELDS } from './csv-import';
 
@@ -17,6 +18,7 @@ export class ImportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly events: PropertyEvents,
   ) {}
 
   /** Parses and validates; saves nothing. Returns the mapping used, a preview and every error with its line. */
@@ -80,6 +82,7 @@ export class ImportsService {
       return b;
     });
 
+    if (fresh.length) await this.events.nightsChanged(user.accountId, propertyId);
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'import.committed', resourceType: 'ImportBatch', resourceId: batch.id, ip: meta.ip });
     return { batchId: batch.id, imported: fresh.length, skippedExisting: parsed.rows.length - fresh.length, skippedWithErrors: parsed.errors.length ? new Set(parsed.errors.map((e) => e.line)).size : 0, errors: parsed.errors.slice(0, 200) };
   }
