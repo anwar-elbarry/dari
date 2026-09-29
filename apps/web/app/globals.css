@@ -3,6 +3,8 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 
+/* Lime is a fill colour: it always carries dark text (13:1) and never appears as text or a shape on white (1.2:1).
+   Use brand-700 for lime-family text on light surfaces. */
 /* RiadTax design system — docs/design-system.md is the reference. Keep both in sync. */
 @theme {
   --color-ink: #202020;
@@ -18,13 +20,13 @@
   --color-mist: #f8f9fa;
   --color-plaster: #e9ebf0;
 
-  --color-brand-50: #fff1e3;
-  --color-brand-100: #ffe3c4;
-  --color-brand-500: #ff8a1e;
-  --color-brand-deep: #ff5a00;
-  --color-brand-600: #c2500a;
-  --color-brand-700: #9a3c06;
-  --color-brand-800: #7c3006;
+  --color-brand-50: #f6fac8;
+  --color-brand-100: #f0f79a;
+  --color-brand-500: #e4f222;
+  --color-brand-deep: #b9cc00;
+  --color-brand-600: #cddd12;
+  --color-brand-700: #5c6600;
+  --color-brand-800: #454d00;
 
   --color-success: #0f7b4b;
   --color-success-soft: #dcf5e8;
@@ -47,7 +49,7 @@
   --shadow-subtle: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-sm: 0 4px 4px 0 rgb(13 21 48 / 0.04);
   --shadow-lift: 0 1px 1px -0.5px rgb(15 15 16 / 0.04), 0 3px 3px -1.5px rgb(15 15 16 / 0.04), 0 6px 6px -3px rgb(15 15 16 / 0.04), 0 12px 12px -6px rgb(15 15 16 / 0.04);
-  --shadow-focus: 0 0 0 3px #ffe3c4;
+  --shadow-focus: 0 0 0 3px #f0f79a;
 }
 
 :root {

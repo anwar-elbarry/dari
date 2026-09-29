@@ -38,7 +38,7 @@ function Frame({ children }: { children: ReactNode }) {
       <aside className="border-b border-bone bg-white md:min-h-dvh md:border-b-0 md:border-r">
         <div className="flex items-center justify-between px-4 py-3 md:block md:px-5 md:py-5">
           <div>
-            <Link href="/" aria-label={t('common.appName')} className="inline-block rounded-input focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+            <Link href="/" aria-label={t('common.appName')} className="inline-block rounded-input focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
               <Logo size={30} />
             </Link>
             <p className="mt-1.5 max-w-[12rem] truncate text-xs text-slate">{me.account.companyName}</p>

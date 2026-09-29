@@ -9,8 +9,8 @@ export function Button({ variant = 'primary', className, ...props }: ButtonHTMLA
     <button
       {...props}
       className={cx(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 font-display text-sm font-bold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-60',
-        variant === 'primary' && 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 font-display text-sm font-bold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-60',
+        variant === 'primary' && 'bg-brand-500 text-ink hover:bg-brand-600 active:bg-brand-deep',
         variant === 'dark' && 'bg-ink text-white hover:bg-carbon',
         variant === 'secondary' && 'border border-bone bg-white px-5 text-ink hover:bg-mercury',
         variant === 'ghost' && 'px-4 text-carbon hover:bg-mercury',
@@ -22,7 +22,7 @@ export function Button({ variant = 'primary', className, ...props }: ButtonHTMLA
 }
 
 const control =
-  'block w-full min-h-11 rounded-input border bg-white px-3 text-base text-ink outline-none transition-shadow duration-150 placeholder:text-ash focus:border-brand-600 focus:shadow-focus aria-[invalid=true]:border-danger';
+  'block w-full min-h-11 rounded-input border bg-white px-3 text-base text-ink outline-none transition-shadow duration-150 placeholder:text-ash focus:border-brand-700 focus:shadow-focus aria-[invalid=true]:border-danger';
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(control, 'border-line-strong', props.className)} />;

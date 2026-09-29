@@ -1,18 +1,19 @@
 """Generates the RiadTax logo files (concept 1, "Badge R"). Run: python3 generate.py (needs fonttools).
 
-Mark: a bold orange R with a dark badge locked on the foot of the stem. The badge holds a white
+Mark: a bold lime R with a dark badge locked on the foot of the stem. The badge holds a white
 check mark and three rising orange bars: "the property is in order, and the numbers add up".
-Wordmark: "Riad" white (ink on light backgrounds) + "Tax" orange, tagline "Legal & Tax Compliance".
+Wordmark: "Riad" white (ink on light backgrounds) + "Tax" lime, tagline "Legal & Tax Compliance".
 Text is converted to outlines (Liberation Sans, SIL Open Font License): no font needed.
-The badge sits in a ring of the background colour, so each lockup is drawn for one background.
+On dark backgrounds the badge sits in a ring of the background colour. On white the lime R would vanish
+(1.2:1), so the light lockup sets the mark on a night tile, like the app icon.
 """
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 
-ORANGE = '#ff8a1e'       # brand orange (logo, highlights)
-ORANGE_DEEP = '#ff5a00'  # gradient end
-ORANGE_600 = '#c2500a'   # "Tax" on light backgrounds, primary buttons
+LIME = '#e4f222'         # brand lime (logo, highlights, primary fills; always with dark text)
+LIME_DEEP = '#b9cc00'    # gradient end
+OLIVE = '#5c6600'        # "Tax" and links on light backgrounds (6.3:1 on white)
 NIGHT = '#0f0f10'        # dark background, badge
 INK = '#202020'          # wordmark on light backgrounds
 WHITE = '#ffffff'
@@ -38,10 +39,10 @@ def text_path(text, x, baseline, size, tracking=0.0, font=BOLD):
 
 
 GRADIENT = (f'<linearGradient id="rt-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64">'
-            f'<stop offset="0" stop-color="{ORANGE}"/><stop offset="1" stop-color="{ORANGE_DEEP}"/></linearGradient>')
+            f'<stop offset="0" stop-color="{LIME}"/><stop offset="1" stop-color="{LIME_DEEP}"/></linearGradient>')
 
 
-def mark(bg, x=0, y=0, s=64, r_fill='url(#rt-g)', badge=NIGHT, check=WHITE, bars=ORANGE):
+def mark(bg, x=0, y=0, s=64, r_fill='url(#rt-g)', badge=NIGHT, check=WHITE, bars=LIME):
     """Badge R. `bg` is the colour behind the mark (the badge's ring)."""
     k = s / 64
     return f'''<g transform="translate({x} {y}) scale({k:.4f})">
@@ -58,12 +59,13 @@ def svg(w, h, body, title='RiadTax', defs=GRADIENT):
             f'  <title>{title}</title>\n  <defs>{defs}</defs>\n  {body}\n</svg>\n')
 
 
-def lockup(name, bg, riad_c, tax_c, tag_c, **mark_kw):
+def lockup(name, bg, riad_c, tax_c, tag_c, tiled=False, **mark_kw):
     riad, end = text_path('Riad', 80, 40, 40, tracking=-0.6)
     tax, end = text_path('Tax', end + 0.5, 40, 40, tracking=-0.6)
     tag, tag_end = text_path('Legal & Tax Compliance', 81, 58, 13.2, tracking=1.1, font=REG)
     w = round(max(end, tag_end) + 4)
-    body = (mark(bg, **mark_kw) + f'\n  <path d="{riad}" fill="{riad_c}"/>\n  <path d="{tax}" fill="{tax_c}"/>\n  <path d="{tag}" fill="{tag_c}"/>')
+    head = (f'<rect width="64" height="64" rx="14" fill="{NIGHT}"/>' + mark(NIGHT, x=7, y=7, s=50)) if tiled else mark(bg, **mark_kw)
+    body = (head + f'\n  <path d="{riad}" fill="{riad_c}"/>\n  <path d="{tax}" fill="{tax_c}"/>\n  <path d="{tag}" fill="{tag_c}"/>')
     open(f'riadtax-{name}.svg', 'w').write(svg(w, 64, body))
 
 
@@ -73,7 +75,7 @@ open('riadtax-icon.svg', 'w').write(svg(64, 64, tile))
 # One-colour mark (stamps, fax, black-and-white print), for a white background.
 open('riadtax-icon-mono.svg', 'w').write(svg(64, 64, mark(WHITE, r_fill=INK, badge=INK, check=WHITE, bars=WHITE), defs=''))
 
-lockup('logo-dark', NIGHT, WHITE, ORANGE, '#d6d3d1')          # reference version, on #0f0f10
-lockup('logo', WHITE, INK, ORANGE_600, '#57534e')              # on white
+lockup('logo-dark', NIGHT, WHITE, LIME, '#d6d3d1')          # reference version, on #0f0f10
+lockup('logo', WHITE, INK, OLIVE, '#57534e', tiled=True)       # on white: mark on a night tile
 lockup('logo-mono', WHITE, INK, INK, INK, r_fill=INK, badge=INK, check=WHITE, bars=WHITE)
 print('ok')

@@ -1,3 +1,5 @@
+> These concepts were drawn in the original orange palette. Concept 1 (Badge R) was chosen and is now the official logo in lime; see `../README.md`.
+
 # RiadTax — logo concepts
 
 Five directions for the "R" mark, all vector (SVG, text converted to outlines, no font needed). Same palette as `brand/README.md`: orange gradient `#ff8a1e` → `#ff5a00`, night `#0f0f10`, white "Riad" / orange "Tax", tagline "Legal & Tax Compliance".

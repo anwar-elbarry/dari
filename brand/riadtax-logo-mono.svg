@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 252 64" width="252" height="64" role="img" aria-label="RiadTax">
   <title>RiadTax</title>
-  <defs><linearGradient id="rt-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64"><stop offset="0" stop-color="#ff8a1e"/><stop offset="1" stop-color="#ff5a00"/></linearGradient></defs>
+  <defs><linearGradient id="rt-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64"><stop offset="0" stop-color="#e4f222"/><stop offset="1" stop-color="#b9cc00"/></linearGradient></defs>
   <g transform="translate(0 0) scale(1.0000)">
     <path d="M8 62 V6 H36 A17 17 0 0 1 43.5 38.4 L58 62 H43 L31 42 H23 V62 Z M23 19 V29 H36 A5 5 0 0 0 36 19 Z" fill="#202020" fill-rule="evenodd"/>
     <rect x="3" y="36" width="28" height="28" rx="8" fill="#ffffff"/>

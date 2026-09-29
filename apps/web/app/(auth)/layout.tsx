@@ -9,7 +9,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 py-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <Logo size={40} surface="#f8f9fa" />
+          <Logo size={40} />
           <span className="sr-only">{t('appName')}</span>
           <p className="mt-1 text-sm text-slate">{t('tagline')}</p>
         </div>

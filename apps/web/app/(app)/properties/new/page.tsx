@@ -134,7 +134,7 @@ function Wizard() {
         </p>
         <div className="mt-3 flex gap-1.5" aria-hidden>
           {steps.map((label, i) => (
-            <div key={label} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-brand-600' : 'bg-bone'}`} />
+            <div key={label} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-ink' : 'bg-bone'}`} />
           ))}
         </div>
       </div>

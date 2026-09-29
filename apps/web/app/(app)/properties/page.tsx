@@ -38,7 +38,7 @@ function Properties() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-[-0.02em]">{t('title')}</h1>
         {canWrite && (
-          <Link href="/properties/new" className="inline-flex min-h-11 items-center rounded-full bg-brand-600 px-6 font-display text-sm font-bold text-white transition-colors hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+          <Link href="/properties/new" className="inline-flex min-h-11 items-center rounded-full bg-brand-500 px-6 font-display text-sm font-bold text-ink transition-colors hover:bg-brand-600 active:bg-brand-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
             {t('add')}
           </Link>
         )}
