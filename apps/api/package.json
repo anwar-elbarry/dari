@@ -4,14 +4,14 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "start:dev": "nest start --watch",
+    "start:dev": "dotenv -e ../../.env -- nest start --watch",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "db:generate": "prisma generate",
-    "db:validate": "prisma validate",
-    "db:migrate": "prisma migrate dev",
-    "db:seed": "prisma db seed",
-    "db:deploy": "prisma migrate deploy",
+    "db:validate": "dotenv -e ../../.env -- prisma validate",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:seed": "dotenv -e ../../.env -- prisma db seed",
+    "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "test:int": "jest --runInBand --testRegex '.*\\.int-spec\\.ts$'"
   },
   "dependencies": {
@@ -47,6 +47,7 @@
     "@types/multer": "^2.3.0",
     "@types/node": "^22.0.0",
     "@types/supertest": "^7.2.1",
+    "dotenv-cli": "^11.0.0",
     "jest": "^29.7.0",
     "pdf-parse": "^2.4.5",
     "prisma": "^6.0.0",
