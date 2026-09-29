@@ -20,7 +20,7 @@ export function LocaleSwitch() {
             document.cookie = `${LOCALE_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
             router.refresh();
           }}
-          className={`min-h-9 rounded-md px-2 text-xs font-semibold uppercase ${l === locale ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'}`}
+          className={`min-h-9 min-w-9 rounded-full px-2.5 font-mono text-xs font-medium uppercase tracking-[0.06em] ${l === locale ? 'bg-ink text-white' : 'text-slate hover:bg-mercury'}`}
         >
           {l}
         </button>

@@ -1,86 +1,79 @@
-"""Generates the RiadTax logo files. Run: python3 generate.py (needs fonttools).
+"""Generates the RiadTax logo files (concept 1, "Badge R"). Run: python3 generate.py (needs fonttools).
 
-Concept: an orange "R" shaped like a riad door (horseshoe arch on top, shield base) that holds a check
-mark and three rising bars: "your property is in order, and the numbers add up".
-Wordmark: "Riad" white (or near-black on light backgrounds) + "Tax" orange, tagline "Legal & Tax Compliance".
-The text is converted to outlines (Liberation Sans Bold, SIL Open Font License) so it renders the same
-everywhere, without depending on installed fonts.
+Mark: a bold orange R with a dark badge locked on the foot of the stem. The badge holds a white
+check mark and three rising orange bars: "the property is in order, and the numbers add up".
+Wordmark: "Riad" white (ink on light backgrounds) + "Tax" orange, tagline "Legal & Tax Compliance".
+Text is converted to outlines (Liberation Sans, SIL Open Font License): no font needed.
+The badge sits in a ring of the background colour, so each lockup is drawn for one background.
 """
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 
-ORANGE = '#ff8a1e'       # logo orange (brand-500 in the web app)
+ORANGE = '#ff8a1e'       # brand orange (logo, highlights)
 ORANGE_DEEP = '#ff5a00'  # gradient end
-ORANGE_DARK = '#c2500a'  # brand-600: buttons, links (4.7:1 on white)
-NIGHT = '#0f0f10'        # dark background / wordmark on light
-INK = '#1c1917'          # stone-900 in the web app
+ORANGE_600 = '#c2500a'   # "Tax" on light backgrounds, primary buttons
+NIGHT = '#0f0f10'        # dark background, badge
+INK = '#202020'          # wordmark on light backgrounds
 WHITE = '#ffffff'
 
 BOLD = TTFont('/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf')
 REG = TTFont('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf')
 
+# Mark geometry, 64 x 64 units. Keep in sync with apps/web/components/logo.tsx.
+R_PATH = 'M8 62 V6 H36 A17 17 0 0 1 43.5 38.4 L58 62 H43 L31 42 H23 V62 Z M23 19 V29 H36 A5 5 0 0 0 36 19 Z'
 
-def text_path(text: str, x: float, baseline: float, size: float, tracking: float = 0, font=BOLD):
-    """SVG path data for `text`, and the x where it ends."""
+
+def text_path(text, x, baseline, size, tracking=0.0, font=BOLD):
     glyphs, cmap, upm = font.getGlyphSet(), font.getBestCmap(), font['head'].unitsPerEm
-    scale = size / upm
+    k = size / upm
     parts = []
     for ch in text:
         name = cmap[ord(ch)]
         pen = SVGPathPen(glyphs)
-        glyphs[name].draw(TransformPen(pen, (scale, 0, 0, -scale, x, baseline)))
+        glyphs[name].draw(TransformPen(pen, (k, 0, 0, -k, x, baseline)))
         parts.append(pen.getCommands())
-        x += glyphs[name].width * scale + tracking
+        x += glyphs[name].width * k + tracking
     return ' '.join(parts), x - tracking
 
 
-GRADIENT = f'''<linearGradient id="rt-g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="{ORANGE}"/>
-      <stop offset="1" stop-color="{ORANGE_DEEP}"/>
-    </linearGradient>'''
+GRADIENT = (f'<linearGradient id="rt-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64">'
+            f'<stop offset="0" stop-color="{ORANGE}"/><stop offset="1" stop-color="{ORANGE_DEEP}"/></linearGradient>')
 
 
-def mark(x=0, y=0, s=64, fill='url(#rt-g)', panel=NIGHT, check=WHITE, bars=ORANGE):
-    """64-unit mark: an R-shaped door/shield holding a check mark and three bars."""
+def mark(bg, x=0, y=0, s=64, r_fill='url(#rt-g)', badge=NIGHT, check=WHITE, bars=ORANGE):
+    """Badge R. `bg` is the colour behind the mark (the badge's ring)."""
     k = s / 64
-    return f'''<g transform="translate({x} {y}) scale({k})">
-    <path d="M8 22 A24 24 0 0 1 56 22 V27 A17 17 0 0 1 39 44 H35 L54 62 H20 A12 12 0 0 1 8 50 Z M21 18 V33 H37.5 A7.5 7.5 0 0 0 37.5 18 Z" fill="{fill}" fill-rule="evenodd"/>
-    <path d="M8 50 V37 H30 V62 H20 A12 12 0 0 1 8 50 Z" fill="{panel}"/>
-    <path d="M13.5 44 L17 47.5 L24.5 40" fill="none" stroke="{check}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M13 58 V54 M19 58 V50 M25 58 V46" fill="none" stroke="{bars}" stroke-width="3.6" stroke-linecap="round"/>
+    return f'''<g transform="translate({x} {y}) scale({k:.4f})">
+    <path d="{R_PATH}" fill="{r_fill}" fill-rule="evenodd"/>
+    <rect x="3" y="36" width="28" height="28" rx="8" fill="{bg}"/>
+    <rect x="5.5" y="38.5" width="23" height="23" rx="6" fill="{badge}"/>
+    <path d="M10.5 47 L15 51.5 L24 42.5" fill="none" stroke="{check}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M11 58.5 V56 M17 58.5 V54 M23 58.5 V51.5" fill="none" stroke="{bars}" stroke-width="2.8" stroke-linecap="round"/>
   </g>'''
 
 
-def svg(w, h, body, bg=None, title='RiadTax', defs=GRADIENT):
-    rect = f'<rect width="{w}" height="{h}" fill="{bg}"/>' if bg else ''
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img" aria-label="{title}">
-  <title>{title}</title>
-  <defs>
-    {defs}
-  </defs>
-  {rect}{body}
-</svg>
-'''
+def svg(w, h, body, title='RiadTax', defs=GRADIENT):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img" aria-label="{title}">\n'
+            f'  <title>{title}</title>\n  <defs>{defs}</defs>\n  {body}\n</svg>\n')
 
 
-def lockup(riad_fill, tax_fill, tagline_fill, name, bg=None, **mark_kw):
-    size, baseline, gap = 40, 40, 16
-    riad, end = text_path('Riad', 64 + gap, baseline, size, tracking=-0.6)
-    tax, end = text_path('Tax', end + 0.5, baseline, size, tracking=-0.6)
-    tag, tag_end = text_path('Legal & Tax Compliance', 64 + gap + 1, 58, 13.2, tracking=1.1, font=REG)
-    w = round(max(end, tag_end) + 6)
-    body = mark(**mark_kw) + f'\n  <path d="{riad}" fill="{riad_fill}"/>\n  <path d="{tax}" fill="{tax_fill}"/>\n  <path d="{tag}" fill="{tagline_fill}"/>'
-    open(f'riadtax-{name}.svg', 'w').write(svg(w, 64, body, bg))
-    return w
+def lockup(name, bg, riad_c, tax_c, tag_c, **mark_kw):
+    riad, end = text_path('Riad', 80, 40, 40, tracking=-0.6)
+    tax, end = text_path('Tax', end + 0.5, 40, 40, tracking=-0.6)
+    tag, tag_end = text_path('Legal & Tax Compliance', 81, 58, 13.2, tracking=1.1, font=REG)
+    w = round(max(end, tag_end) + 4)
+    body = (mark(bg, **mark_kw) + f'\n  <path d="{riad}" fill="{riad_c}"/>\n  <path d="{tax}" fill="{tax_c}"/>\n  <path d="{tag}" fill="{tag_c}"/>')
+    open(f'riadtax-{name}.svg', 'w').write(svg(w, 64, body))
 
 
-# Mark on its own: app icon, favicon, avatars (dark tile so the orange reads on any surface).
-tile = '<rect width="64" height="64" rx="14" fill="%s"/>' % NIGHT
-open('riadtax-icon.svg', 'w').write(svg(64, 64, tile + mark(x=6, y=4, s=52)))
-open('riadtax-icon-mono.svg', 'w').write(svg(64, 64, mark(fill=NIGHT, panel=WHITE, check=NIGHT, bars=NIGHT), defs=''))
+# App icon / favicon: dark tile, mark inset.
+tile = f'<rect width="64" height="64" rx="14" fill="{NIGHT}"/>' + mark(NIGHT, x=7, y=7, s=50)
+open('riadtax-icon.svg', 'w').write(svg(64, 64, tile))
+# One-colour mark (stamps, fax, black-and-white print), for a white background.
+open('riadtax-icon-mono.svg', 'w').write(svg(64, 64, mark(WHITE, r_fill=INK, badge=INK, check=WHITE, bars=WHITE), defs=''))
 
-lockup(WHITE, ORANGE, '#d6d3d1', name='logo-dark', bg=None)
-lockup(INK, ORANGE_DARK, '#57534e', name='logo', bg=None)
-lockup(INK, INK, INK, name='logo-mono', fill=NIGHT, panel=WHITE, check=NIGHT, bars=NIGHT)
+lockup('logo-dark', NIGHT, WHITE, ORANGE, '#d6d3d1')          # reference version, on #0f0f10
+lockup('logo', WHITE, INK, ORANGE_600, '#57534e')              # on white
+lockup('logo-mono', WHITE, INK, INK, INK, r_fill=INK, badge=INK, check=WHITE, bars=WHITE)
 print('ok')

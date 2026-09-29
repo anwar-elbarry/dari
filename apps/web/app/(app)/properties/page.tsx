@@ -36,9 +36,9 @@ function Properties() {
   return (
     <section className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t('title')}</h1>
+        <h1 className="text-2xl font-bold tracking-[-0.02em]">{t('title')}</h1>
         {canWrite && (
-          <Link href="/properties/new" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700">
+          <Link href="/properties/new" className="inline-flex min-h-11 items-center rounded-full bg-brand-600 px-6 font-display text-sm font-bold text-white transition-colors hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
             {t('add')}
           </Link>
         )}
@@ -53,12 +53,12 @@ function Properties() {
                 <h2 className="font-semibold">{p.name}</h2>
                 <Badge tone={LICENSE_TONE[p.licenseStatus]}>{t(`licenseStatus.${p.licenseStatus}`)}</Badge>
               </div>
-              <p className="text-sm text-stone-600">{t(`licenseType.${p.licenseType}`)}</p>
-              <p className="text-sm text-stone-500">
+              <p className="text-sm text-slate">{t(`licenseType.${p.licenseType}`)}</p>
+              <p className="text-sm text-slate">
                 {p.address}, {p.commune}
               </p>
               {'owner' in p && (
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-slate">
                   {t('owner')} : {p.owner.name}
                 </p>
               )}

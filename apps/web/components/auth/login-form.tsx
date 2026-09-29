@@ -21,7 +21,7 @@ export function LoginForm({ next }: { next?: string }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate={false}>
-      <h1 className="text-lg font-semibold">{t('title')}</h1>
+      <h1 className="text-2xl font-bold tracking-[-0.02em]">{t('title')}</h1>
       {error && <Alert>{error}</Alert>}
       <Field id="email" label={t('email')} error={fieldErrors.email}>
         <Input {...fieldAria('email', fieldErrors.email)} type="email" autoComplete="email" inputMode="email" required />
@@ -36,7 +36,7 @@ export function LoginForm({ next }: { next?: string }) {
         <Link href="/forgot-password" className="text-brand-700 hover:underline">
           {t('forgot')}
         </Link>
-        <p className="text-stone-600">
+        <p className="text-slate">
           {t('noAccount')}{' '}
           <Link href="/signup" className="font-medium text-brand-700 hover:underline">
             {t('signupLink')}

@@ -4,16 +4,17 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAt
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
-export function Button({ variant = 'primary', className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger' }) {
+export function Button({ variant = 'primary', className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'dark' | 'secondary' | 'ghost' | 'danger' }) {
   return (
     <button
       {...props}
       className={cx(
-        'inline-flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-60',
-        variant === 'primary' && 'bg-brand-600 text-white hover:bg-brand-700',
-        variant === 'secondary' && 'border border-stone-300 bg-white text-stone-800 hover:bg-stone-100',
-        variant === 'ghost' && 'text-stone-700 hover:bg-stone-100',
-        variant === 'danger' && 'text-red-700 hover:bg-red-50',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 font-display text-sm font-bold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-60',
+        variant === 'primary' && 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800',
+        variant === 'dark' && 'bg-ink text-white hover:bg-carbon',
+        variant === 'secondary' && 'border border-bone bg-white px-5 text-ink hover:bg-mercury',
+        variant === 'ghost' && 'px-4 text-carbon hover:bg-mercury',
+        variant === 'danger' && 'px-4 text-danger hover:bg-danger-soft',
         className,
       )}
     />
@@ -21,32 +22,32 @@ export function Button({ variant = 'primary', className, ...props }: ButtonHTMLA
 }
 
 const control =
-  'block w-full min-h-11 rounded-lg border bg-white px-3 text-base text-stone-900 shadow-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 aria-[invalid=true]:border-red-500';
+  'block w-full min-h-11 rounded-input border bg-white px-3 text-base text-ink outline-none transition-shadow duration-150 placeholder:text-ash focus:border-brand-600 focus:shadow-focus aria-[invalid=true]:border-danger';
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={cx(control, 'border-stone-300', props.className)} />;
+  return <input {...props} className={cx(control, 'border-line-strong', props.className)} />;
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={cx(control, 'border-stone-300', props.className)} />;
+  return <select {...props} className={cx(control, 'border-line-strong', props.className)} />;
 }
 
 /** Label + control + hint + error, wired for screen readers. */
 export function Field({ id, label, hint, error, optional, children }: { id: string; label: string; hint?: string; error?: string; optional?: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-stone-800">
+      <label htmlFor={id} className="block text-sm font-medium text-ink">
         {label}
-        {optional && <span className="ml-1 font-normal text-stone-500">({optional})</span>}
+        {optional && <span className="ms-1 font-normal text-slate">({optional})</span>}
       </label>
       {children}
       {hint && !error && (
-        <p id={`${id}-hint`} className="text-sm text-stone-500">
+        <p id={`${id}-hint`} className="text-sm text-slate">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${id}-error`} className="text-sm text-red-700">
+        <p id={`${id}-error`} className="text-sm text-danger">
           {error}
         </p>
       )}
@@ -69,10 +70,10 @@ export function Alert({ tone = 'error', children }: { tone?: 'error' | 'success'
     <div
       role={tone === 'error' ? 'alert' : 'status'}
       className={cx(
-        'rounded-lg border px-4 py-3 text-sm',
-        tone === 'error' && 'border-red-200 bg-red-50 text-red-800',
-        tone === 'success' && 'border-brand-100 bg-brand-50 text-brand-800',
-        tone === 'info' && 'border-stone-200 bg-white text-stone-700',
+        'rounded-card border px-4 py-3 text-sm',
+        tone === 'error' && 'border-danger/20 bg-danger-soft text-danger',
+        tone === 'success' && 'border-success/20 bg-success-soft text-success',
+        tone === 'info' && 'border-bone bg-white text-carbon',
       )}
     >
       {children}
@@ -81,20 +82,22 @@ export function Alert({ tone = 'error', children }: { tone?: 'error' | 'success'
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cx('rounded-xl border border-stone-200 bg-white p-5 shadow-sm', className)}>{children}</div>;
+  return <div className={cx('rounded-card border border-bone bg-white p-5 shadow-sm sm:p-7', className)}>{children}</div>;
 }
 
 export function Badge({ tone, children }: { tone: 'green' | 'amber' | 'red' | 'stone'; children: ReactNode }) {
+  // Status pill: the word carries the meaning, the colour and dot only reinforce it.
   return (
     <span
       className={cx(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-        tone === 'green' && 'bg-emerald-50 text-emerald-800',
-        tone === 'amber' && 'bg-amber-50 text-amber-800',
-        tone === 'red' && 'bg-red-50 text-red-800',
-        tone === 'stone' && 'bg-stone-100 text-stone-700',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+        tone === 'green' && 'bg-success-soft text-success',
+        tone === 'amber' && 'bg-warning-soft text-warning',
+        tone === 'red' && 'bg-danger-soft text-danger',
+        tone === 'stone' && 'bg-mercury text-carbon',
       )}
     >
+      <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
       {children}
     </span>
   );

@@ -23,7 +23,7 @@ export function ResetForm() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">{t('title')}</h1>
+      <h1 className="text-2xl font-bold tracking-[-0.02em]">{t('title')}</h1>
       {token === undefined ? null : !token ? (
         <Alert>{t('missingToken')}</Alert>
       ) : done ? (

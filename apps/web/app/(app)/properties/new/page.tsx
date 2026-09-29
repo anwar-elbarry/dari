@@ -128,13 +128,13 @@ function Wizard() {
   return (
     <section className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold">{t('title')}</h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <h1 className="text-2xl font-bold tracking-[-0.02em]">{t('title')}</h1>
+        <p className="mt-1 text-sm text-slate">
           {t('step', { current: step, total: 3 })} — {steps[step - 1]}
         </p>
         <div className="mt-3 flex gap-1.5" aria-hidden>
           {steps.map((label, i) => (
-            <div key={label} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-brand-600' : 'bg-stone-200'}`} />
+            <div key={label} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-brand-600' : 'bg-bone'}`} />
           ))}
         </div>
       </div>
@@ -213,7 +213,7 @@ function Wizard() {
           {step === 3 && (
             <>
               <fieldset className="space-y-2">
-                <legend className="text-sm font-medium text-stone-800">{t('ownerChoice')}</legend>
+                <legend className="text-sm font-medium text-ink">{t('ownerChoice')}</legend>
                 {owners.length > 0 && (
                   <label className="flex min-h-11 items-center gap-2 text-sm">
                     <input type="radio" name="ownerMode" value="existing" checked={s.ownerMode === 'existing'} onChange={set('ownerMode')} />
@@ -264,7 +264,7 @@ function Wizard() {
                   </Field>
                 </>
               )}
-              <p className="text-sm text-stone-500">{t('icalLater')}</p>
+              <p className="text-sm text-slate">{t('icalLater')}</p>
             </>
           )}
 

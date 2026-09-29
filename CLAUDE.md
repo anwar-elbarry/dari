@@ -45,6 +45,7 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 
 ## Web (apps/web)
 - All API calls go through `lib/api.ts` (`api(method, path, body)`): same-origin `/api`, CSRF header, one refresh + retry on expiry.
+- Design system: `docs/design-system.md` (orange brand, pill buttons, Plus Jakarta Sans / Inter, status pills with words). Tokens live in `app/globals.css` `@theme`; use them (`text-ink`, `bg-brand-600`, `rounded-card`…), never raw hex or Tailwind's stone/red/emerald palettes. Fonts are self-hosted via `@fontsource-variable` (the CSP blocks Google Fonts). Logo: `components/logo.tsx`.
 - Text lives in `messages/fr.json` and `messages/en.json` (same keys in both; French is the default). No hard-coded UI strings.
 - Hiding links or pages by capability (`useSession().can`, `<Require>`) is convenience only; the API is the enforcement point.
 - Token pages strip `?token=` from the address bar on load; the site sends `Referrer-Policy: no-referrer`.

@@ -21,12 +21,12 @@ export function ForgotForm() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">{t('title')}</h1>
+      <h1 className="text-2xl font-bold tracking-[-0.02em]">{t('title')}</h1>
       {sent ? (
         <Alert tone="success">{t('sent')}</Alert>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
-          <p className="text-sm text-stone-600">{t('intro')}</p>
+          <p className="text-sm text-slate">{t('intro')}</p>
           {error && <Alert>{error}</Alert>}
           <Field id="email" label={tl('email')}>
             <Input {...fieldAria('email')} type="email" autoComplete="email" inputMode="email" required />

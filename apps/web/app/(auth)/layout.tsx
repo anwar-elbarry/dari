@@ -9,13 +9,13 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 py-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <Logo size={36} />
+          <Logo size={40} surface="#f8f9fa" />
           <span className="sr-only">{t('appName')}</span>
-          <p className="mt-1 text-sm text-stone-500">{t('tagline')}</p>
+          <p className="mt-1 text-sm text-slate">{t('tagline')}</p>
         </div>
         <LocaleSwitch />
       </div>
-      <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">{children}</div>
+      <div className="rounded-card border border-bone bg-white p-5 shadow-sm sm:p-7">{children}</div>
     </main>
   );
 }
