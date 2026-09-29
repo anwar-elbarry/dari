@@ -30,6 +30,7 @@ interface Row {
 
 const ALL_SIGNED_IN = { ANON: 401, ACCOUNTANT: 200, STAFF: 200, OWNER_MANAGER: 200 };
 const MANAGER_ONLY = (ok: number) => ({ ANON: 401, ACCOUNTANT: 403, STAFF: 403, OWNER_MANAGER: ok });
+const STAFF_READ = { ANON: 401, ACCOUNTANT: 403, STAFF: 200, OWNER_MANAGER: 200 };
 
 export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/me', url: () => '/api/me', expect: ALL_SIGNED_IN },
@@ -38,6 +39,24 @@ export const MATRIX: Row[] = [
   { method: 'POST', route: '/api/invitations', url: () => '/api/invitations', body: () => ({ email: 'new@matrix.test', role: 'STAFF' }), expect: MANAGER_ONLY(201) },
   { method: 'GET', route: '/api/invitations', url: () => '/api/invitations', expect: MANAGER_ONLY(200) },
   { method: 'DELETE', route: '/api/invitations/:id', url: async (f) => `/api/invitations/${await f.invitationId()}`, expect: MANAGER_ONLY(204) },
+
+  // Owners (owner:read / owner:write)
+  { method: 'GET', route: '/api/property-owners', url: () => '/api/property-owners', expect: MANAGER_ONLY(200) },
+  { method: 'POST', route: '/api/property-owners', url: () => '/api/property-owners', body: () => ({ name: 'New Owner', residency: 'RESIDENT' }), expect: MANAGER_ONLY(201) },
+  { method: 'GET', route: '/api/property-owners/:id', url: (f) => `/api/property-owners/${f.ownerId}`, expect: MANAGER_ONLY(200) },
+  { method: 'PATCH', route: '/api/property-owners/:id', url: (f) => `/api/property-owners/${f.ownerId}`, body: () => ({ taxId: 'X1' }), expect: MANAGER_ONLY(200) },
+
+  // Properties (Staff read a reduced view; Accountant has no access)
+  { method: 'GET', route: '/api/properties', url: () => '/api/properties', expect: STAFF_READ },
+  {
+    method: 'POST',
+    route: '/api/properties',
+    url: () => '/api/properties',
+    body: (f) => ({ name: 'New', address: 'Somewhere', commune: 'Marrakech', licenseStatus: 'UNLICENSED', licenseType: 'RIAD', taxRegime: 'PROPERTY_INCOME', taxeSejourMode: 'COLLECTED', ownerId: f.ownerId }),
+    expect: MANAGER_ONLY(201),
+  },
+  { method: 'GET', route: '/api/properties/:id', url: (f) => `/api/properties/${f.propertyId}`, expect: STAFF_READ },
+  { method: 'PATCH', route: '/api/properties/:id', url: (f) => `/api/properties/${f.propertyId}`, body: () => ({ licenseStatus: 'PENDING' }), expect: MANAGER_ONLY(200) },
 ];
 
 describe('permission matrix (integration)', () => {

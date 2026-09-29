@@ -12,6 +12,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { MailModule } from './mail/mail.module';
 import { CapabilitiesGuard } from './rbac/capabilities.guard';
 import { PrismaModule } from './prisma/prisma.module';
+import { PropertiesModule } from './properties/properties.module';
 
 @Module({})
 export class AppModule {
@@ -34,6 +35,7 @@ export class AppModule {
         AuditModule,
         AuthModule,
         InvitationsModule,
+        PropertiesModule,
       ],
       controllers: [HealthController],
       // Order matters: rate limit, then CSRF header, then session, then capabilities.
