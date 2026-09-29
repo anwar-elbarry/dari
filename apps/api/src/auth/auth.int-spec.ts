@@ -21,7 +21,7 @@ describe('auth (integration)', () => {
     await t.app.close();
   });
   beforeEach(async () => {
-    await resetDatabase(t.prisma);
+    await resetDatabase(t.prisma, t.redis);
   });
 
   describe('signup', () => {
@@ -226,7 +226,7 @@ describe('auth rate limits (integration)', () => {
   let t: TestApp;
   beforeAll(async () => {
     t = await createTestApp({ env: { RATE_LIMIT_ENABLED: 'true' } });
-    await resetDatabase(t.prisma);
+    await resetDatabase(t.prisma, t.redis);
   });
   afterAll(async () => {
     await t.app.close();

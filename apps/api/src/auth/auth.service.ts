@@ -72,12 +72,11 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, meta: ClientMeta): Promise<SessionTokens> {
-    // Check and record in the same synchronous step, before any await: parallel guesses cannot all
-    // slip past the check while the password hash is being verified. A success clears the record.
-    if (this.limiter.isBlocked(dto.email)) {
+    // Counted before the password is verified, in one atomic step, so parallel guesses cannot slip
+    // past the check while a hash is being verified. A success clears the count.
+    if (LoginLimiter.blocked(await this.limiter.recordAttempt(dto.email))) {
       throw new HttpException({ code: 'TOO_MANY_ATTEMPTS', message: 'Too many attempts. Try again in 15 minutes.' }, HttpStatus.TOO_MANY_REQUESTS);
     }
-    this.limiter.fail(dto.email);
 
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     const valid = await argon2.verify(user?.passwordHash ?? (await this.dummyHash), dto.password);
@@ -89,7 +88,7 @@ export class AuthService {
       throw invalidCredentials();
     }
 
-    this.limiter.reset(dto.email);
+    await this.limiter.reset(dto.email);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'auth.login.success', resourceType: 'User', resourceId: user.id, ip: meta.ip });
     return this.issueSession(user, meta);
@@ -181,7 +180,7 @@ export class AuthService {
     });
     if (!done) throw invalid();
 
-    this.limiter.reset(token.user.email);
+    await this.limiter.reset(token.user.email);
     await this.audit.record({ accountId: token.user.accountId, actorId: token.userId, action: 'auth.password_reset.completed', resourceType: 'User', resourceId: token.userId, ip: meta.ip });
   }
 

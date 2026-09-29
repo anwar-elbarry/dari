@@ -1,12 +1,15 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { RedisThrottlerStorage } from './common/redis-throttler.storage';
+import { JobsModule } from './jobs/jobs.module';
+import { REDIS, RedisClient, RedisModule } from './redis/redis.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { CsrfGuard } from './common/csrf.guard';
 import { ConfigModule } from './config/config.module';
-import { APP_CONFIG, AppConfig } from './config/env';
+import { APP_CONFIG, AppConfig, parseEnv } from './config/env';
 import { HealthController } from './health/health.controller';
 import { InvitationsModule } from './invitations/invitations.module';
 import { MailModule } from './mail/mail.module';
@@ -23,11 +26,14 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot(config),
         // Default limit for every route; auth routes get stricter limits in step 1.2.
+        RedisModule,
+        JobsModule.register(config ?? parseEnv(process.env)),
         ThrottlerModule.forRootAsync({
-          inject: [APP_CONFIG],
-          useFactory: (c: AppConfig) => ({
+          inject: [APP_CONFIG, REDIS],
+          useFactory: (c: AppConfig, redis: RedisClient) => ({
             throttlers: [{ ttl: c.THROTTLE_TTL_MS, limit: c.THROTTLE_LIMIT }],
             skipIf: () => !c.RATE_LIMIT_ENABLED,
+            ...(redis ? { storage: new RedisThrottlerStorage(redis) } : {}),
           }),
         }),
         PrismaModule,

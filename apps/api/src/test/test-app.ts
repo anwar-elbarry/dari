@@ -8,6 +8,7 @@ import { CSRF_HEADER, CSRF_HEADER_VALUE } from '../common/csrf.guard';
 import { AppConfig, parseEnv } from '../config/env';
 import { MAIL_DRIVER, MailDriver, MailMessage } from '../mail/mail.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { REDIS, RedisClient } from '../redis/redis.module';
 import { hashPassword } from '../auth/auth.service';
 
 export class CapturingMailDriver implements MailDriver {
@@ -36,14 +37,19 @@ export class CapturingMailDriver implements MailDriver {
 export interface TestApp {
   app: INestApplication;
   prisma: PrismaService;
+  redis: RedisClient;
   mail: CapturingMailDriver;
   config: AppConfig;
 }
+
+/** Redis for tests comes from TEST_REDIS_URL only (it is flushed by resetDatabase); REDIS_URL is ignored. */
+export const TEST_REDIS_URL = process.env.TEST_REDIS_URL;
 
 export function testConfig(overrides: Record<string, string> = {}): AppConfig {
   return parseEnv({
     NODE_ENV: 'test',
     DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://u:p@localhost:5432/unused',
+    ...(TEST_REDIS_URL ? { REDIS_URL: TEST_REDIS_URL } : {}),
     JWT_ACCESS_SECRET: 'test-secret-test-secret-test-secret-000',
     RATE_LIMIT_ENABLED: 'false',
     ...overrides,
@@ -60,7 +66,7 @@ export async function createTestApp(opts: { env?: Record<string, string>; extra?
   const app = moduleRef.createNestApplication({ logger: false });
   configureApp(app, config);
   await app.init();
-  return { app, prisma: app.get(PrismaService), mail, config };
+  return { app, prisma: app.get(PrismaService), redis: app.get<RedisClient>(REDIS), mail, config };
 }
 
 export function requireDatabase() {
@@ -69,8 +75,9 @@ export function requireDatabase() {
   }
 }
 
-/** Empties every table (keeps the migration history). Only for disposable test databases. */
-export async function resetDatabase(prisma: PrismaService) {
+/** Empties every table (keeps the migration history) and the test Redis. Only for disposable test stores. */
+export async function resetDatabase(prisma: PrismaService, redis: RedisClient = null) {
+  if (redis) await redis.flushdb();
   const url = process.env.DATABASE_URL ?? '';
   if (!/test/i.test(url)) throw new Error('Refusing to reset a database whose URL does not contain "test".');
   const rows = await prisma.$queryRaw<{ tablename: string }[]>`

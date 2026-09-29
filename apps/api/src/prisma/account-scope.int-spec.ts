@@ -16,7 +16,7 @@ describe('forAccount (integration)', () => {
     await t.app.close();
   });
   beforeEach(async () => {
-    await resetDatabase(t.prisma);
+    await resetDatabase(t.prisma, t.redis);
     a = (await t.prisma.account.create({ data: { companyName: 'A' } })).id;
     b = (await t.prisma.account.create({ data: { companyName: 'B' } })).id;
     for (const [accountId, name] of [[a, 'Prop A'], [b, 'Prop B']]) {

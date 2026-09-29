@@ -9,6 +9,11 @@ const envSchema = z
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3001),
     DATABASE_URL: z.string().url(),
+    /**
+     * Redis: job queue, rate-limit counters and login lockout. Optional in development and test
+     * (in-memory fallbacks, single process only); required in production.
+     */
+    REDIS_URL: z.string().url().optional(),
     /** Public URL of the web app, used to build links in emails (reset, invitations). */
     APP_URL: z.string().url().default('http://localhost:3000'),
     /**
@@ -44,6 +49,9 @@ const envSchema = z
     }
     if (env.NODE_ENV === 'production' && (env.JWT_ACCESS_SECRET.length < 43 || /change-?me|example|placeholder|secret/i.test(env.JWT_ACCESS_SECRET))) {
       ctx.addIssue({ code: 'custom', path: ['JWT_ACCESS_SECRET'], message: 'must be a random value of at least 43 characters in production (openssl rand -base64 48)' });
+    }
+    if (env.NODE_ENV === 'production' && !env.REDIS_URL) {
+      ctx.addIssue({ code: 'custom', path: ['REDIS_URL'], message: 'required in production (rate limits, lockout and jobs must be shared)' });
     }
     if (env.NODE_ENV === 'production' && !env.RATE_LIMIT_ENABLED) {
       ctx.addIssue({ code: 'custom', path: ['RATE_LIMIT_ENABLED'], message: 'rate limiting cannot be disabled in production' });

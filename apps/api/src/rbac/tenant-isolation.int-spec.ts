@@ -31,7 +31,7 @@ describe('tenant isolation (integration)', () => {
 
   beforeAll(async () => {
     t = await createTestApp({ extra: [DiscoveryModule] });
-    await resetDatabase(t.prisma);
+    await resetDatabase(t.prisma, t.redis);
     a = await seedAccount(t, 'Alpha');
     b = await seedAccount(t, 'Beta');
     const owner = await t.prisma.propertyOwner.create({ data: { accountId: a.accountId, name: 'Owner A', residency: 'RESIDENT' } });

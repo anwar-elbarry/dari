@@ -4,7 +4,8 @@ import { APP_CONFIG, AppConfig } from '../config/env';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import { LoginLimiter } from './login-limiter';
+import { LoginLimiter, MemoryLoginLimiter, RedisLoginLimiter } from './login-limiter';
+import { REDIS, RedisClient } from '../redis/redis.module';
 
 @Module({
   imports: [
@@ -17,7 +18,11 @@ import { LoginLimiter } from './login-limiter';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthGuard, LoginLimiter],
+  providers: [
+    AuthService,
+    AuthGuard,
+    { provide: LoginLimiter, inject: [REDIS], useFactory: (redis: RedisClient) => (redis ? new RedisLoginLimiter(redis) : new MemoryLoginLimiter()) },
+  ],
   exports: [AuthService, AuthGuard, JwtModule],
 })
 export class AuthModule {}

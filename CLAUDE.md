@@ -32,7 +32,8 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Validation: DTOs with class-validator; unknown fields are rejected. Values are never echoed back in errors.
 - `AuditService.record()` for sensitive actions; add new actions to the `AuditAction` union. Identifiers only, never secrets or guest data.
 - `MailService.send()`; the console driver is dev-only (refused in production by env validation).
-- Rate limiting: global default from env; stricter per-route limits with `@Throttle()`.
+- Rate limiting: global default from env; stricter per-route limits with `@Throttle()`. Counters and the login lockout live in Redis when `REDIS_URL` is set (required in production), in memory otherwise.
+- Jobs: BullMQ queues in `jobs/jobs.module.ts` (`QUEUE_SYNC`, `QUEUE_ALERTS`); registered only with Redis. Payloads carry ids only. Inject queues as optional.
 
 ## Auth, roles and tenancy (apps/api/src)
 - Sessions: access JWT in `dari_at` (path `/api`, 15 min) + rotating refresh token in `dari_rt` (path `/api/auth`). Both httpOnly, SameSite=Lax. Only token hashes are stored.
@@ -41,7 +42,7 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - **Every route must be `@Public()` or declare `@Requires('capability')` / `@AnyRole()`.** Undeclared routes are refused, and `rbac/route-declarations.spec.ts` fails.
 - Capabilities per role live in `rbac/capabilities.ts`. To add a permission: add the capability, map it to roles, use `@Requires()`, add a row to `rbac/permission-matrix.int-spec.ts` (the test fails if a route has no row).
 - **Tenant data goes through `prisma.forAccount(user.accountId)`**. It adds `accountId` to every query and refuses models without a rule (`prisma/account-scope.ts`). Foreign keys to other tenant rows (e.g. `ownerId`) must be loaded through the scoped client before use. Resources of another account return 404.
-- Tests: `npm test` (unit, no DB) and `npm run test:int` (needs `DATABASE_URL` to a disposable DB whose name contains `test`; it truncates all tables). Helpers in `src/test/test-app.ts` (`createTestApp`, `seedAccount`, `client`).
+- Tests: `npm test` (unit, no DB) and `npm run test:int` (needs `DATABASE_URL` to a disposable DB whose name contains `test`; it truncates all tables; set `TEST_REDIS_URL` to a disposable Redis db, flushed on every reset, to run the Redis-backed paths). Helpers in `src/test/test-app.ts` (`createTestApp`, `seedAccount`, `client`).
 
 ## Web (apps/web)
 - All API calls go through `lib/api.ts` (`api(method, path, body)`): same-origin `/api`, CSRF header, one refresh + retry on expiry.

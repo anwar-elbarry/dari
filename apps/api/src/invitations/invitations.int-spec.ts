@@ -15,7 +15,7 @@ describe('invitations (integration)', () => {
     await t.app.close();
   });
   beforeEach(async () => {
-    await resetDatabase(t.prisma);
+    await resetDatabase(t.prisma, t.redis);
     t.mail.sent.length = 0;
     a = await seedAccount(t, 'Alpha');
     b = await seedAccount(t, 'Beta');

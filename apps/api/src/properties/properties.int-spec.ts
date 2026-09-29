@@ -23,7 +23,7 @@ describe('owners and properties (integration)', () => {
     await t.app.close();
   });
   beforeEach(async () => {
-    await resetDatabase(t.prisma);
+    await resetDatabase(t.prisma, t.redis);
     a = await seedAccount(t, 'Alpha');
   });
 

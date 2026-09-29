@@ -65,7 +65,7 @@ describe('permission matrix (integration)', () => {
 
   beforeAll(async () => {
     t = await createTestApp({ extra: [DiscoveryModule] });
-    await resetDatabase(t.prisma);
+    await resetDatabase(t.prisma, t.redis);
     const acc = await seedAccount(t, 'Matrix');
     const owner = await t.prisma.propertyOwner.create({ data: { accountId: acc.accountId, name: 'Owner', residency: 'RESIDENT' } });
     const property = await t.prisma.property.create({

@@ -38,11 +38,12 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 | `JWT_ACCESS_SECRET` | `openssl rand -base64 48`, from the secret store. Placeholders and values under 43 characters are refused in production |
 | `APP_URL` | Public HTTPS URL of the web app (used in emailed links) |
 | `TRUST_PROXY` | `1` (see above) |
+| `REDIS_URL` | Managed Redis, private network, `rediss://` or password |
 | `MAIL_DRIVER` | Production driver — **not built yet** (Resend or Brevo, open decision). The API will not start in production until it exists. |
 
-## Single instance for now
+## Redis
 
-The login lockout and the rate-limit counters are in memory. Run **one** API instance until they move to Redis (planned with the job runner in Phase 2).
+`REDIS_URL` is required in production: rate-limit counters, the login lockout and the job queues live there, so several API instances share them. Use a managed Redis in the same region as Postgres, not publicly reachable, with a password or TLS (`rediss://`).
 
 ## Demo seed
 

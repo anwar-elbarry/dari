@@ -45,6 +45,11 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...base, NODE_ENV: 'production', MAIL_DRIVER: 'console', COOKIE_SECURE: 'false' })).toThrow(/COOKIE_SECURE/);
   });
 
+  it('requires REDIS_URL in production only', () => {
+    expect(parseEnv(base).REDIS_URL).toBeUndefined();
+    expect(() => parseEnv({ ...base, NODE_ENV: 'production', MAIL_DRIVER: 'console' })).toThrow(/REDIS_URL/);
+  });
+
   it('refuses disabled rate limiting in production', () => {
     expect(parseEnv({ ...base, RATE_LIMIT_ENABLED: 'false' }).RATE_LIMIT_ENABLED).toBe(false);
     expect(() => parseEnv({ ...base, NODE_ENV: 'production', RATE_LIMIT_ENABLED: 'false' })).toThrow(/RATE_LIMIT_ENABLED/);
