@@ -16,8 +16,8 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | 0 | Foundations + legal kickoff | Repo builds, CI checks pass, legal tracks started | Code done · legal open |
 | 1 | Auth, RBAC, accounts, properties, onboarding | A manager can sign up and add a property | **Done** (see outcome in `docs/phase-1.md`) |
 | 2 | iCal sync, CSV import, 120-day counter, dashboard, alerts | Day counter matches a hand-checked real calendar | **Done** (see outcome in `docs/phase-2.md`) — [`docs/phase-2.md`](docs/phase-2.md) |
-| 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | Planned — [`docs/phase-3.md`](docs/phase-3.md) |
-| 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | Not started |
+| 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-3.md`) — [`docs/phase-3.md`](docs/phase-3.md) |
+| 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | Planned — [`docs/phase-4.md`](docs/phase-4.md) |
 | 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | Blocked on fiduciaire |
 | 6 | Licensing checklist, team management, WhatsApp | Invites and seat limits work; WhatsApp message delivered | Not started |
 | 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | Not started |
@@ -124,6 +124,8 @@ Not code, but it decides when real customer data may be processed. Start in week
 **Exit:** end-to-end test on a phone; every ID read appears in the audit log; the retention job deletes raw images and keeps structured records.
 
 ## Phase 4 — Police register and Secure Share
+
+**Detailed plan:** [`docs/phase-4.md`](docs/phase-4.md)
 
 **Goal:** one printable monthly register and safe sharing with authorities.
 

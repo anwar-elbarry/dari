@@ -1,9 +1,7 @@
-import { Body, Controller, Get, Headers, HttpCode, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
-import type { Request } from 'express';
 import { memoryStorage } from 'multer';
-import { clientMeta } from '../auth/auth.types';
 import { Public } from '../auth/decorators';
 import { CheckInEnabledGuard } from './checkin-enabled.guard';
 import { LangQuery, SubmitDto, UploadBodyDto } from './dto';
@@ -43,7 +41,7 @@ export class PublicCheckInController {
   @Post('submit')
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  submit(@Headers(TOKEN_HEADER) token: string | undefined, @Body() dto: SubmitDto, @Req() req: Request) {
-    return this.service.submit(token, dto, clientMeta(req));
+  submit(@Headers(TOKEN_HEADER) token: string | undefined, @Body() dto: SubmitDto) {
+    return this.service.submit(token, dto);
   }
 }

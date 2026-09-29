@@ -1,11 +1,11 @@
 import { ConflictException, HttpException, HttpStatus, Inject, Injectable, Logger, NotFoundException, PayloadTooLargeException, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
-import { ClientMeta } from '../auth/auth.types';
 import { hashToken } from '../auth/tokens';
 import { WindowCounter } from '../common/window-counter';
 import { RulesService } from '../compliance/rules.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { DRAFT_TTL_MS } from '../retention/retention.service';
 import { StorageService } from '../storage/storage.service';
 import { ConsentService } from './consent.service';
 import { FicheService } from './fiche.service';
@@ -114,22 +114,23 @@ export class PublicCheckInService {
     const reserved = await db.guestCheckIn.updateMany({ where: { id: draft.id, status: 'PENDING', uploadCount: { lt: MAX_UPLOADS_PER_GUEST } }, data: { uploadCount: { increment: 1 } } });
     if (reserved.count === 0) throw tooMany('TOO_MANY_IMAGES');
 
-    const retention = await this.rules.idRetention();
-    const stored = await this.storage.put(accountId, 'ID_IMAGE', jpeg, { expiresAt: new Date(booking.checkOut.getTime() + retention.days * DAY_MS) });
-
-    const outcome = await this.ocr.extract(jpeg);
-    const artefacts = { status: outcome.status, flagged: outcome.flagged, suggestedHashes: suggestionHashes(outcome.suggestion, draft.id) };
-    const updated = await db.guestCheckIn.updateMany({
-      where: { id: draft.id, status: 'PENDING' },
-      data: { docImageId: stored.id, ocrConfidence: outcome.confidence, ocrFieldsFlagged: artefacts as Prisma.InputJsonValue },
-    });
-    if (updated.count !== 1) {
-      await this.discard(accountId, stored.id, draft.id);
-      throw draftNotFound();
+    // While the form is unfinished the photo lives for a day at most; submit extends it to the retention window.
+    // So even an image that ends up unreferenced (parallel uploads, a failure below) is purged within a day.
+    const stored = await this.storage.put(accountId, 'ID_IMAGE', jpeg, { expiresAt: new Date(Date.now() + DRAFT_TTL_MS) });
+    try {
+      const outcome = await this.ocr.extract(jpeg);
+      const artefacts = { status: outcome.status, flagged: outcome.flagged, suggestedHashes: suggestionHashes(outcome.suggestion, draft.id) };
+      const updated = await db.guestCheckIn.updateMany({
+        where: { id: draft.id, status: 'PENDING' },
+        data: { docImageId: stored.id, ocrConfidence: outcome.confidence, ocrFieldsFlagged: artefacts as Prisma.InputJsonValue },
+      });
+      if (updated.count !== 1) throw draftNotFound();
+      if (draft.docImageId) await this.discard(accountId, draft.docImageId, draft.id); // the previous photo is replaced, not kept
+      return { draftId: draft.id, uploadsLeft: MAX_UPLOADS_PER_GUEST - (draft.uploadCount + 1), ocr: this.forGuest(outcome) };
+    } catch (e) {
+      await this.discard(accountId, stored.id, draft.id); // never leave a stored photo that nothing points to
+      throw e;
     }
-    if (draft.docImageId) await this.discard(accountId, draft.docImageId, draft.id); // the previous photo is replaced, not kept
-
-    return { draftId: draft.id, uploadsLeft: MAX_UPLOADS_PER_GUEST - (draft.uploadCount + 1), ocr: this.forGuest(outcome) };
   }
 
   /** What the guest form gets back: the suggestions, never the stored image or anything derived from other guests. */
@@ -143,8 +144,8 @@ export class PublicCheckInService {
       .catch(() => this.logger.warn(`could not remove a replaced document for guest ${guestId}`));
   }
 
-  async submit(rawToken: unknown, dto: SubmitDto, meta: ClientMeta) {
-    const { link, accountId, db } = await this.resolve(rawToken);
+  async submit(rawToken: unknown, dto: SubmitDto) {
+    const { link, booking, accountId, db } = await this.resolve(rawToken);
     await this.limit(`checkin-sub:${link.id}`, MAX_SUBMITS_PER_LINK_WINDOW, 'TOO_MANY_ATTEMPTS');
 
     const draft = await db.guestCheckIn.findFirst({ where: { id: dto.draftId, linkId: link.id, status: 'PENDING' }, include: { docImage: { select: { deletedAt: true } } } });
@@ -154,6 +155,7 @@ export class PublicCheckInService {
     const wording = await this.consent.approvedById(dto.consentTextId);
     if (!wording) throw new UnprocessableEntityException({ code: 'CONSENT_INVALID', message: 'The consent text is not valid.' });
 
+    const retention = await this.rules.idRetention();
     const now = new Date();
     const dob = parseIsoDate(dto.dob);
     const expiry = dto.docExpiryDate ? parseIsoDate(dto.docExpiryDate) : null;
@@ -205,6 +207,8 @@ export class PublicCheckInService {
             },
           });
           if (done.count !== 1) throw new ConflictException({ code: 'ALREADY_SUBMITTED', message: 'This form was already submitted.' });
+          // The form is in: the photo now follows the retention rule (checkout + days) instead of the one-day draft limit.
+          await tx.storedObject.updateMany({ where: { id: draft.docImageId!, accountId }, data: { expiresAt: new Date(booking.checkOut.getTime() + retention.days * DAY_MS) } });
           return index;
         });
         break;
@@ -215,7 +219,8 @@ export class PublicCheckInService {
       }
     }
 
-    await this.audit.record({ accountId, actorId: null, action: 'checkin.submitted', resourceType: 'GuestCheckIn', resourceId: draft.id, ip: meta.ip });
+    // No IP address: it is personal data of a guest who is not our customer, and the audit trail has no retention window.
+    await this.audit.record({ accountId, actorId: null, action: 'checkin.submitted', resourceType: 'GuestCheckIn', resourceId: draft.id });
     this.fiche.generateInBackground(accountId, draft.id);
     const remaining = link.maxGuests - (link.guestsSubmitted + 1);
     return { status: 'submitted', guestIndex, remaining, canAddGuest: remaining > 0 };

@@ -5,6 +5,7 @@ import { MemoryObjectStore } from '../storage/memory-object-store';
 import { OBJECT_STORE } from '../storage/object-store';
 import { StorageService } from '../storage/storage.service';
 import { createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
+import { RetentionService } from '../retention/retention.service';
 import { FicheService } from './fiche.service';
 import { mapWorkerResponse, OcrClient } from './ocr.client';
 
@@ -285,12 +286,45 @@ describe('guest check-in (integration)', () => {
       expect(read.bytes.includes(Buffer.from('GPS'))).toBe(false);
     });
 
-    it('sets the retention date from RuleConfig (checkout + days)', async () => {
+    it('gives an unfinished photo one day, then the retention window (checkout + RuleConfig days) once the form is submitted', async () => {
       await t.prisma.ruleConfig.update({ where: { key: 'retention.id_images_days' }, data: { value: { days: 14 } } });
       const link = await newLink();
       const draftId = await draftFor(link.token);
       const draft = await t.prisma.guestCheckIn.findUniqueOrThrow({ where: { id: draftId }, include: { docImage: true, booking: true } });
-      expect(draft.docImage!.expiresAt!.getTime()).toBe(draft.booking.checkOut.getTime() + 14 * DAY);
+      // While the form is a draft the photo would be purged within a day (an abandoned photo must not linger).
+      expect(draft.docImage!.expiresAt!.getTime()).toBeGreaterThan(Date.now() + 23 * 3_600_000);
+      expect(draft.docImage!.expiresAt!.getTime()).toBeLessThan(Date.now() + 25 * 3_600_000);
+
+      await submit(link.token, draftId).expect(200);
+      const submitted = await t.prisma.guestCheckIn.findUniqueOrThrow({ where: { id: draftId }, include: { docImage: true, booking: true } });
+      expect(submitted.docImage!.expiresAt!.getTime()).toBe(submitted.booking.checkOut.getTime() + 14 * DAY);
+    });
+
+    it('purges every photo of an abandoned draft within a day, even ones nothing points to (parallel uploads)', async () => {
+      const link = await newLink();
+      const draftId = await draftFor(link.token);
+      // A double tap on a slow connection: two uploads for the same draft at once.
+      const both = await Promise.all([upload(link.token, { draftId }), upload(link.token, { draftId })]);
+      expect(both.map((r) => r.status)).toEqual([200, 200]);
+      const objects = await t.prisma.storedObject.findMany({ where: { kind: 'ID_IMAGE', deletedAt: null } });
+      expect(objects.length).toBeGreaterThanOrEqual(1);
+      for (const o of objects) expect(o.expiresAt!.getTime()).toBeLessThan(Date.now() + 25 * 3_600_000); // all on the one-day clock
+
+      await t.app.get(RetentionService).purge(new Date(Date.now() + 26 * 3_600_000));
+      expect(await t.prisma.storedObject.count({ where: { kind: 'ID_IMAGE', deletedAt: null } })).toBe(0);
+      expect(store.keys()).toHaveLength(0);
+      expect(await t.prisma.guestCheckIn.count()).toBe(0); // and the abandoned draft itself
+    });
+
+    it('removes the stored photo when something fails after it was stored', async () => {
+      jest.spyOn(t.app.get(OcrClient), 'extract').mockRejectedValue(new Error('OCR client bug'));
+      const link = await newLink();
+      const res = await upload(link.token);
+      expect(res.status).toBe(500);
+      expect(store.keys()).toHaveLength(0);
+      const row = await t.prisma.storedObject.findFirstOrThrow();
+      expect(row.deletedAt).not.toBeNull();
+      expect(row.wrappedKey).toBe('');
     });
 
     it('records the OCR outcome as field names and hashes only (no values)', async () => {
@@ -418,7 +452,9 @@ describe('guest check-in (integration)', () => {
       // Field names only, never values.
       expect(guest.ocrFieldsFlagged).toEqual({ status: 'ok', flagged: [], edited: ['docNumber', 'docExpiryDate'] }); // the name was not edited
       expect((await t.prisma.checkInLink.findUniqueOrThrow({ where: { id: link.id } })).guestsSubmitted).toBe(1);
-      expect((await t.prisma.auditLog.findMany({ where: { action: 'checkin.submitted' } })).map((r) => [r.actorId, r.resourceId, r.accountId])).toEqual([[null, draftId, a.accountId]]);
+      const audit = await t.prisma.auditLog.findMany({ where: { action: 'checkin.submitted' } });
+      expect(audit.map((r) => [r.actorId, r.resourceId, r.accountId])).toEqual([[null, draftId, a.accountId]]);
+      expect(audit[0].ip).toBeNull(); // a guest's IP address is not kept in the audit trail
     });
 
     it.each(['entryStampNumber', 'cityOfOrigin', 'nextDestination', 'profession'])('refuses a missing, empty or blank %s, server-side', async (field) => {

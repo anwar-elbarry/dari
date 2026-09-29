@@ -45,6 +45,7 @@ export class PdfRenderer implements OnModuleDestroy {
         })
         .catch(() => {
           this.browser = null;
+          this.logger.error('Chromium could not be started: Fiche PDFs are unavailable'); // no error message: it could quote the page
           throw new PdfUnavailableError();
         });
     }

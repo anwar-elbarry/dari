@@ -408,7 +408,7 @@
       "regenerate": "Régénérer la fiche",
       "regenerated": "La fiche a été régénérée.",
       "noFiche": "La fiche n'est pas encore prête. Elle est préparée après l'envoi du voyageur ; vous pouvez la régénérer maintenant.",
-      "ficheNote": "Mise en forme calquée sur le formulaire officiel, établie à partir de la déclaration du voyageur. À vérifier avant usage.",
+      "ficheNote": "Mise en forme indicative, à comparer au modèle officiel. Établie à partir de la déclaration du voyageur. À vérifier avant usage.",
       "edit": "Corriger les informations",
       "cancelEdit": "Annuler",
       "save": "Enregistrer les corrections",

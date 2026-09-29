@@ -154,7 +154,7 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 | 3.6 | Retention job (Redis queue): purge images and artefacts after the window, keep structured records, audit — **done** (see below) | strong |
 | 3.7 | Web: arrivals, link dialog, guest list, Fiche and ID viewers — **done** (`/properties/[id]/arrivals`; PDFs open in a new tab or download because the site's CSP has no `frame-src`) | fast |
 | 3.8 | Web: guest form (mobile-first, camera guidance, review screen, consent) — **done** (`/checkin#token=…`; the phone-viewport e2e runs the whole journey with a synthetic passport, the real worker and a real Chromium) | fast |
-| 3.9 | Hardening: abuse tests, log-redaction test, security review, E2E on a phone with a synthetic passport, docs, Phase 4 plan | strong |
+| 3.9 | Hardening: abuse tests, log-redaction test, security review, E2E on a phone with a synthetic passport, docs, Phase 4 plan — **done** (see the outcome at the end; the plan for the next phase is [`phase-4.md`](phase-4.md)) | strong |
 
 Rough effort solo: 4–6 weeks full-time. Steps 3.1, 3.3, 3.4 and 3.6 carry the risk.
 
@@ -182,15 +182,22 @@ Rough effort solo: 4–6 weeks full-time. Steps 3.1, 3.3, 3.4 and 3.6 carry the 
 
 ## Security checklist for this phase
 
-- [ ] Bucket private, encrypted, no public policy; envelope encryption tested; master key from the secret store, never in the repo
-- [ ] No route returns an image URL; images only through audited, `no-store` API routes
-- [ ] Public routes: tokens hashed, neutral errors, rate limits, `no-store`, `noindex`, no third-party scripts, `Referrer-Policy: no-referrer`
-- [ ] Uploads validated by content, re-encoded, EXIF stripped, size-capped; the worker never writes content to disk
-- [ ] OCR worker reachable only on the private network with a shared secret
-- [ ] Logs and audit rows carry ids only; redaction test in CI
-- [ ] `GUEST_CHECKIN_ENABLED` false by default in production until the gates above are closed
-- [ ] Retention job monitored; a failed purge raises an alert
-- [ ] Backups: images excluded from long-term backups or encrypted with the same envelope keys, and deleted within the retention window
+Done in code and tests:
+- [x] Envelope encryption tested (wrong key, tampering, swapped rows, rotation); master keys only from env / secret store, never in the repo; production refuses a missing key, `memory` storage, no SSE or a non-https endpoint once the feature is on
+- [x] No route returns an image URL; images and PDFs only through audited, `no-store` API routes (a test scans the code for presigned URLs and public ACLs)
+- [x] Public routes: tokens hashed, neutral errors (identical for every bad-link case), per-IP and per-link rate limits, `no-store` on every response including 429, `noindex`, no third-party scripts, `Referrer-Policy: no-referrer`; the token lives in the URL fragment and a header, never in a URL the server sees
+- [x] Uploads validated by content, re-encoded, EXIF stripped, size-capped; the OCR worker writes nothing to disk (tested)
+- [x] Logs and audit rows carry ids only; redaction test in CI (mutation-checked: it fails when a log line quotes the fake person); the guest's IP address is not stored on guest-originated audit rows
+- [x] `GUEST_CHECKIN_ENABLED` is off by default in production
+- [x] Retention job: failed purge fails the job, logs and emails `OPS_ALERT_EMAIL`; anything a day overdue alerts too
+- [x] Independent review of the whole phase: no high or medium finding; the four low findings and the rotation gap are fixed (see the outcome below)
+
+Deployment tasks (the code cannot prove them; do them when the feature is switched on):
+- [ ] Bucket private with no public policy, encrypted, versioning off or short-lived (`deployment.md`)
+- [ ] OCR worker reachable only on the private network with the shared secret
+- [ ] Retention alerts wired to someone who will read them (`OPS_ALERT_EMAIL` set, log search "Retention" alerting)
+- [ ] Backups: images excluded from long-term backups, or encrypted with the same envelope keys and expired within the retention window (the wrapped key is blanked on deletion, so a surviving copy is unreadable)
+- [ ] Master-key backup tested (losing every key that wraps an object makes it unreadable)
 
 ---
 
@@ -224,3 +231,49 @@ Rough effort solo: 4–6 weeks full-time. Steps 3.1, 3.3, 3.4 and 3.6 carry the 
 5. Consent and privacy wording: counsel to provide FR/EN text; the retention period for the Fiche itself.
 6. Real CIN / CNIE samples (with owners' permission, not stored in the repo) to choose the OCR approach.
 7. Mail provider (still open from Phase 1).
+
+---
+
+## Outcome (Phase 3 closed: code complete, legal gates open)
+
+Steps 3.0 to 3.9 are done. CI runs lint, typecheck, unit tests (including the OCR worker with a real Tesseract), integration tests (Postgres, Redis, MinIO, a real Chromium) and the phone-viewport end-to-end tests, which run the whole journey: a manager sends a link, a guest photographs a synthetic passport on a phone, corrects a field, completes the mandatory fields and consent, the manager gets the Fiche PDF and (audited) the ID image, Staff see status only.
+
+**What was delivered**
+- Encrypted private storage with envelope encryption, audited reads that fail closed, key shredding on delete and master-key rotation (`StorageService`).
+- The document worker (MRZ TD1/TD2/TD3 with check digits, safe imaging, authenticated, nothing on disk) and a guest form that treats its output as suggestions.
+- Check-in links (token shown once, hash stored, fragment URL + header), the public flow, arrivals, guest details and corrections, ID image and Fiche routes.
+- The Fiche de Police PDF (versioned draft layout, escaped, Chromium with JavaScript off and no network), the retention job, log redaction and the abuse suites.
+
+**Independent security review** (read-only pass over the whole phase): no high or medium findings. Fixed, each with a regression test:
+- **Low, real bug:** `window.open(..., 'noopener')` always returns `null`, so "Open the Fiche" also downloaded the PDF to disk; the opener link is now cut by hand.
+- **Low:** the guest's IP address was stored forever on the `checkin.submitted` audit row; it is no longer stored.
+- **Low:** parallel uploads or a failure after storing could leave a photo no draft pointed to, outliving the 24-hour draft rule; photos now live one day while the form is a draft (extended at submit), failures remove what was stored, and a test purges an orphan.
+- **Low:** the UI note said the Fiche was "laid out like the official form"; it now says "indicative layout, compare with the official form".
+- **Gap:** `rewrapOutdatedKeys` had no caller, so a key rotation could not finish; an hourly `rewrap` job now runs it.
+- Found while writing the abuse tests: a `429` from the rate limiter carried no `Cache-Control`; `no-store` is now set for everything under `/api` before the guards run.
+
+**Accepted and documented**
+- **WhatsApp sees the token.** The fragment keeps the token out of servers, logs and link-preview bots, but the manager's "Send by WhatsApp" button opens `https://wa.me/?text=…`, which sends the message text (with the token) to WhatsApp's redirect page. The token only allows filling in the form for that stay and reading the property name and dates; it expires at checkout + 48 h, is single-use per guest and can be revoked. The WhatsApp Business API (Phase 6) removes the redirect. Counsel should know the delivery channel.
+- OCR accuracy on real photos is unmeasured: the tests use fictional data in a monospaced font, and Tesseract's stock model is not trained on the OCR-B typeface (`services/ocr/README.md`). The check digits catch misreads and the guest reviews everything, so this affects how often guests must correct a field, not correctness.
+- CIN / CNIE: no structured OCR until real cards are tested; such guests type their details.
+- The Fiche layout is a draft; whether a Moroccan national needs an entry stamp is an open question for counsel and the prefecture (all four fields are required for everyone today).
+- A headless browser cannot render the PDF viewer, so "Open the Fiche" in a new tab is verified by hand; download is covered by the e2e.
+- Fiche PDFs have no purge date until counsel sets their retention.
+
+### Hard gates: tracker
+
+Nothing here is code. Until each is closed the feature stays behind `GUEST_CHECKIN_ENABLED=false` in production and is used with synthetic data only. **Dates are proposals (set 2026-09-29): confirm or change them.**
+
+| Gate | Owner | Proposed date | Status |
+|---|---|---|---|
+| Hosting region and object-storage provider (Morocco or EU), cross-border position | Founder + counsel | 2026-10-10 | Open |
+| Official police form (fields, layout) from the prefecture / DGSN; PDF or paper? | Founder | 2026-10-13 | Open |
+| CNDP declaration filed (and the authorization it may require) | Founder + counsel | file by 2026-10-15; acceptance date unknown | Open |
+| Consent wording FR/EN approved and inserted (`ConsentText`, with `approvedBy` / `approvedAt`) | Counsel | 2026-10-20 | Open |
+| Retention periods confirmed: images 30 days after checkout (`retention.id_images_days`), Fiche and monthly register | Counsel | 2026-10-20 | Open |
+| Real Moroccan CIN / CNIE cards tested for an MRZ (decides the OCR approach) | Founder | 2026-10-20 | Open |
+| Mail provider (Brevo or Resend) chosen; sender domain verified | Founder | 2026-10-10 | Open |
+| Incident runbook for a personal-data leak written | Founder | 2026-10-31 | Open |
+| Staff access to the Fiche PDF: status only (today) or download | Founder + counsel | with the consent wording | Open |
+| Production enablement checklist run (deployment tasks above, `GUEST_CHECKIN_ENABLED=true`, an approved consent text present) | Founder | after all of the above | Open |
+

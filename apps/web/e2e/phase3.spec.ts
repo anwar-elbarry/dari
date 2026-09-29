@@ -130,7 +130,8 @@ const PASSPORT = readFileSync(join(__dirname, 'fixtures', 'synthetic-passport.jp
 
 test('a guest checks in from a phone with a synthetic passport, and the manager gets the Fiche', async ({ page, browser, playwright }) => {
   const runId = Date.now().toString(36);
-  const guestName = `Anna Test ${runId}`;
+  // A name has no digits: the run id is mapped to letters so the guest's name is unique per run and still valid.
+  const guestName = `Anna Test ${runId.replace(/\d/g, (d) => 'abcdefghij'[Number(d)])}`;
 
   // ---- The manager prepares a stay and a link (through the API: the screens for this are covered above).
   const api = await playwright.request.newContext({ baseURL: 'http://localhost:3000', extraHTTPHeaders: { 'X-Requested-With': 'dari' } });

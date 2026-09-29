@@ -408,7 +408,7 @@
       "regenerate": "Regenerate the Fiche",
       "regenerated": "The Fiche was regenerated.",
       "noFiche": "The Fiche is not ready yet. It is prepared after the guest submits; you can regenerate it now.",
-      "ficheNote": "Laid out like the official form and prepared from the guest's declaration. Check it before use.",
+      "ficheNote": "Indicative layout: compare it with the official form. Prepared from the guest's declaration. Check it before use.",
       "edit": "Correct the details",
       "cancelEdit": "Cancel",
       "save": "Save the corrections",

@@ -66,7 +66,7 @@ Every object is encrypted by the API (AES-256-GCM, one data key per object, wrap
 - Reachable from the API on the private network only.
 - Versioning **off**, or a lifecycle rule that expires old versions within the retention window: a deleted image must not survive as a previous version. (The application also blanks the wrapped key on deletion, so a surviving copy is unreadable, but do not rely on that alone.)
 - Backups of the bucket are not needed for the images (they are purged after 30 days by default); if the Fiche PDFs are backed up, the backup is ciphertext and expires with them.
-- Master key rotation: prepend a new key to `STORAGE_MASTER_KEYS`, deploy, run the rewrap (`StorageService.rewrapOutdatedKeys`) until it returns 0, then drop the old key. Losing every key that wraps an object makes that object permanently unreadable.
+- Master key rotation: prepend a new key to `STORAGE_MASTER_KEYS` and deploy. The hourly `rewrap` job (Redis) moves every object's data key to the new master key, 2000 per run. When `SELECT count(*) FROM "StoredObject" WHERE "deletedAt" IS NULL AND "wrappedKey" <> '' AND "wrappedKey" NOT LIKE '<new id>:%'` returns 0, drop the old key. Losing every key that wraps an object makes that object permanently unreadable.
 - Deleting an object first blanks its wrapped key in the database, then removes it from the bucket.
 
 ## Fiche de Police PDF (Chromium)
