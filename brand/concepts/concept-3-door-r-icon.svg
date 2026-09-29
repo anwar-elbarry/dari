@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128" role="img" aria-label="RiadTax — Door R icon">
+<title>RiadTax — Door R icon</title>
+<defs><linearGradient id="g3" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64"><stop offset="0" stop-color="#ff8a1e"/><stop offset="1" stop-color="#ff5a00"/></linearGradient></defs>
+<rect width="64" height="64" rx="14" fill="#0f0f10"/><g transform="translate(8 8) scale(0.75)"><path d="M10 62 V27 A22 22 0 0 1 54 27 A22 22 0 0 1 40 47.5 L56 62 H42 L30 51 H24 V62 Z M25.5 37 V25 A8.5 8.5 0 1 1 42.5 25 V37 Z" fill="url(#g3)" fill-rule="evenodd"/>
+<path d="M28.5 28.5 L32 32 L39.5 23.5" fill="none" stroke="#ff8a1e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M13.5 58 V54.5 M18 58 V50.5 M22.5 58 V46.5" fill="none" stroke="#0f0f10" stroke-width="3" stroke-linecap="round"/></g>
+</svg>

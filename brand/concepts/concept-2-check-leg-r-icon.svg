@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128" role="img" aria-label="RiadTax — Check-leg R icon">
+<title>RiadTax — Check-leg R icon</title>
+<defs><linearGradient id="g2" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64"><stop offset="0" stop-color="#ff8a1e"/><stop offset="1" stop-color="#ff5a00"/></linearGradient></defs>
+<rect width="64" height="64" rx="14" fill="#0f0f10"/><g transform="translate(8 8) scale(0.75)"><path d="M8 62 V6 H35 A16.5 16.5 0 0 1 35 39 H23 V62 Z M23 18.5 V26.5 H35 A4 4 0 0 0 35 18.5 Z" fill="url(#g2)" fill-rule="evenodd"/>
+<path d="M30 36 L41 54 L60 27" fill="none" stroke="url(#g2)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></g>
+</svg>
