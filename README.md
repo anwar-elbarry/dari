@@ -14,7 +14,7 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | Phase | Scope | Gate to exit | Status |
 |---|---|---|---|
 | 0 | Foundations + legal kickoff | Repo builds, CI checks pass, legal tracks started | Code done · legal open |
-| 1 | Auth, RBAC, accounts, properties, onboarding | A manager can sign up and add a property | Not started |
+| 1 | Auth, RBAC, accounts, properties, onboarding | A manager can sign up and add a property | In progress (step 1.0 done) |
 | 2 | iCal sync, CSV import, 120-day counter, dashboard, alerts | Day counter matches a hand-checked real calendar | Not started |
 | 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | Not started |
 | 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | Not started |
@@ -74,8 +74,8 @@ Not code, but it decides when real customer data may be processed. Start in week
 - [x] Monorepo: NestJS API, Next.js web, Python OCR worker
 - [x] Prisma schema (15 core + 3 fast-follow entities), `CLAUDE.md`, SessionStart hook
 - [x] Pure, tested day counter and gross-base functions
-- [ ] CI (GitHub Actions): lint, typecheck, tests, `prisma validate` on every push
-- [ ] First Prisma migration and seed script (roles, demo account)
+- [x] CI (GitHub Actions): lint, typecheck, tests, `prisma validate`, migrate + seed on Postgres, OCR tests (done in Phase 1 step 1.0)
+- [x] First Prisma migration and seed script (demo account, one user per role)
 - [ ] Legal track kicked off (table above)
 
 ## Phase 1 — Identity, accounts and properties

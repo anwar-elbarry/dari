@@ -124,6 +124,7 @@ model Account {
   createdAt        DateTime         @default(now())
 
   users         User[]
+  invitations   Invitation[]
   owners        PropertyOwner[]
   properties    Property[]
   shareLinks    ShareLink[]
@@ -140,11 +141,66 @@ model User {
   phone        String?
   role         Role
   passwordHash String
+  lastLoginAt  DateTime?
+  disabledAt   DateTime?
   createdAt    DateTime @default(now())
 
-  account Account @relation(fields: [accountId], references: [id])
+  account             Account              @relation(fields: [accountId], references: [id])
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([accountId])
+}
+
+// Rotating sessions. Only the hash of the 256-bit token is stored.
+// Reuse of a revoked token revokes the whole chain (replacedById links rotations).
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  userAgent    String?
+  ip           String?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Single-use reset links (1 hour).
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Staff / Accountant onboarding (7-day expiry). The role comes from here, never from the request body.
+model Invitation {
+  id         String    @id @default(uuid())
+  accountId  String
+  email      String
+  role       Role
+  tokenHash  String    @unique
+  invitedBy  String
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([email])
 }
 
 model PropertyOwner {

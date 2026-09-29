@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dari
+          POSTGRES_PASSWORD: dari
+          POSTGRES_DB: dari_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dari" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://dari:dari@localhost:5432/dari_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run db:validate
+      - name: Apply migrations and seed (proves the migration set is complete)
+        run: |
+          npm run db:deploy --workspace apps/api
+          npm run db:seed --workspace apps/api
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      # Known: deepmerge-ts (high) via the Prisma CLI, build-time only, no upstream fix yet.
+      # Tighten to `high` as soon as Prisma ships a release that no longer depends on deepmerge-ts <8.
+      - name: Dependency audit (production deps, fail on critical)
+        run: npm audit --omit=dev --audit-level=critical
+
+  ocr:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ocr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: pytest -q

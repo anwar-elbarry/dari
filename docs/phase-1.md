@@ -133,7 +133,7 @@ Suggested order. Each step ends with green lint, typecheck and tests, and a comm
 
 | Step | Work | Model |
 |---|---|---|
-| 1.0 | **CI** (GitHub Actions: lint, typecheck, tests, `prisma validate`, Postgres service container). First migration and seed | fast |
+| 1.0 ✅ | **CI** (GitHub Actions: lint, typecheck, tests, `prisma validate`, Postgres service container). First migration and seed | fast |
 | 1.1 | Foundations in the API: config module with validated env, Prisma module, `MailService`, `AuditService`, global validation pipe, error format, throttler | fast |
 | 1.2 | **Auth backend**: signup, login, refresh rotation with reuse detection, logout, reset, `/me`. Argon2, cookies, rate limits | strong |
 | 1.3 | **RBAC and tenant isolation**: capability map, guard, decorator, account-scoped Prisma helper. Permission-matrix test table and cross-tenant tests | strong |
@@ -170,7 +170,7 @@ API integration tests need Postgres. They run in CI with a service container; in
 - [ ] Secrets only from environment; `.env` never committed
 - [ ] Passwords, tokens and cookies never appear in logs or audit rows
 - [ ] Security headers on the web app (CSP, `X-Content-Type-Options`, `Referrer-Policy`)
-- [ ] Dependency audit in CI (`npm audit --omit=dev`, fail on high)
+- [ ] Dependency audit in CI (`npm audit --omit=dev`, fail on high) — currently fails on critical only: `deepmerge-ts` (high) comes from the Prisma CLI with no upstream fix; tighten once fixed
 
 ---
 
