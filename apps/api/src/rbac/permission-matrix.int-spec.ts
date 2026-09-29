@@ -29,8 +29,16 @@ interface Row {
 }
 
 const ALL_SIGNED_IN = { ANON: 401, ACCOUNTANT: 200, STAFF: 200, OWNER_MANAGER: 200 };
+const MANAGER_ONLY = (ok: number) => ({ ANON: 401, ACCOUNTANT: 403, STAFF: 403, OWNER_MANAGER: ok });
 
-export const MATRIX: Row[] = [{ method: 'GET', route: '/api/me', url: () => '/api/me', expect: ALL_SIGNED_IN }];
+export const MATRIX: Row[] = [
+  { method: 'GET', route: '/api/me', url: () => '/api/me', expect: ALL_SIGNED_IN },
+
+  // Invitations (team:manage)
+  { method: 'POST', route: '/api/invitations', url: () => '/api/invitations', body: () => ({ email: 'new@matrix.test', role: 'STAFF' }), expect: MANAGER_ONLY(201) },
+  { method: 'GET', route: '/api/invitations', url: () => '/api/invitations', expect: MANAGER_ONLY(200) },
+  { method: 'DELETE', route: '/api/invitations/:id', url: async (f) => `/api/invitations/${await f.invitationId()}`, expect: MANAGER_ONLY(204) },
+];
 
 describe('permission matrix (integration)', () => {
   let t: TestApp;

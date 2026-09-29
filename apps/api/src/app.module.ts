@@ -8,6 +8,7 @@ import { CsrfGuard } from './common/csrf.guard';
 import { ConfigModule } from './config/config.module';
 import { APP_CONFIG, AppConfig } from './config/env';
 import { HealthController } from './health/health.controller';
+import { InvitationsModule } from './invitations/invitations.module';
 import { MailModule } from './mail/mail.module';
 import { CapabilitiesGuard } from './rbac/capabilities.guard';
 import { PrismaModule } from './prisma/prisma.module';
@@ -32,6 +33,7 @@ export class AppModule {
         MailModule,
         AuditModule,
         AuthModule,
+        InvitationsModule,
       ],
       controllers: [HealthController],
       // Order matters: rate limit, then CSRF header, then session, then capabilities.

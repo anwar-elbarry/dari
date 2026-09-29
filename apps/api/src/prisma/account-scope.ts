@@ -42,7 +42,7 @@ function assertNoOtherAccount(value: unknown, accountId: string, where: string) 
 /**
  * Rewrites a query so it can only touch rows of `accountId`:
  * - reads, updates and deletes get `accountId` added to `where`;
- * - creates get `accountId` set (a different value is an error);
+ * - creates get `accountId` set (pass it explicitly for Prisma's types; a different value is an error);
  * - an update can never change `accountId`.
  * Foreign keys to other tenant rows (e.g. Property.ownerId) are NOT checked here: services must
  * load the referenced row through the scoped client first.

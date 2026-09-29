@@ -81,6 +81,7 @@ All routes under `/api`. "Any" means any authenticated role of the same account.
 | `/me` | GET | any | User, role, account, capabilities |
 | `/invitations` | POST / GET | Owner/Manager | Create and list |
 | `/invitations/:id` | DELETE | Owner/Manager | Revoke |
+| `/invitations/preview` | POST | public (token) | Company, email and role for the accept screen. POST so the token stays out of URLs and logs |
 | `/invitations/accept` | POST | public (token) | Sets name and password, creates the User |
 | `/property-owners` | GET / POST | Owner/Manager | |
 | `/property-owners/:id` | GET / PATCH | Owner/Manager | Accountant reads later, via reports only |
@@ -137,7 +138,7 @@ Suggested order. Each step ends with green lint, typecheck and tests, and a comm
 | 1.1 ✅ | Foundations in the API: config module with validated env, Prisma module, `MailService`, `AuditService`, global validation pipe, error format, throttler | fast |
 | 1.2 ✅ | **Auth backend**: signup, login, refresh rotation with reuse detection, logout, reset, `/me`. Argon2, cookies, rate limits | strong |
 | 1.3 ✅ | **RBAC and tenant isolation**: capability map, guard, decorator, account-scoped Prisma helper. Permission-matrix test table and cross-tenant tests | strong |
-| 1.4 | Invitations API (create, list, revoke, accept) | fast |
+| 1.4 ✅ | Invitations API (create, list, revoke, accept) | fast |
 | 1.5 | Property and PropertyOwner API with reduced projection for Staff | fast |
 | 1.6 | Web: shell, i18n (FR / EN), `/api` proxy, login, signup, reset, accept-invitation screens | fast |
 | 1.7 | Web: add-property wizard, property list, role-aware navigation | fast |
