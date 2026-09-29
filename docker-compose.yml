@@ -8,6 +8,8 @@ services:
     image: redis:7
     ports: ["6379:6379"]
   minio:
+    # NOTE: MinIO's public images (Docker Hub and Quay) are no longer pullable; pin a mirror or build your own,
+    # or set STORAGE_DRIVER=memory for local work.
     image: quay.io/minio/minio
     command: server /data --console-address ":9001"
     environment: { MINIO_ROOT_USER: minio, MINIO_ROOT_PASSWORD: minio12345 }

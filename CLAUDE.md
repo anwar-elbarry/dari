@@ -47,7 +47,7 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - `read()` and `delete()` **require** a `StorageAudit` (actor, action, business record id); a read returns bytes only after its audit row is written. Serve bytes from an API route with `Cache-Control: no-store` and the right capability; never return a URL (no presigning anywhere; `storage/object-store.spec.ts` scans for it).
 - Object keys are random (`<accountId>/<kind>/<uuid>`), never derived from names or document numbers. Errors from the store and from decryption are fixed messages.
 - Deleting shreds the wrapped key first, then removes the object: an object without its wrapped key is unreadable even if a copy survives. Rotation: `rewrapOutdatedKeys()`.
-- Tests: `envelope.spec.ts`, `storage.int-spec.ts`, and `object-store.spec.ts` (runs the contract on real S3/MinIO when `TEST_S3_ENDPOINT` is set; CI starts MinIO).
+- Tests: `envelope.spec.ts`, `storage.int-spec.ts`, and `object-store.spec.ts` (runs the contract on real S3/MinIO when `TEST_S3_ENDPOINT` is set; CI starts an s3rver S3 server).
 
 ## Guest check-in (apps/api/src/checkin, Phase 3)
 - Data: `CheckInLink` (token hash only, expiry, revocable, `maxGuests`) → one `GuestCheckIn` per adult guest (PENDING draft → SUBMITTED → VERIFIED) → `FicheDePolice`. Images and PDFs are `StoredObject`s referenced by id. All keys between these tables are composite with `accountId`; the guest's property is tied to its booking's property in the database.

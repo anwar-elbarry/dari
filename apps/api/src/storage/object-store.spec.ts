@@ -5,7 +5,7 @@ import { MemoryObjectStore } from './memory-object-store';
 import { ObjectNotFoundError, ObjectStore } from './object-store';
 import { S3ObjectStore } from './s3-object-store';
 
-/** The same behaviour is required of every store. The S3 run needs a real endpoint (MinIO in CI). */
+/** The same behaviour is required of every store. The S3 run needs a real endpoint (s3rver in CI). */
 function contract(name: string, make: () => Promise<ObjectStore> | ObjectStore, describeFn: typeof describe = describe) {
   describeFn(`ObjectStore contract: ${name}`, () => {
     let store: ObjectStore;

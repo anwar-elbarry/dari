@@ -25,21 +25,24 @@ jobs:
     env:
       DATABASE_URL: postgresql://dari:dari@localhost:5432/dari_test
       TEST_REDIS_URL: redis://localhost:6379/15
-      TEST_S3_ENDPOINT: http://localhost:9000
+      TEST_S3_ENDPOINT: http://127.0.0.1:9000
+      TEST_S3_ACCESS_KEY: S3RVER
+      TEST_S3_SECRET_KEY: S3RVER
       REQUIRE_CHROMIUM: "1" # a missing browser fails the PDF tests instead of skipping them
     steps:
       - uses: actions/checkout@v4
-      # MinIO cannot be a `services:` container (it needs a command), so it is started here. The storage
-      # contract tests run against it whenever TEST_S3_ENDPOINT is set.
-      - name: Start MinIO
-        run: |
-          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=minio -e MINIO_ROOT_PASSWORD=minio12345 quay.io/minio/minio server /data
-          for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/live && break; sleep 1; done
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      # An S3-protocol server from npm (MinIO's public container images are no longer available). The storage contract
+      # tests run against it whenever TEST_S3_ENDPOINT is set.
+      - name: Start an S3 test server
+        run: |
+          mkdir -p /tmp/s3data
+          nohup npx s3rver -d /tmp/s3data -a 127.0.0.1 -p 9000 --silent --configure-bucket dari-test > /tmp/s3rver.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9000/ && break; sleep 1; done
       # The Fiche PDF tests drive a real Chromium and check that Arabic text renders (needs an Arabic-capable font).
       - name: Install Chromium and fonts for the PDF tests
         run: |
