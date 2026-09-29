@@ -175,6 +175,7 @@ Order by pilot feedback. Default: tax report history â†’ notifications centre â†
 ## Working rules for building with Claude
 
 - One feature per session, on its own branch; keep `CLAUDE.md` current.
+- When a phase is finished, create the detailed plan for the next one in `docs/phase-N.md` and link it here (rule recorded in `CLAUDE.md`).
 - Use the stronger model for architecture, tax, RBAC and security review; the faster one for CRUD, screens and tests.
 - Every PR needs tests; anything touching ID data, tokens or tax also gets a security review.
 - Ambiguity in a legal or fiscal rule is a question for counsel or the fiduciaire, never a guess in code.

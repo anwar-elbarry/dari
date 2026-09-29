@@ -27,3 +27,8 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 ## Conventions
 - TypeScript strict. Pure business logic (day counter, tax pipeline) lives in plain functions with unit tests next to them (`*.spec.ts`).
 - Small commits; one feature per branch/session.
+
+## Phase workflow
+- Roadmap: `README.md`. Detailed plan per phase: `docs/phase-N.md` (Phase 1 exists).
+- **When a phase is finished** (its exit gate/definition of done is met): mark it done in the README roadmap table, then create `docs/phase-<N+1>.md` for the next phase and link it from that phase's section in the README. Use `docs/phase-1.md` as the template: goal, scope in/out, decisions to lock, data model changes, API surface, screens, permission matrix rows added, work breakdown (one short session per step), required tests, security checklist, definition of done, risks, open decisions for the founder.
+- Base the new plan on the specs, the current code and the solo-plan adjustments in the README; carry over any leftovers from the finished phase.
