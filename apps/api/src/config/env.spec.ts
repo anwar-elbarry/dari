@@ -27,6 +27,15 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...base, NODE_ENV: 'production', MAIL_DRIVER: 'file' })).toThrow(/MAIL_DRIVER/);
   });
 
+  it('requires an API key with the brevo and resend drivers, and accepts them in production', () => {
+    for (const MAIL_DRIVER of ['brevo', 'resend']) {
+      expect(() => parseEnv({ ...base, MAIL_DRIVER })).toThrow(/MAIL_API_KEY/);
+      expect(parseEnv({ ...base, MAIL_DRIVER, MAIL_API_KEY: 'k'.repeat(20) }).MAIL_DRIVER).toBe(MAIL_DRIVER);
+    }
+    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379' };
+    expect(parseEnv({ ...prod, MAIL_DRIVER: 'brevo', MAIL_API_KEY: 'k'.repeat(20) }).MAIL_DRIVER).toBe('brevo');
+  });
+
   it('requires a long JWT secret', () => {
     expect(() => parseEnv({ ...base, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
   });

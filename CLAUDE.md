@@ -31,7 +31,8 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Errors: always `{ error: { code, message, details? }, requestId }`. Throw Nest `HttpException`s; pass `{ code, message }` for a specific code. Unexpected errors become a generic 500.
 - Validation: DTOs with class-validator; unknown fields are rejected. Values are never echoed back in errors.
 - `AuditService.record()` for sensitive actions; add new actions to the `AuditAction` union. Identifiers only, never secrets or guest data.
-- `MailService.send()`; the console driver is dev-only (refused in production by env validation).
+- `MailService.send()`; drivers `console`/`file` are dev-only (refused in production by env validation); `brevo` (EU) and `resend` need `MAIL_API_KEY`. Driver errors carry the HTTP status only, never the recipient or body.
+- **Logs carry ids only.** The app logger is `RedactingLogger` (`common/redacting-logger.ts`, patterns and key masks in `common/redact.ts`); it is a backstop, not permission to log data. Never log request bodies, guest objects, document numbers, names or emails. Unexpected errors are logged by type, code and stack frames, not message. `common/logging.spec.ts` submits fake PII and greps the output; extend it for every new route that takes personal data.
 - Rate limiting: global default from env; stricter per-route limits with `@Throttle()`. Counters and the login lockout live in Redis when `REDIS_URL` is set (required in production), in memory otherwise.
 - Jobs: BullMQ connection in `jobs/jobs.module.ts`; a feature module registers its queue with `BullModule.registerQueue({ name })` and adds its `@Processor` provider only when `config.REDIS_URL` is set (see `ical/ical.module.ts`). Payloads carry ids only. `SyncProcessor` fans out one job per feed every `ICAL_SYNC_INTERVAL_HOURS`; "sync now" runs inline.
 - Sync rules (`ical/sync.service.ts`): upsert by (feed, UID); manual classifications are never overwritten; a future event missing from the feed is cancelled; past stays are frozen; a failing feed keeps its bookings and stores a sanitised error.
@@ -51,12 +52,12 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Uploads: memory storage, 1 MB cap, one file. Anything written back to CSV goes through `csvCell()` (formula-injection safe).
 
 ## Auth, roles and tenancy (apps/api/src)
-- Sessions: access JWT in `dari_at` (path `/api`, 15 min) + rotating refresh token in `dari_rt` (path `/api/auth`). Both httpOnly, SameSite=Lax. Only token hashes are stored.
+- Sessions: access JWT (15 min) + rotating refresh token, both httpOnly, SameSite=Lax; only token hashes are stored. Names and paths come from `cookieScheme()` in `auth/cookies.ts`: `__Host-dari_at` / `__Host-dari_rt` (Path=/) when `COOKIE_SECURE`, else `dari_at` (`/api`) / `dari_rt` (`/api/auth`) for plain-HTTP development. Never hard-code the names.
 - Every state-changing request needs the header `X-Requested-With: dari` (CSRF). The web client adds it.
 - Guards run in order: rate limit → CSRF → session (`AuthGuard`, re-reads the user each request) → capabilities.
 - **Every route must be `@Public()` or declare `@Requires('capability')` / `@AnyRole()`.** Undeclared routes are refused, and `rbac/route-declarations.spec.ts` fails.
 - Capabilities per role live in `rbac/capabilities.ts`. To add a permission: add the capability, map it to roles, use `@Requires()`, add a row to `rbac/permission-matrix.int-spec.ts` (the test fails if a route has no row).
-- **Tenant data goes through `prisma.forAccount(user.accountId)`**. It adds `accountId` to every query and refuses models without a rule (`prisma/account-scope.ts`). Foreign keys to other tenant rows (e.g. `ownerId`) must be loaded through the scoped client before use. Resources of another account return 404.
+- **Tenant data goes through `prisma.forAccount(user.accountId)`**. It adds `accountId` to every query and refuses models without a rule (`prisma/account-scope.ts`). Foreign keys to other tenant rows (e.g. `ownerId`) must be loaded through the scoped client before use. Resources of another account return 404. Behind that, tenant tables use **composite foreign keys** `(xId, accountId) → (id, accountId)` (`@@unique([id, accountId])` on the target), so the database refuses a cross-account reference even if a service forgets the check. Do the same for every new tenant table (`prisma/tenant-fk.int-spec.ts`).
 - Tests: `npm test` (unit, no DB) and `npm run test:int` (needs `DATABASE_URL` to a disposable DB whose name contains `test`; it truncates all tables; set `TEST_REDIS_URL` to a disposable Redis db, flushed on every reset, to run the Redis-backed paths). Helpers in `src/test/test-app.ts` (`createTestApp`, `seedAccount`, `client`).
 
 ## Web (apps/web)

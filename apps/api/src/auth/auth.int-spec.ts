@@ -24,6 +24,29 @@ describe('auth (integration)', () => {
     await resetDatabase(t.prisma, t.redis);
   });
 
+  describe('secure deployments (__Host- cookies)', () => {
+    it('issues __Host- cookies and accepts them back; the short names are ignored', async () => {
+      const secure = await createTestApp({ env: { COOKIE_SECURE: 'true' } });
+      try {
+        const res = await request(secure.app.getHttpServer())
+          .post('/api/auth/signup')
+          .set('X-Requested-With', 'dari')
+          .send({ companyName: 'Riad Co', name: 'Sara', email: 'sara@example.test', password: PASSWORD })
+          .expect(201);
+        const set = res.headers['set-cookie'] as unknown as string[];
+        expect(set.join('\n')).toMatch(/__Host-dari_at=[^;]+;.*Path=\/;.*HttpOnly;.*Secure;.*SameSite=Lax/);
+        expect(set.join('\n')).toMatch(/__Host-dari_rt=[^;]+;.*Path=\/;.*HttpOnly;.*Secure;.*SameSite=Lax/);
+        expect(set.join('\n')).not.toMatch(/Domain=/i);
+
+        const at = /__Host-dari_at=([^;]+)/.exec(set.join('\n'))![1];
+        await request(secure.app.getHttpServer()).get('/api/me').set('Cookie', `__Host-dari_at=${at}`).expect(200);
+        await request(secure.app.getHttpServer()).get('/api/me').set('Cookie', `dari_at=${at}`).expect(401);
+      } finally {
+        await secure.app.close();
+      }
+    });
+  });
+
   describe('signup', () => {
     it('creates the account and first Owner/Manager, starts a session with safe cookies', async () => {
       const c = client(t.app);

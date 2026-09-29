@@ -1,5 +1,5 @@
 /* Shared harness for HTTP tests. Integration tests (*.int-spec.ts) need a real Postgres via DATABASE_URL. */
-import { INestApplication, ModuleMetadata } from '@nestjs/common';
+import { INestApplication, LoggerService, ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../app.module';
@@ -57,14 +57,14 @@ export function testConfig(overrides: Record<string, string> = {}): AppConfig {
   });
 }
 
-export async function createTestApp(opts: { env?: Record<string, string>; extra?: ModuleMetadata['imports'] } = {}): Promise<TestApp> {
+export async function createTestApp(opts: { env?: Record<string, string>; extra?: ModuleMetadata['imports']; logger?: LoggerService } = {}): Promise<TestApp> {
   const config = testConfig(opts.env);
   const mail = new CapturingMailDriver();
   const moduleRef = await Test.createTestingModule({ imports: [AppModule.register(config), ...(opts.extra ?? [])] })
     .overrideProvider(MAIL_DRIVER)
     .useValue(mail)
     .compile();
-  const app = moduleRef.createNestApplication({ logger: false });
+  const app = moduleRef.createNestApplication({ logger: opts.logger ?? false });
   configureApp(app, config);
   await app.init();
   return { app, prisma: app.get(PrismaService), redis: app.get<RedisClient>(REDIS), mail, config };

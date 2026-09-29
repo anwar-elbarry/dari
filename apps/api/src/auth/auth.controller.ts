@@ -7,7 +7,7 @@ import { AnyRole } from '../rbac/requires.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { AuthUser, clientMeta } from './auth.types';
-import { clearSessionCookies, REFRESH_COOKIE, setSessionCookies } from './cookies';
+import { clearSessionCookies, cookieScheme, setSessionCookies } from './cookies';
 import { CurrentUser, Public } from './decorators';
 import { ForgotPasswordDto, LoginDto, ResetPasswordDto, SignupDto } from './dto';
 
@@ -46,7 +46,7 @@ export class AuthController {
   @Post('auth/refresh')
   @HttpCode(200)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    setSessionCookies(res, this.config, await this.auth.refresh(req.cookies?.[REFRESH_COOKIE], clientMeta(req)));
+    setSessionCookies(res, this.config, await this.auth.refresh(req.cookies?.[cookieScheme(this.config).refresh.name], clientMeta(req)));
     return { ok: true };
   }
 
@@ -55,7 +55,7 @@ export class AuthController {
   @Post('auth/logout')
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    await this.auth.logout(req.cookies?.[REFRESH_COOKIE], clientMeta(req));
+    await this.auth.logout(req.cookies?.[cookieScheme(this.config).refresh.name], clientMeta(req));
     clearSessionCookies(res, this.config);
   }
 

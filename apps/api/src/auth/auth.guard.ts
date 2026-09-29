@@ -1,9 +1,10 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { APP_CONFIG, AppConfig } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AppRequest } from './auth.types';
-import { ACCESS_COOKIE } from './cookies';
+import { cookieScheme } from './cookies';
 import { IS_PUBLIC } from './decorators';
 
 export interface AccessPayload {
@@ -24,13 +25,14 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [context.getHandler(), context.getClass()])) return true;
 
     const req = context.switchToHttp().getRequest<AppRequest>();
-    const token: unknown = req.cookies?.[ACCESS_COOKIE];
+    const token: unknown = req.cookies?.[cookieScheme(this.config).access.name];
     if (typeof token !== 'string' || !token) throw unauthorized();
 
     let payload: AccessPayload;

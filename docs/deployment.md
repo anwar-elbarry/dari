@@ -24,7 +24,9 @@ The per-email login lockout does not depend on IP and stays effective either way
 
 ## Domain and cookies
 
-- Serve the app from a **dedicated host** (e.g. `app.<domain>`) and do not run other people's or untrusted apps on sibling subdomains. Session cookies are host-only but have no `__Host-` prefix yet, so a compromised sibling subdomain could plant its own session cookie in a user's browser (security review, Phase 1). Switching to `__Host-` cookies is planned once the domain is fixed.
+- Serve the app from a **dedicated host** (e.g. `app.<domain>`). With `COOKIE_SECURE` on (the production default) the session cookies are `__Host-dari_at` and `__Host-dari_rt`: Secure, host-only, `Path=/`, so a sibling subdomain cannot plant or overwrite them. The browser refuses them over plain HTTP, so production must be served over HTTPS end to end at the edge.
+- Trade-off: `Path=/` means the refresh cookie is sent to every API route, not only `/api/auth`. Only the auth routes read it, and refresh tokens rotate with reuse detection. Development (plain HTTP) keeps `dari_at` / `dari_rt` with the narrow paths.
+- Switching an existing deployment to `__Host-` logs everyone out once (the old cookies are ignored).
 - Password-reset and invitation links carry the token in the URL fragment (`#token=`), which browsers never send to servers, so it stays out of proxy and access logs.
 
 ## API environment (production)
@@ -39,7 +41,13 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 | `APP_URL` | Public HTTPS URL of the web app (used in emailed links) |
 | `TRUST_PROXY` | `1` (see above) |
 | `REDIS_URL` | Managed Redis, private network, `rediss://` or password |
-| `MAIL_DRIVER` | Production driver — **not built yet** (Resend or Brevo, open decision). The API will not start in production until it exists. |
+| `MAIL_DRIVER` | `brevo` (EU) or `resend`. `console` and `file` are refused in production. The provider choice is still open (hosting region and counsel) |
+| `MAIL_API_KEY` | Provider API key, from the secret store. Required with `brevo` / `resend`; never logged |
+| `MAIL_FROM` | A sender address verified with the provider (SPF and DKIM set up on the domain) |
+
+## Logs
+
+The API logs through `RedactingLogger` (emails, phone numbers, MRZ lines, document numbers and long tokens are replaced; values under keys such as `name`, `email`, `documentNumber` are masked) and never logs request bodies. In production an unexpected error is logged as its type, code and stack frames, without its message. Ship these logs only to a processor covered by the CNDP position; they are not a place for personal data even so.
 
 ## Redis
 

@@ -27,10 +27,10 @@ These are not code. Until they are done, the feature stays behind `GUEST_CHECKIN
 
 | Item | Why it lands here |
 |---|---|
-| Production mail driver (Resend or Brevo) and hosting region | Guest and alert emails; storage location |
-| `__Host-` session cookies once the domain is fixed | Security review follow-up; more sensitive data now |
-| Composite (ownerId, accountId) foreign key, and the same pattern for new tenant tables (`GuestCheckIn.accountId`) | Database-level guard behind the account scope |
-| Redact personal data from logs by construction (a logging test) | Guests' names and document numbers must never appear in logs |
+| Production mail driver (Resend or Brevo) and hosting region | Guest and alert emails; storage location. **Drivers built (3.0)**; the provider and the hosting region are still your decision |
+| `__Host-` session cookies once the domain is fixed | Security review follow-up; more sensitive data now. **Done (3.0)** for secure deployments; see `docs/deployment.md` |
+| Composite (ownerId, accountId) foreign key, and the same pattern for new tenant tables (`GuestCheckIn.accountId`) | Database-level guard behind the account scope. **Done (3.0)** for Property → owner and Booking / IcalFeed / ImportBatch → property; new tables in 3.2 must follow the pattern |
+| Redact personal data from logs by construction (a logging test) | Guests' names and document numbers must never appear in logs. **Layer and test done (3.0)**; step 3.9 extends the test to every new route |
 | Confirm the 90 / 110 / 120 night thresholds with counsel; compare the counter with real Airbnb / Booking.com exports | Before the pilot; the counter is what customers pay for |
 | Wire the 4 Phase 2 accepted limits into the pilot checklist (see `phase-2.md` outcome) | Nothing new to build; track them |
 
@@ -131,7 +131,7 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 
 | Step | Work | Model |
 |---|---|---|
-| 3.0 | Carry-overs: mail driver, `__Host-` cookies, composite FKs, log-redaction layer and test | fast |
+| 3.0 | Carry-overs: mail driver, `__Host-` cookies, composite FKs, log-redaction layer and test — **done** | fast |
 | 3.1 | **Storage service**: S3 client, envelope encryption, private access, streaming, `StoredObject`, audit hooks; MinIO in dev and CI | strong |
 | 3.2 | Data model, migration, capabilities, consent texts, feature flag, retention settings | fast |
 | 3.3 | **OCR worker**: MRZ parsing with check digits, image pre-checks, CIN approach after the card test, confidence scores; synthetic ICAO specimen fixtures only | strong |

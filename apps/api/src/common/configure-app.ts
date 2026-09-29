@@ -17,7 +17,7 @@ export function configureApp(app: INestApplication, config: AppConfig) {
   app.use(cookieParser());
   app.setGlobalPrefix('api');
   app.useGlobalPipes(createValidationPipe());
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(new HttpExceptionFilter(config.NODE_ENV === 'development'));
   app.enableShutdownHooks();
   return app;
 }

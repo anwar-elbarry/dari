@@ -29,8 +29,13 @@ const envSchema = z
     INVITATION_TTL_DAYS: z.coerce.number().int().positive().default(7),
     /** Secure cookies (HTTPS only). Defaults to true in production and false otherwise; cannot be false in production. */
     COOKIE_SECURE: z.enum(['true', 'false']).optional(),
-    /** console / file are development and test drivers: they expose single-use links. */
-    MAIL_DRIVER: z.enum(['console', 'file']).default('console'),
+    /**
+     * console / file are development and test drivers: they expose single-use links.
+     * brevo (EU) and resend (US) are the production drivers; the provider choice is still open (counsel).
+     */
+    MAIL_DRIVER: z.enum(['console', 'file', 'brevo', 'resend']).default('console'),
+    /** API key of the mail provider. Required for brevo and resend; never logged. */
+    MAIL_API_KEY: z.string().min(8).optional(),
     MAIL_FILE_DIR: z.string().default('.mail'),
     MAIL_FROM: z.string().min(3).default('Dari <no-reply@localhost>'),
     /** Tests turn this off so many requests from one IP do not trip the limits; refused off in production. */
@@ -44,6 +49,9 @@ const envSchema = z
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(100),
   })
   .superRefine((env, ctx) => {
+    if ((env.MAIL_DRIVER === 'brevo' || env.MAIL_DRIVER === 'resend') && !env.MAIL_API_KEY) {
+      ctx.addIssue({ code: 'custom', path: ['MAIL_API_KEY'], message: `required with the ${env.MAIL_DRIVER} mail driver` });
+    }
     // The console driver prints message bodies (reset and invitation links) — development only.
     if (env.NODE_ENV === 'production' && (env.MAIL_DRIVER === 'console' || env.MAIL_DRIVER === 'file')) {
       ctx.addIssue({

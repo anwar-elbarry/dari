@@ -240,6 +240,8 @@ model PropertyOwner {
   account    Account    @relation(fields: [accountId], references: [id])
   properties Property[]
 
+  // Target of the composite (id, accountId) foreign keys: a child row can only point at a row of its own account.
+  @@unique([id, accountId])
   @@index([accountId])
 }
 
@@ -258,7 +260,7 @@ model Property {
   createdAt      DateTime       @default(now())
 
   account        Account         @relation(fields: [accountId], references: [id])
-  owner          PropertyOwner   @relation(fields: [ownerId], references: [id])
+  owner          PropertyOwner   @relation(fields: [ownerId, accountId], references: [id, accountId])
   bookings       Booking[]
   icalFeeds      IcalFeed[]
   importBatches  ImportBatch[]
@@ -268,6 +270,7 @@ model Property {
   notifications  Notification[]
   addOns         AddOnService[]
 
+  @@unique([id, accountId])
   @@index([accountId])
 }
 
@@ -302,7 +305,7 @@ model Booking {
   updatedAt          DateTime              @updatedAt
 
   account     Account        @relation(fields: [accountId], references: [id])
-  property    Property       @relation(fields: [propertyId], references: [id])
+  property    Property       @relation(fields: [propertyId, accountId], references: [id, accountId])
   feed        IcalFeed?      @relation(fields: [feedId], references: [id], onDelete: SetNull)
   importBatch ImportBatch?   @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
   checkIns    GuestCheckIn[]
@@ -328,7 +331,7 @@ model IcalFeed {
   createdAt    DateTime      @default(now())
 
   account  Account   @relation(fields: [accountId], references: [id])
-  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property  @relation(fields: [propertyId, accountId], references: [id, accountId], onDelete: Cascade)
   bookings Booking[]
 
   @@unique([propertyId, platform])
@@ -347,7 +350,7 @@ model ImportBatch {
   createdAt     DateTime @default(now())
 
   account  Account   @relation(fields: [accountId], references: [id])
-  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property  @relation(fields: [propertyId, accountId], references: [id, accountId], onDelete: Cascade)
   bookings Booking[]
 
   @@index([accountId])

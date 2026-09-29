@@ -19,6 +19,13 @@ export const VALIDATION_FAILED = 'VALIDATION_FAILED';
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('HttpException');
 
+  /**
+   * @param includeMessage development only. An unexpected error's message can quote data (a Prisma
+   * error prints the values of a failed write), so in production only the error type, its code and the
+   * stack frames are logged.
+   */
+  constructor(private readonly includeMessage = false) {}
+
   catch(exception: unknown, host: ArgumentsHost) {
     const res = host.switchToHttp().getResponse<Response>();
     const requestId: string | undefined = res.locals?.requestId;
@@ -44,11 +51,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status = clientStatus;
       body = { code: HttpStatus[status] ?? 'BAD_REQUEST', message: fixedMessage(status) };
     } else {
-      this.logger.error(`[${requestId ?? '-'}] ${exception instanceof Error ? exception.stack : String(exception)}`);
+      this.logger.error(`[${requestId ?? '-'}] ${describeUnexpected(exception, this.includeMessage)}`);
     }
 
     res.status(status).json({ error: body, requestId } satisfies ErrorBody);
   }
+}
+
+/** Error type, code and stack frames; the message only when asked (see the constructor). */
+export function describeUnexpected(e: unknown, includeMessage: boolean): string {
+  if (!(e instanceof Error)) return 'non-error value thrown';
+  const code = (e as { code?: unknown }).code;
+  const head = `${e.name}${typeof code === 'string' ? ` (${code})` : ''}`;
+  const frames = (e.stack ?? '').split('\n').filter((l) => /^\s+at /.test(l));
+  return [includeMessage ? `${head}: ${e.message}` : head, ...frames].join('\n');
 }
 
 const FIXED_MESSAGES: Partial<Record<number, string>> = {
