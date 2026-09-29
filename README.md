@@ -23,7 +23,30 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | Not started |
 | 8 | Fast-follow | Driven by pilot feedback | Not started |
 
-Estimate from the Tech Spec: ~12–14 weeks for 2–3 engineers. Solo with Claude, plan for longer and cut scope before cutting quality on anything touching ID data or tax.
+The Tech Spec estimates ~12–14 weeks for 2–3 engineers. **This project is built solo with Claude**, so the plan below applies the solo adjustments in the next section. Realistic solo estimate: about 5–7 months full-time, longer part-time. Cut scope before cutting quality on anything touching ID data or tax.
+
+---
+
+## Solo plan: what changes
+
+**Ship a thin compliance core first, sell it, then widen.** The 120-day counter and the check-in / Fiche de Police flow are the reason customers pay. Tax and the rest come after the first paying pilots.
+
+| Change vs the full plan | Why |
+|---|---|
+| Re-order: 0 → 1 → 2 → 3 → **pilot** → 4 → 5 → 6 | Get 3–5 real conciergeries on the counter and check-in before building tax and sharing |
+| Languages: **FR + EN first**, Arabic/RTL added after the pilot | RTL doubles UI and PDF testing; Marrakech conciergeries work in French |
+| Phase 4 Secure Share: ship the expiring link only; skip view limits and watermark until asked | Smallest version that removes passports from WhatsApp groups |
+| Phase 6 WhatsApp API: start with a prefilled `wa.me` link the manager sends | Avoids waiting on Meta verification; add the API once customers ask |
+| Marital-certificate flow: **not built** until counsel has reviewed it | Highest legal risk, lowest revenue value |
+| Tax engine: start with the **report and exports only** on data the fiduciaire has validated | Blocked on an outside party anyway, so schedule it after the pilot |
+| Billing, notifications centre, Upsell, vendor ledger, KPIs | Stay fast-follow; manual invoicing for the first customers |
+| Use managed services (hosted Postgres, Redis, object storage) rather than running your own | You are also the on-call engineer |
+
+**Your time is split three ways:** building with Claude, the legal and fiduciaire track, and selling. Block time for the second and third every week; the legal items have waiting periods that code cannot shorten.
+
+**Credits ($250):** treat them as covering roughly Phases 1–3 with careful use, not the whole product. Plan the rest on a subscription plan or further credits. Keep sessions short and single-feature, and use the stronger model only for architecture, tax, RBAC and security review.
+
+**Solo risk controls:** automated tests on the permission matrix and retention job (you will not catch regressions by eye), daily database backups with one tested restore, and a written runbook for an ID-data incident before the first pilot.
 
 ---
 
@@ -126,6 +149,8 @@ Not code, but it decides when real customer data may be processed. Start in week
 **Exit:** a manager can run a full property onboarding without help.
 
 ## Phase 7 — Hardening and pilot
+
+*Solo: run a small pilot (3–5 customers, no real ID data until the CNDP filing is accepted) after Phase 3, then do the full hardening below before widening the launch.*
 
 - `/security-review` and an independent pass on storage, tokens, RBAC and logging
 - Pen-test checklist on public token routes; rate limiting; backup and restore drill
