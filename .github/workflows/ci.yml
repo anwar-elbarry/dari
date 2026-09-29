@@ -108,6 +108,13 @@ jobs:
           npm run build --workspace apps/api
           npm run build --workspace apps/web
       - run: npx --workspace apps/web playwright install --with-deps chromium
+      # The guest journey uses the real document worker (Tesseract) and a real Chromium for the Fiche PDF.
+      - name: Install Tesseract and fonts
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr fonts-noto-core
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r services/ocr/requirements.txt
       - name: End-to-end tests (phone viewport)
         run: npm run test:e2e --workspace apps/web
       - uses: actions/upload-artifact@v4

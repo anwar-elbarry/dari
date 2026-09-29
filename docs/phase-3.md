@@ -153,7 +153,7 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 | 3.5 | Fiche de Police PDF generator (template version, checksum, stored encrypted) — **done** (layout is a draft until the official form is obtained; generated in the background after submit; Arabic needs a system font, see `deployment.md`) | fast |
 | 3.6 | Retention job (Redis queue): purge images and artefacts after the window, keep structured records, audit — **done** (see below) | strong |
 | 3.7 | Web: arrivals, link dialog, guest list, Fiche and ID viewers — **done** (`/properties/[id]/arrivals`; PDFs open in a new tab or download because the site's CSP has no `frame-src`) | fast |
-| 3.8 | Web: guest form (mobile-first, camera guidance, review screen, consent) | fast |
+| 3.8 | Web: guest form (mobile-first, camera guidance, review screen, consent) — **done** (`/checkin#token=…`; the phone-viewport e2e runs the whole journey with a synthetic passport, the real worker and a real Chromium) | fast |
 | 3.9 | Hardening: abuse tests, log-redaction test, security review, E2E on a phone with a synthetic passport, docs, Phase 4 plan | strong |
 
 Rough effort solo: 4–6 weeks full-time. Steps 3.1, 3.3, 3.4 and 3.6 carry the risk.

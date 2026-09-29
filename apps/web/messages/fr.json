@@ -417,5 +417,118 @@
       "verified": "Marqué comme vérifié.",
       "loadFailed": "Le voyageur n'a pas pu être chargé."
     }
+  },
+  "guest": {
+    "title": "Enregistrement en ligne",
+    "loading": "Chargement…",
+    "retry": "Réessayer",
+    "unavailable": {
+      "title": "Ce lien n'est pas disponible",
+      "body": "Il a peut-être expiré, été remplacé par un lien plus récent, ou déjà été utilisé par tous les voyageurs. Demandez un nouveau lien à votre hôte."
+    },
+    "temporary": {
+      "title": "L'enregistrement n'est pas disponible pour le moment",
+      "body": "Réessayez plus tard, ou contactez votre hôte."
+    },
+    "intro": {
+      "title": "Enregistrez-vous avant votre arrivée",
+      "stay": "Votre séjour à {property}",
+      "dates": "{checkIn} → {checkOut}",
+      "steps": [
+        "Prenez en photo votre passeport ou votre carte d'identité.",
+        "Vérifiez les informations lues et complétez-en quelques autres.",
+        "Lisez et acceptez le consentement, puis envoyez."
+      ],
+      "time": "Cela prend environ deux minutes.",
+      "guestsLeft": "{remaining, plural, one {# voyageur reste à enregistrer avec ce lien} other {# voyageurs restent à enregistrer avec ce lien}}",
+      "privacy": "Votre photo transite par une connexion sécurisée et est conservée chiffrée. Seul votre hôte peut la voir, et elle est supprimée automatiquement quelque temps après votre séjour.",
+      "start": "Commencer"
+    },
+    "photo": {
+      "title": "Photographiez votre pièce",
+      "tips": [
+        "Utilisez votre passeport (la page avec votre photo) ou votre carte nationale d'identité.",
+        "Posez-la à plat, bien éclairée, sans reflet ni ombre.",
+        "Passeport : incluez les deux lignes de lettres et de signes < en bas de la page.",
+        "Gardez toute la pièce dans l'image, avec un texte net."
+      ],
+      "take": "Prendre une photo",
+      "choose": "Choisir une photo",
+      "preparing": "Préparation de la photo…",
+      "reading": "Lecture de votre pièce…",
+      "left": "{count, plural, one {# photo restante} other {# photos restantes}}",
+      "noneLeft": "Vous avez utilisé toutes vos photos. Continuez avec les informations ci-dessous."
+    },
+    "read": {
+      "ok": "Nous avons lu votre pièce. Vérifiez chaque champ ci-dessous.",
+      "partial": "Nous avons lu une partie de votre pièce. Les champs marqués « À vérifier » demandent une attention particulière.",
+      "none": "Nous n'avons pas pu lire votre pièce automatiquement. Renseignez vos informations ci-dessous.",
+      "blurry": "La photo semble floue. Une photo plus nette peut aider.",
+      "lowContrast": "La photo est trop sombre ou trop pâle. Une photo mieux éclairée peut aider.",
+      "retake": "Prendre une autre photo"
+    },
+    "form": {
+      "title": "Vérifiez vos informations",
+      "intro": "Corrigez ce qui est faux. Tous les champs sont modifiables.",
+      "documentSection": "Votre pièce",
+      "staySection": "Votre voyage",
+      "check": "À vérifier avec attention.",
+      "choose": "Choisir…",
+      "country": "Choisissez un pays",
+      "docType": "Type de pièce",
+      "docTypes": {
+        "PASSPORT": "Passeport",
+        "CIN": "Carte nationale d'identité"
+      },
+      "fullName": "Nom et prénoms",
+      "fullNameHint": "Tels qu'écrits sur la pièce.",
+      "nationality": "Nationalité",
+      "docNumber": "Numéro de la pièce",
+      "dob": "Date de naissance",
+      "docExpiryDate": "Date d'expiration de la pièce",
+      "moroccan": "Avez-vous la nationalité marocaine ?",
+      "yes": "Oui",
+      "no": "Non",
+      "entryStampNumber": "Numéro du cachet d'entrée",
+      "entryStampHint": "Le numéro du cachet dans votre passeport, ou du document d'entrée.",
+      "cityOfOrigin": "Ville de provenance",
+      "nextDestination": "Prochaine destination",
+      "profession": "Profession",
+      "optional": "facultatif",
+      "required": "Obligatoire.",
+      "invalid": "Vérifiez cette valeur.",
+      "consentTitle": "Consentement",
+      "consentCheck": "J'ai lu le texte ci-dessus et j'accepte.",
+      "submit": "Envoyer",
+      "sending": "Envoi…",
+      "fixErrors": "Certains champs demandent votre attention.",
+      "checkTag": "À vérifier"
+    },
+    "done": {
+      "title": "Merci",
+      "body": "Votre hôte a bien reçu vos informations. Vous n'avez rien d'autre à faire.",
+      "left": "{remaining, plural, one {# voyageur reste à enregistrer avec ce lien.} other {# voyageurs restent à enregistrer avec ce lien.}}",
+      "another": "Enregistrer un autre voyageur",
+      "close": "Vous pouvez fermer cette page."
+    },
+    "errors": {
+      "generic": "Un problème est survenu. Réessayez.",
+      "LINK_UNAVAILABLE": "Ce lien n'est plus disponible.",
+      "IMAGE_INVALID": "Ce fichier n'est pas une photo utilisable. Prenez une nouvelle photo de la pièce.",
+      "IMAGE_TOO_SMALL": "La photo est trop petite pour être lue. Rapprochez-vous et reprenez-la.",
+      "IMAGE_TOO_LARGE": "La photo est trop lourde. Reprenez-la.",
+      "PAYLOAD_TOO_LARGE": "La photo est trop lourde. Reprenez-la.",
+      "IMAGE_REQUIRED": "Ajoutez une photo de votre pièce.",
+      "TOO_MANY_IMAGES": "Vous avez envoyé le nombre maximal de photos.",
+      "TOO_MANY_UPLOADS": "Trop de photos en peu de temps. Attendez quelques minutes et réessayez.",
+      "TOO_MANY_DRAFTS": "Trop de tentatives avec ce lien. Demandez un nouveau lien à votre hôte.",
+      "TOO_MANY_REQUESTS": "Trop de requêtes. Attendez une minute et réessayez.",
+      "TOO_MANY_ATTEMPTS": "Trop de tentatives. Attendez quelques minutes et réessayez.",
+      "DRAFT_NOT_FOUND": "Votre formulaire est introuvable. Reprenez la photo.",
+      "DOCUMENT_REQUIRED": "Envoyez d'abord une photo de votre pièce.",
+      "CONSENT_INVALID": "Le texte de consentement a changé. Relisez-le et confirmez.",
+      "ALREADY_SUBMITTED": "Ce formulaire a déjà été envoyé.",
+      "VALIDATION_FAILED": "Certains champs demandent votre attention."
+    }
   }
 }

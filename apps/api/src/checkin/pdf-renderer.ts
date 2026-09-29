@@ -33,7 +33,9 @@ export class PdfRenderer implements OnModuleDestroy {
         .launch({
           headless: true,
           ...(this.config.PDF_CHROMIUM_PATH ? { executablePath: this.config.PDF_CHROMIUM_PATH } : {}),
-          args: ['--disable-gpu', '--disable-dev-shm-usage', ...(this.config.PDF_NO_SANDBOX ? ['--no-sandbox'] : [])],
+          // Playwright turns Chromium's sandbox OFF unless asked: keep it on unless the deployment cannot provide one.
+          chromiumSandbox: !this.config.PDF_NO_SANDBOX,
+          args: ['--disable-gpu', '--disable-dev-shm-usage'],
         })
         .then((b) => {
           b.on('disconnected', () => {

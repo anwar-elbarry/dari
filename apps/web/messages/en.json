@@ -417,5 +417,118 @@
       "verified": "Marked as verified.",
       "loadFailed": "The guest could not be loaded."
     }
+  },
+  "guest": {
+    "title": "Online check-in",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "unavailable": {
+      "title": "This link is not available",
+      "body": "It may have expired, been replaced by a newer link, or already been used by everyone. Ask your host for a new link."
+    },
+    "temporary": {
+      "title": "Check-in is not available right now",
+      "body": "Please try again later, or contact your host."
+    },
+    "intro": {
+      "title": "Check in before you arrive",
+      "stay": "Your stay at {property}",
+      "dates": "{checkIn} → {checkOut}",
+      "steps": [
+        "Take a photo of your passport or ID card.",
+        "Check the details we read and complete a few more.",
+        "Read and accept the consent, then send."
+      ],
+      "time": "It takes about two minutes.",
+      "guestsLeft": "{remaining, plural, one {# guest still to check in with this link} other {# guests still to check in with this link}}",
+      "privacy": "Your photo travels over a secure connection and is stored encrypted. Only your host can see it, and it is deleted automatically some time after your stay.",
+      "start": "Start"
+    },
+    "photo": {
+      "title": "Photograph your document",
+      "tips": [
+        "Use your passport (the page with your photo) or your national ID card.",
+        "Lay it flat, in good light, without glare or shadows.",
+        "Passport: include the two lines of letters and < signs at the bottom of the page.",
+        "Keep the whole document in the picture and the text sharp."
+      ],
+      "take": "Take a photo",
+      "choose": "Choose a photo",
+      "preparing": "Preparing the photo…",
+      "reading": "Reading your document…",
+      "left": "{count, plural, one {# photo left} other {# photos left}}",
+      "noneLeft": "You have used all your photos. Continue with the details below."
+    },
+    "read": {
+      "ok": "We read your document. Please check every field below.",
+      "partial": "We read part of your document. Fields marked “Check” need extra care.",
+      "none": "We could not read your document automatically. Please fill in your details below.",
+      "blurry": "The photo looks blurry. A sharper photo may help.",
+      "lowContrast": "The photo is too dark or too faint. A better-lit photo may help.",
+      "retake": "Take another photo"
+    },
+    "form": {
+      "title": "Check your details",
+      "intro": "Correct anything that is wrong. Every field can be edited.",
+      "documentSection": "Your document",
+      "staySection": "Your trip",
+      "check": "Check this field carefully.",
+      "choose": "Choose…",
+      "country": "Choose a country",
+      "docType": "Document type",
+      "docTypes": {
+        "PASSPORT": "Passport",
+        "CIN": "National ID card"
+      },
+      "fullName": "Full name",
+      "fullNameHint": "As written on the document.",
+      "nationality": "Nationality",
+      "docNumber": "Document number",
+      "dob": "Date of birth",
+      "docExpiryDate": "Document expiry date",
+      "moroccan": "Do you hold Moroccan nationality?",
+      "yes": "Yes",
+      "no": "No",
+      "entryStampNumber": "Entry stamp number",
+      "entryStampHint": "The number of the stamp in your passport, or the entry document.",
+      "cityOfOrigin": "City you are coming from",
+      "nextDestination": "Your next destination",
+      "profession": "Profession",
+      "optional": "optional",
+      "required": "Required.",
+      "invalid": "Check this value.",
+      "consentTitle": "Consent",
+      "consentCheck": "I have read the text above and I agree.",
+      "submit": "Send",
+      "sending": "Sending…",
+      "fixErrors": "Some fields need your attention.",
+      "checkTag": "Check"
+    },
+    "done": {
+      "title": "Thank you",
+      "body": "Your host has received your details. You do not need to do anything else.",
+      "left": "{remaining, plural, one {# guest still to check in with this link.} other {# guests still to check in with this link.}}",
+      "another": "Check in another guest",
+      "close": "You can close this page."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "LINK_UNAVAILABLE": "This link is no longer available.",
+      "IMAGE_INVALID": "This file is not a usable photo. Take a new photo of the document.",
+      "IMAGE_TOO_SMALL": "The photo is too small to read. Move closer and take it again.",
+      "IMAGE_TOO_LARGE": "The photo is too large. Take it again.",
+      "PAYLOAD_TOO_LARGE": "The photo is too large. Take it again.",
+      "IMAGE_REQUIRED": "Add a photo of your document.",
+      "TOO_MANY_IMAGES": "You have sent the maximum number of photos.",
+      "TOO_MANY_UPLOADS": "Too many photos in a short time. Wait a few minutes and try again.",
+      "TOO_MANY_DRAFTS": "Too many attempts with this link. Ask your host for a new link.",
+      "TOO_MANY_REQUESTS": "Too many requests. Wait a minute and try again.",
+      "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes and try again.",
+      "DRAFT_NOT_FOUND": "Your form could not be found. Take the photo again.",
+      "DOCUMENT_REQUIRED": "Send a photo of your document first.",
+      "CONSENT_INVALID": "The consent text has changed. Read it again and confirm.",
+      "ALREADY_SUBMITTED": "This form was already sent.",
+      "VALIDATION_FAILED": "Some fields need your attention."
+    }
   }
 }
