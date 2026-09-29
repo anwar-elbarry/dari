@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Require } from '../../../components/require';
+import Link from 'next/link';
 import { Alert, Card, LinkButton, StatusPill } from '../../../components/ui';
 import { api } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
@@ -47,7 +48,11 @@ function Properties() {
           <li key={p.id}>
             <Card className="h-full space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <h2 className="font-display text-lg font-semibold tracking-[-0.02em]">{p.name}</h2>
+                <h2 className="font-display text-lg font-semibold tracking-[-0.02em]">
+                  <Link href={`/properties/${p.id}`} className="hover:underline">
+                    {p.name}
+                  </Link>
+                </h2>
                 <StatusPill tone={LICENSE_TONE[p.licenseStatus]}>{t(`licenseStatus.${p.licenseStatus}`)}</StatusPill>
               </div>
               <p className="text-sm text-slate">{t(`licenseType.${p.licenseType}`)}</p>

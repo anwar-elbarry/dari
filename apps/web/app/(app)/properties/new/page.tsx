@@ -109,7 +109,7 @@ function Wizard() {
         setOwners((prev) => [...prev, owner]);
         setS((prev) => ({ ...prev, ownerMode: 'existing', ownerId: owner.id }));
       }
-      return api('POST', '/properties', {
+      return api<{ id: string }>('POST', '/properties', {
         name: s.name,
         address: s.address,
         commune: s.commune,
@@ -120,7 +120,8 @@ function Wizard() {
         ownerId,
       });
     });
-    if (created) router.push('/properties');
+    // Land on the property so the next step (calendar link) is right there.
+    if (created) router.push(`/properties/${created.id}`);
   }
 
   const steps = [t('steps.place'), t('steps.status'), t('steps.owner')];

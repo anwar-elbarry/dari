@@ -32,7 +32,7 @@ export function LinkButton({ variant = 'primary', className, ...props }: React.C
 const control =
   'block min-h-11 w-full rounded-input border border-line-strong bg-canvas px-3 text-base text-ink outline-none transition-shadow placeholder:text-ash focus:border-focus focus:shadow-[var(--shadow-focus)] aria-[invalid=true]:border-danger disabled:cursor-not-allowed disabled:bg-mist disabled:text-slate';
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement> & { ref?: React.Ref<HTMLInputElement> }) {
   return <input {...props} className={cx(control, className)} />;
 }
 

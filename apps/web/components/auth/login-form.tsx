@@ -16,7 +16,7 @@ export function LoginForm({ next }: { next?: string }) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const ok = await run(() => api('POST', '/auth/login', { email: form.get('email'), password: form.get('password') }));
-    if (ok) router.replace(safeNext(next, '/properties'));
+    if (ok) router.replace(safeNext(next, '/dashboard'));
   }
 
   return (

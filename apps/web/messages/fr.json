@@ -80,7 +80,8 @@
     "properties": "Biens",
     "team": "Équipe",
     "reports": "Rapports",
-    "menu": "Menu"
+    "menu": "Menu",
+    "dashboard": "Tableau de bord"
   },
   "properties": {
     "title": "Biens",
@@ -168,5 +169,139 @@
   "reports": {
     "title": "Rapports",
     "comingSoon": "Les rapports mensuels destinés au comptable arrivent dans une prochaine version."
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "year": "Année {year}",
+    "nightsCounted": "Nuits comptées",
+    "nightsUnit": "nuits",
+    "atRisk": "Biens à surveiller",
+    "toReview": "Événements à confirmer",
+    "properties": "Biens",
+    "ofLimit": "Limite de vos règles : {cap} nuits.",
+    "rulesNotValidated": "Les seuils viennent de vos règles et n'ont pas encore été confirmés par un professionnel.",
+    "alerts": "Alertes ouvertes",
+    "noAlerts": "Aucune alerte ouverte.",
+    "resolve": "Marquer comme traitée",
+    "resolved": "Alerte traitée.",
+    "notApplicable": "Bien autorisé : pas de compteur.",
+    "feedProblems": "{count, plural, one {# calendrier en erreur} other {# calendriers en erreur}}",
+    "reviewCount": "{count, plural, one {# événement à confirmer} other {# événements à confirmer}}",
+    "breach": "Limite atteinte le {date} avec les séjours connus.",
+    "empty": "Ajoutez un bien pour voir son compteur.",
+    "levels": {
+      "green": "Sous le seuil",
+      "amber": "Seuil préventif",
+      "red": "Seuil critique"
+    },
+    "severity": {
+      "AMBER": "Préventif",
+      "RED": "Critique",
+      "INFO": "Info"
+    },
+    "open": "Ouvrir"
+  },
+  "property": {
+    "back": "Biens",
+    "counter": "Compteur de nuits",
+    "stays": "Séjours",
+    "noStays": "Aucun séjour pour cette période.",
+    "nights": "{count, plural, one {# nuit} other {# nuits}}",
+    "counted": "Comptées",
+    "blocks": "Blocages propriétaire",
+    "uncertain": "À confirmer",
+    "review": "Événements à confirmer",
+    "reviewHelp": "Ces événements ne comptent pas tant que vous n'avez pas décidé s'il s'agit d'un séjour ou d'un blocage.",
+    "isBooking": "C'est un séjour",
+    "isBlock": "C'est un blocage",
+    "classified": "Décision enregistrée.",
+    "classification": {
+      "BOOKING": "Séjour",
+      "OWNER_BLOCK": "Blocage",
+      "UNCERTAIN": "À confirmer"
+    },
+    "status": {
+      "CONFIRMED": "Confirmé",
+      "CANCELLED": "Annulé"
+    },
+    "source": {
+      "AIRBNB": "Airbnb",
+      "BOOKING": "Booking.com",
+      "DIRECT": "Direct",
+      "OTHER": "Autre"
+    },
+    "calendars": "Calendriers",
+    "importTitle": "Importer des séjours",
+    "year": "Année"
+  },
+  "feeds": {
+    "intro": "Collez le lien iCal de chaque plateforme. Le lien est confidentiel : quiconque le possède peut lire le calendrier.",
+    "platform": "Plateforme",
+    "url": "Lien iCal",
+    "urlHelp": "Airbnb : Calendrier › Disponibilité › Exporter. Booking.com : Tarifs et disponibilités › Synchroniser les calendriers.",
+    "add": "Ajouter le calendrier",
+    "added": "Calendrier ajouté.",
+    "syncNow": "Synchroniser maintenant",
+    "synced": "{created} créés, {updated} mis à jour, {cancelled} annulés.",
+    "syncFailed": "Synchronisation impossible : {error}",
+    "remove": "Supprimer",
+    "removed": "Calendrier supprimé. Les séjours déjà enregistrés sont conservés.",
+    "lastSync": "Dernière synchronisation : {date}",
+    "never": "Pas encore synchronisé",
+    "events": "{count, plural, one {# événement} other {# événements}}",
+    "status": {
+      "OK": "À jour",
+      "ERROR": "Erreur",
+      "NEVER": "En attente"
+    },
+    "none": "Aucun calendrier connecté.",
+    "errors": {
+      "FEED_EXISTS": "Cette plateforme a déjà un calendrier pour ce bien."
+    }
+  },
+  "import": {
+    "title": "Importer l'historique",
+    "intro": "Importez les séjours de l'année déjà passés pour que le compteur soit exact dès le premier jour. Les colonnes non reconnues (noms, e-mails…) sont ignorées.",
+    "template": "Télécharger le modèle CSV",
+    "file": "Fichier CSV",
+    "fileHelp": "1 Mo maximum. Séparateur virgule, point-virgule ou tabulation.",
+    "preview": "Vérifier le fichier",
+    "mapping": "Colonnes",
+    "mappingHelp": "Associez chaque colonne de votre fichier à un champ. Arrivée et départ sont obligatoires.",
+    "ignore": "Ignorer",
+    "summary": "{valid, plural, one {# ligne valide} other {# lignes valides}} sur {total}. {existing} déjà importées.",
+    "errorsTitle": "Lignes à corriger",
+    "line": "Ligne {line}",
+    "commit": "Importer {count, plural, one {# séjour} other {# séjours}}",
+    "done": "{imported, plural, one {# séjour importé} other {# séjours importés}}, {existing} déjà présents, {errors} lignes ignorées.",
+    "previewTitle": "Aperçu",
+    "fields": {
+      "check_in": "Arrivée",
+      "check_out": "Départ",
+      "platform": "Plateforme",
+      "confirmation_code": "Référence",
+      "party_size": "Voyageurs",
+      "nightly_revenue": "Revenu des nuits",
+      "cleaning_fee": "Frais de ménage",
+      "addon_revenue": "Services additionnels",
+      "discounts": "Remises",
+      "refunds": "Remboursements",
+      "platform_commission": "Commission plateforme",
+      "taxe_sejour_amount": "Taxe de séjour"
+    },
+    "codes": {
+      "required": "Valeur manquante",
+      "invalid_date": "Date invalide",
+      "checkout_not_after_checkin": "Le départ doit être après l'arrivée",
+      "too_long": "Séjour de plus de 365 nuits",
+      "invalid_amount": "Montant invalide",
+      "invalid_platform": "Plateforme inconnue",
+      "invalid_party_size": "Nombre de voyageurs invalide",
+      "duplicate_in_file": "Doublon dans le fichier"
+    },
+    "errors": {
+      "MAPPING_INCOMPLETE": "Associez d'abord les colonnes arrivée et départ.",
+      "PAYLOAD_TOO_LARGE": "Le fichier dépasse 1 Mo."
+    }
   }
 }

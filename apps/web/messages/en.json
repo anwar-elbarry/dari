@@ -80,7 +80,8 @@
     "properties": "Properties",
     "team": "Team",
     "reports": "Reports",
-    "menu": "Menu"
+    "menu": "Menu",
+    "dashboard": "Dashboard"
   },
   "properties": {
     "title": "Properties",
@@ -168,5 +169,139 @@
   "reports": {
     "title": "Reports",
     "comingSoon": "Monthly reports for your accountant arrive in a coming release."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "year": "Year {year}",
+    "nightsCounted": "Nights counted",
+    "nightsUnit": "nights",
+    "atRisk": "Properties to watch",
+    "toReview": "Events to review",
+    "properties": "Properties",
+    "ofLimit": "Limit in your rules: {cap} nights.",
+    "rulesNotValidated": "Thresholds come from your rules and have not yet been confirmed by a professional.",
+    "alerts": "Open alerts",
+    "noAlerts": "No open alerts.",
+    "resolve": "Mark as handled",
+    "resolved": "Alert marked as handled.",
+    "notApplicable": "Licensed property: no counter.",
+    "feedProblems": "{count, plural, one {# calendar with an error} other {# calendars with an error}}",
+    "reviewCount": "{count, plural, one {# event to review} other {# events to review}}",
+    "breach": "Limit reached on {date} with the stays known today.",
+    "empty": "Add a property to see its counter.",
+    "levels": {
+      "green": "Below the threshold",
+      "amber": "Early warning",
+      "red": "Critical threshold"
+    },
+    "severity": {
+      "AMBER": "Early warning",
+      "RED": "Critical",
+      "INFO": "Info"
+    },
+    "open": "Open"
+  },
+  "property": {
+    "back": "Properties",
+    "counter": "Night counter",
+    "stays": "Stays",
+    "noStays": "No stays for this period.",
+    "nights": "{count, plural, one {# night} other {# nights}}",
+    "counted": "Counted",
+    "blocks": "Owner blocks",
+    "uncertain": "To review",
+    "review": "Events to review",
+    "reviewHelp": "These events do not count until you decide whether they are a stay or an owner block.",
+    "isBooking": "It is a stay",
+    "isBlock": "It is an owner block",
+    "classified": "Decision saved.",
+    "classification": {
+      "BOOKING": "Stay",
+      "OWNER_BLOCK": "Owner block",
+      "UNCERTAIN": "To review"
+    },
+    "status": {
+      "CONFIRMED": "Confirmed",
+      "CANCELLED": "Cancelled"
+    },
+    "source": {
+      "AIRBNB": "Airbnb",
+      "BOOKING": "Booking.com",
+      "DIRECT": "Direct",
+      "OTHER": "Other"
+    },
+    "calendars": "Calendars",
+    "importTitle": "Import stays",
+    "year": "Year"
+  },
+  "feeds": {
+    "intro": "Paste the iCal link of each platform. The link is confidential: anyone who has it can read the calendar.",
+    "platform": "Platform",
+    "url": "iCal link",
+    "urlHelp": "Airbnb: Calendar › Availability › Export. Booking.com: Rates & availability › Sync calendars.",
+    "add": "Add calendar",
+    "added": "Calendar added.",
+    "syncNow": "Sync now",
+    "synced": "{created} created, {updated} updated, {cancelled} cancelled.",
+    "syncFailed": "Sync failed: {error}",
+    "remove": "Remove",
+    "removed": "Calendar removed. Stays already recorded are kept.",
+    "lastSync": "Last sync: {date}",
+    "never": "Not synced yet",
+    "events": "{count, plural, one {# event} other {# events}}",
+    "status": {
+      "OK": "Up to date",
+      "ERROR": "Error",
+      "NEVER": "Waiting"
+    },
+    "none": "No calendar connected.",
+    "errors": {
+      "FEED_EXISTS": "This property already has a calendar for that platform."
+    }
+  },
+  "import": {
+    "title": "Import history",
+    "intro": "Import this year's past stays so the counter is exact from day one. Columns that are not mapped (names, emails…) are ignored.",
+    "template": "Download the CSV template",
+    "file": "CSV file",
+    "fileHelp": "1 MB maximum. Comma, semicolon or tab separated.",
+    "preview": "Check the file",
+    "mapping": "Columns",
+    "mappingHelp": "Match each column of your file to a field. Check-in and check-out are required.",
+    "ignore": "Ignore",
+    "summary": "{valid, plural, one {# valid row} other {# valid rows}} out of {total}. {existing} already imported.",
+    "errorsTitle": "Rows to fix",
+    "line": "Line {line}",
+    "commit": "Import {count, plural, one {# stay} other {# stays}}",
+    "done": "{imported, plural, one {# stay imported} other {# stays imported}}, {existing} already there, {errors} rows skipped.",
+    "previewTitle": "Preview",
+    "fields": {
+      "check_in": "Check-in",
+      "check_out": "Check-out",
+      "platform": "Platform",
+      "confirmation_code": "Reference",
+      "party_size": "Guests",
+      "nightly_revenue": "Nightly revenue",
+      "cleaning_fee": "Cleaning fee",
+      "addon_revenue": "Add-on revenue",
+      "discounts": "Discounts",
+      "refunds": "Refunds",
+      "platform_commission": "Platform commission",
+      "taxe_sejour_amount": "Taxe de séjour"
+    },
+    "codes": {
+      "required": "Missing value",
+      "invalid_date": "Invalid date",
+      "checkout_not_after_checkin": "Check-out must be after check-in",
+      "too_long": "Stay longer than 365 nights",
+      "invalid_amount": "Invalid amount",
+      "invalid_platform": "Unknown platform",
+      "invalid_party_size": "Invalid number of guests",
+      "duplicate_in_file": "Duplicate in the file"
+    },
+    "errors": {
+      "MAPPING_INCOMPLETE": "Map the check-in and check-out columns first.",
+      "PAYLOAD_TOO_LARGE": "The file is larger than 1 MB."
+    }
   }
 }

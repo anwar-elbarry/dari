@@ -28,12 +28,14 @@ export class ApiError extends Error {
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 async function raw(method: Method, path: string, body?: unknown): Promise<Response> {
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   return fetch(`/api${path}`, {
     method,
     credentials: 'same-origin',
     cache: 'no-store',
-    headers: { 'X-Requested-With': 'dari', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    // A FormData body sets its own multipart boundary header.
+    headers: { 'X-Requested-With': 'dari', ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}) },
+    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
   });
 }
 

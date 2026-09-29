@@ -30,6 +30,8 @@ export default defineConfig({
         JWT_ACCESS_SECRET: 'e2e-secret-e2e-secret-e2e-secret-0000',
         MAIL_DRIVER: 'file',
         MAIL_FILE_DIR: MAIL_DIR,
+        // Calendar fixtures are served from 127.0.0.1 over http: test servers only (refused in production).
+        ICAL_ALLOW_INSECURE: 'true',
         APP_URL: 'http://localhost:3000',
         PORT: '3001',
       },

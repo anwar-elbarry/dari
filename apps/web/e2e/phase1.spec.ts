@@ -34,10 +34,12 @@ test('manager onboarding and staff invitation', async ({ page, browser }) => {
     await page.getByLabel('Résidence fiscale').selectOption('MRE');
     await page.getByRole('button', { name: 'Créer le bien' }).click();
 
-    await expect(page).toHaveURL(/\/properties$/);
-    await expect(page.getByRole('heading', { name: 'Riad Yasmine' })).toBeVisible();
-    await expect(page.getByText('Karim Benali')).toBeVisible();
+    // Lands on the new property, where the calendar link is added next.
+    await expect(page).toHaveURL(/\/properties\/[0-9a-f-]{36}$/);
+    await expect(page.getByRole('heading', { name: 'Riad Yasmine', level: 1 })).toBeVisible();
     await expect(page.getByText('Sans autorisation')).toBeVisible();
+    await page.getByRole('link', { name: 'Biens' }).first().click();
+    await expect(page.getByText('Propriétaire : Karim Benali')).toBeVisible();
   });
 
   await test.step('invite a staff member', async () => {
@@ -61,14 +63,16 @@ test('manager onboarding and staff invitation', async ({ page, browser }) => {
     await sp.getByLabel('Choisissez un mot de passe').fill(password);
     await sp.getByRole('button', { name: "Accepter l'invitation" }).click();
 
-    await expect(sp).toHaveURL(/\/properties$/);
+    await expect(sp).toHaveURL(/\/dashboard$/);
+    await expect(sp.getByRole('heading', { name: 'Riad Yasmine' })).toBeVisible();
+    await sp.goto('/properties');
     await expect(sp.getByRole('heading', { name: 'Riad Yasmine' })).toBeVisible();
     await expect(sp.getByText('Karim Benali')).toHaveCount(0);
     await expect(sp.getByRole('link', { name: 'Ajouter un bien' })).toHaveCount(0);
     await expect(sp.getByRole('link', { name: 'Équipe' })).toHaveCount(0);
 
     await sp.goto('/team');
-    await expect(sp).toHaveURL(/\/properties$/);
+    await expect(sp).toHaveURL(/\/dashboard$/);
     await staff.close();
   });
 
@@ -102,7 +106,7 @@ test('login ignores off-site ?next= targets', async ({ page }) => {
   await page.getByLabel('E-mail').fill(email);
   await page.getByLabel('Mot de passe').fill('e2e-password-123');
   await page.getByRole('button', { name: 'Se connecter' }).click();
-  await expect(page).toHaveURL(/^http:\/\/localhost:3000\/properties/);
+  await expect(page).toHaveURL(/^http:\/\/localhost:3000\/dashboard/);
 });
 
 test('language switch and generic login error', async ({ page }) => {

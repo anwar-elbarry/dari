@@ -94,7 +94,7 @@ New capabilities: `booking:read` (Owner/Manager, Staff), `booking:write` and `ic
 
 | # | Screen | Notes |
 |---|---|---|
-| 4 | Onboarding — Connect iCal | Optional step at the end of the add-property wizard; paste link per platform; help text on where to find it in Airbnb / Booking.com |
+| 4 | Onboarding — Connect iCal | *Built as the first thing on the new property's page (the wizard now ends there) rather than as a wizard step;* paste link per platform; help text on where to find it in Airbnb / Booking.com |
 | 5 | Historical import | Template download → upload → column mapping → preview with error rows → import |
 | 6 | Main dashboard | Property cards with counter (green < 90, amber 90–110, red > 110), open alerts, "needs review" count |
 | 7 | Property detail | Counter gauge and breakdown, projected breach date, list/calendar of stays, review list for uncertain events, feeds with last sync status |
@@ -114,8 +114,8 @@ Staff see counters and dates, never revenue or iCal URLs.
 | 2.4 ✅ | Day counter service (thresholds from `RuleConfig`), projected breach date, `/day-counter` | fast |
 | 2.5 ✅ | CSV import: template, mapping, preview, idempotent commit | fast |
 | 2.6 ✅ | Threshold alerts: once per threshold/year, email, dashboard feed, resolve | fast |
-| 2.7 | Web: iCal step in wizard + feeds panel; import screens | fast |
-| 2.8 | Web: dashboard and property detail with review list | fast |
+| 2.7 ✅ | Web: iCal step in wizard + feeds panel; import screens | fast |
+| 2.8 ✅ | Web: dashboard and property detail with review list | fast |
 | 2.9 | Hardening: SSRF tests, accuracy check against real calendars, E2E, docs, Phase 3 plan | strong |
 
 Rough effort solo: 3–4 weeks full-time. Steps 2.2 and 2.3 carry the risk.

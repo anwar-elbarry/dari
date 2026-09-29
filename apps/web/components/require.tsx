@@ -10,7 +10,7 @@ export function Require({ capability, children }: { capability: string; children
   const router = useRouter();
   const allowed = can(capability);
   useEffect(() => {
-    if (!allowed) router.replace(can('property:read') ? '/properties' : '/reports');
+    if (!allowed) router.replace(can('booking:read') ? '/dashboard' : '/reports');
   }, [allowed, can, router]);
   return allowed ? <>{children}</> : null;
 }

@@ -28,6 +28,7 @@ function Frame({ children }: { children: ReactNode }) {
 
   // Navigation is filtered for convenience only; the API enforces every permission.
   const links = [
+    can('booking:read') && { href: '/dashboard', label: t('nav.dashboard') },
     can('property:read') && { href: '/properties', label: t('nav.properties') },
     can('team:manage') && { href: '/team', label: t('nav.team') },
     me.user.role !== 'STAFF' && { href: '/reports', label: t('nav.reports') },
