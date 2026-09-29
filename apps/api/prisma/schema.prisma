@@ -309,7 +309,7 @@ model Booking {
   orders      AddOnOrder[]
 
   @@unique([feedId, externalUid])
-  @@unique([propertyId, confirmationCode])
+  @@unique([propertyId, source, confirmationCode])
   @@index([accountId])
   @@index([propertyId, checkIn])
 }

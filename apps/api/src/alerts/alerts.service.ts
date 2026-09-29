@@ -56,7 +56,7 @@ export class AlertsService implements OnModuleInit {
     if (created.length) {
       // One email even if both thresholds were crossed at once (e.g. after a large import): the highest.
       const top = created.includes(ALERT_RED) ? ALERT_RED : ALERT_AMBER;
-      await this.notify(accountId, property.name, top, counter.nights, rule, year);
+      await this.notify(accountId, property.id, property.name, top, counter.nights, rule, year);
     }
     return created;
   }
@@ -101,11 +101,12 @@ export class AlertsService implements OnModuleInit {
     return `${name}: ${nights} nights counted this year (alert at ${threshold}, limit in your rules: ${rule.cap}).`;
   }
 
-  private async notify(accountId: string, propertyName: string, type: string, nights: number, rule: DayCounterRule, year: number) {
+  private async notify(accountId: string, propertyId: string, propertyName: string, type: string, nights: number, rule: DayCounterRule, year: number) {
     const managers = await this.prisma.user.findMany({ where: { accountId, role: 'OWNER_MANAGER', disabledAt: null }, select: { email: true } });
     const red = type === ALERT_RED;
     const link = `${this.config.APP_URL}/properties`;
     const notice = rule.validated ? '' : '\n\nLes seuils sont ceux de vos règles ; ils n\'ont pas encore été confirmés par un professionnel. / The thresholds come from your rules and have not yet been confirmed by a professional.';
+    let sent = 0;
     for (const m of managers) {
       await this.mail
         .send({
@@ -119,8 +120,12 @@ export class AlertsService implements OnModuleInit {
             notice +
             `\n\nCe message est une aide à la décision, pas un avis juridique. / This message is decision support, not legal advice.`,
         })
+        .then(() => {
+          sent++;
+        })
         .catch((e: unknown) => this.logger.error(`alert mail failed: ${e instanceof Error ? e.message : String(e)}`));
     }
-    await this.prisma.notification.updateMany({ where: { accountId, type, year, sentVia: { equals: ['dashboard'] } }, data: { sentVia: ['dashboard', 'email'] } });
+    // Recorded as emailed only if a message really went out, and only for this property's alerts.
+    if (sent > 0) await this.prisma.notification.updateMany({ where: { accountId, propertyId, year, type: { in: [ALERT_AMBER, ALERT_RED] }, sentVia: { equals: ['dashboard'] } }, data: { sentVia: ['dashboard', 'email'] } });
   }
 }

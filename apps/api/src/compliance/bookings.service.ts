@@ -18,7 +18,6 @@ const BASE_FIELDS = {
   classification: true,
   classifiedBy: true,
   status: true,
-  summary: true,
   feedId: true,
   importBatchId: true,
 } as const;
@@ -93,6 +92,7 @@ export class BookingsService {
       },
       select,
       orderBy: { checkIn: 'asc' },
+      take: 2000,
     });
   }
 

@@ -116,7 +116,7 @@ Staff see counters and dates, never revenue or iCal URLs.
 | 2.6 ✅ | Threshold alerts: once per threshold/year, email, dashboard feed, resolve | fast |
 | 2.7 ✅ | Web: iCal step in wizard + feeds panel; import screens | fast |
 | 2.8 ✅ | Web: dashboard and property detail with review list | fast |
-| 2.9 | Hardening: SSRF tests, accuracy check against real calendars, E2E, docs, Phase 3 plan | strong |
+| 2.9 ✅ | Hardening: SSRF tests, accuracy check against real calendars, E2E, docs, Phase 3 plan | strong |
 
 Rough effort solo: 3–4 weeks full-time. Steps 2.2 and 2.3 carry the risk.
 
@@ -170,3 +170,24 @@ Rough effort solo: 3–4 weeks full-time. Steps 2.2 and 2.3 carry the risk.
 3. Sync frequency: every 2 hours by default?
 4. Mail provider (still open from Phase 1): Resend or Brevo.
 5. Redis provider and region.
+
+---
+
+## Outcome (Phase 2 closed)
+
+Steps 2.0–2.9 are done. CI runs lint, typecheck, unit, integration (Postgres + Redis) and end-to-end tests (Playwright, phone viewport) on every push.
+
+**What was delivered:** Redis-backed rate limits and login lockout; queues; calendar feeds (Airbnb, Booking.com, direct) with a hardened fetcher; classification with a review list; the night counter with thresholds read from `RuleConfig`; historical CSV import; threshold alerts by dashboard and email; the dashboard, property page, calendars panel and import screens, built on the RiadTax design system.
+
+**Independent security review:** no exploit found in the SSRF path itself, but one high-severity functional bug and several smaller issues, all fixed with a regression test each:
+- **High:** the scheduled sync never ran, because BullMQ rejects job ids containing `:`. Only "Sync now" worked, so counters and alerts could go stale. Job ids are now one per feed and interval; a Redis integration test runs the real queue and worker (verified to fail on the old code).
+- **Medium:** the address policy missed IPv6 addresses that embed an IPv4 address in hex form (`::ffff:7f00:1`); it now works on the address bytes and allows only global unicast. Sync could fail without being recorded and had no size limits; it now caps events (2000) and UID length, batches writes, takes a per-feed lock and records database failures on the feed.
+- **Low:** import mapping keys like `constructor`; no early row cut-off; import references shared across platforms were merged (unique key now per property, platform and reference); stay summaries were returned to Staff (no longer returned); alerts marked "emailed" after a failed send; impossible dates in a filter caused a 500; property names in email subjects could contain line breaks.
+- **Accepted:** malformed dates inside a calendar are shifted rather than rejected (the feed owner's data).
+
+**Known limits, accepted for now:**
+- The legal thresholds (90 / 110 / 120) are placeholders in `RuleConfig`, not validated by counsel; the UI and emails say so. **Confirm them before the pilot.**
+- The counter has not yet been compared with real Airbnb and Booking.com exports (none supplied); the classifier treats Booking.com "CLOSED - Not available" events as uncertain by design.
+- Production mail driver and hosting region are still open; the API refuses to start in production without a real mail driver and Redis.
+- Session cookies still lack the `__Host-` prefix (needs a dedicated domain); the edge must overwrite `X-Forwarded-For` (see `deployment.md`).
+- Sync runs every 2 hours; the interval is configurable.

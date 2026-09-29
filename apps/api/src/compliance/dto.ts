@@ -1,7 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
-
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
+import { IsIn, IsInt, IsISO8601, IsOptional, Max, Min } from 'class-validator';
 
 export class YearQuery {
   @IsOptional()
@@ -14,11 +12,11 @@ export class YearQuery {
 
 export class BookingsQuery {
   @IsOptional()
-  @Matches(DATE)
+  @IsISO8601({ strict: true, strictSeparator: true })
   from?: string;
 
   @IsOptional()
-  @Matches(DATE)
+  @IsISO8601({ strict: true, strictSeparator: true })
   to?: string;
 }
 

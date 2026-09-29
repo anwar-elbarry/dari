@@ -64,7 +64,7 @@ export class ImportsService {
             checkOut: new Date(r.checkOut),
             source: r.platform,
             // Imports are records of past stays: they count as bookings. Codes are unique per property.
-            confirmationCode: r.confirmationCode ?? `import:${r.checkIn}:${r.checkOut}:${r.platform}`,
+            confirmationCode: this.code(r),
             partySize: r.partySize,
             nightlyRevenue: r.amounts.nightly_revenue,
             cleaningFee: r.amounts.cleaning_fee,
@@ -100,27 +100,33 @@ export class ImportsService {
   }
 
   private mappingFrom(raw: Record<string, string>): Mapping {
-    const out: Mapping = {};
+    // No prototype: a column called "__proto__" or "constructor" is just a key.
+    const out = Object.create(null) as Mapping;
     const used = new Set<string>();
     for (const [header, field] of Object.entries(raw)) {
       if (field === '' || field === null) continue;
-      if (!(IMPORT_FIELDS as readonly string[]).includes(field)) throw bad('mapping', `Unknown field "${field}".`);
-      if (used.has(field)) throw bad('mapping', `Field "${field}" is mapped twice.`);
+      if (typeof field !== 'string' || !(IMPORT_FIELDS as readonly string[]).includes(field)) throw bad('mapping', 'A column is mapped to an unknown field.');
+      if (used.has(field)) throw bad('mapping', 'A field is mapped to two columns.');
       used.add(field);
       out[header] = field as ImportField;
     }
     return out;
   }
 
+  /** The code stored on the booking: the file's own reference, or a stable key from dates. Unique per property and platform. */
+  private code(r: { checkIn: string; checkOut: string; confirmationCode: string | null }) {
+    return r.confirmationCode ?? `import:${r.checkIn}:${r.checkOut}`;
+  }
+
   private key(r: { checkIn: string; checkOut: string; platform: string; confirmationCode: string | null }) {
-    return r.confirmationCode ?? `import:${r.checkIn}:${r.checkOut}:${r.platform}`;
+    return `${r.platform}:${this.code(r)}`;
   }
 
   private async existingKeys(user: AuthUser, propertyId: string, parsed: ParsedImport): Promise<Set<string>> {
-    const keys = [...new Set(parsed.rows.map((r) => this.key(r)))];
-    if (!keys.length) return new Set();
-    const rows = await this.prisma.forAccount(user.accountId).booking.findMany({ where: { propertyId, confirmationCode: { in: keys } }, select: { confirmationCode: true } });
-    return new Set(rows.map((r) => r.confirmationCode!));
+    const codes = [...new Set(parsed.rows.map((r) => this.code(r)))];
+    if (!codes.length) return new Set();
+    const rows = await this.prisma.forAccount(user.accountId).booking.findMany({ where: { propertyId, confirmationCode: { in: codes } }, select: { confirmationCode: true, source: true } });
+    return new Set(rows.map((r) => `${r.source}:${r.confirmationCode}`));
   }
 
   private async assertProperty(user: AuthUser, propertyId: string) {

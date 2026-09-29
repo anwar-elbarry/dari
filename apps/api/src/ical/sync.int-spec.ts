@@ -1,7 +1,8 @@
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
 import { addDays, toCalendarDate } from './parse';
-import { createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
+import { SyncProcessor } from './sync.processor';
+import { createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TEST_REDIS_URL, TestApp } from '../test/test-app';
 
 requireDatabase();
 
@@ -139,5 +140,97 @@ describe('calendar sync (integration)', () => {
     expect(await t.prisma.booking.count({ where: { feedId: null } })).toBe(4);
     expect(JSON.stringify(await t.prisma.auditLog.findMany())).not.toContain(base);
     expect((await t.prisma.auditLog.findMany({ where: { resourceType: 'IcalFeed' } })).map((x) => x.action).sort()).toEqual(['ical_feed.created', 'ical_feed.deleted']);
+  });
+
+  it('refuses a calendar with too many events and records the error', async () => {
+    const many = Array.from({ length: 2001 }, (_, i) => event(`e${i}@x`, i % 200 + 1, i % 200 + 2, 'Reserved'));
+    body = calendar(many);
+    const feed = await addFeed();
+    const res = await a.as.OWNER_MANAGER.post(`${feeds()}/${feed.id}/sync`).expect(200);
+    expect(res.body).toMatchObject({ ok: false, error: 'The calendar has too many events.' });
+    expect(await t.prisma.booking.count()).toBe(0);
+    expect((await a.as.OWNER_MANAGER.get(feeds())).body[0]).toMatchObject({ lastStatus: 'ERROR' });
+  });
+
+  it('skips events with an oversized UID instead of failing', async () => {
+    body = calendar([event('x'.repeat(300), 5, 7, 'Reserved'), FUTURE]);
+    const feed = await addFeed();
+    const res = await a.as.OWNER_MANAGER.post(`${feeds()}/${feed.id}/sync`).expect(200);
+    expect(res.body).toMatchObject({ ok: true, created: 1, skipped: 1 });
+  });
+
+  it('survives two syncs of the same feed at once', async () => {
+    const feed = await addFeed();
+    const [r1, r2] = await Promise.all([
+      a.as.OWNER_MANAGER.post(`${feeds()}/${feed.id}/sync`),
+      a.as.OWNER_MANAGER.post(`${feeds()}/${feed.id}/sync`),
+    ]);
+    expect([r1.status, r2.status]).toEqual([200, 200]);
+    expect(await t.prisma.booking.count()).toBe(4);
+    expect(r1.body.ok && r2.body.ok).toBe(true);
+    expect(r1.body.created + r2.body.created).toBe(4);
+  });
+
+  it('records a database failure on the feed instead of leaving it looking healthy', async () => {
+    const feed = await addFeed();
+    const sync = t.app.get((await import('./sync.service')).SyncService) as unknown as { reconcile: () => Promise<unknown> };
+    const original = sync.reconcile;
+    sync.reconcile = async () => {
+      throw new Error('boom');
+    };
+    try {
+      const res = await a.as.OWNER_MANAGER.post(`${feeds()}/${feed.id}/sync`).expect(200);
+      expect(res.body.ok).toBe(false);
+    } finally {
+      sync.reconcile = original;
+    }
+    expect((await a.as.OWNER_MANAGER.get(feeds())).body[0]).toMatchObject({ lastStatus: 'ERROR' });
+  });
+});
+
+// The scheduled path only exists with Redis: it must really enqueue and run jobs (a rejected job id once made it a no-op).
+const describeRedis = TEST_REDIS_URL ? describe : describe.skip;
+describeRedis('scheduled sync through the queue (integration)', () => {
+  let t: TestApp;
+  let server: http.Server;
+  let base: string;
+
+  beforeAll(async () => {
+    server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/calendar' });
+      res.end(calendar([FUTURE, BLOCK]));
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    t = await createTestApp({ env: { ICAL_ALLOW_INSECURE: 'true' } });
+  });
+  afterAll(async () => {
+    await t.app.close();
+    server.closeAllConnections?.();
+    await new Promise<void>((r) => server.close(() => r()));
+  });
+
+  it('sync-all enqueues one job per feed and the worker syncs them', async () => {
+    await resetDatabase(t.prisma, t.redis);
+    const a = await seedAccount(t, 'Alpha');
+    const owner = await t.prisma.propertyOwner.create({ data: { accountId: a.accountId, name: 'O', residency: 'RESIDENT' } });
+    const property = await t.prisma.property.create({ data: { accountId: a.accountId, ownerId: owner.id, name: 'Riad', address: 'x', commune: 'Marrakech', licenseType: 'RIAD' } });
+    const feed = await t.prisma.icalFeed.create({ data: { accountId: a.accountId, propertyId: property.id, platform: 'AIRBNB', url: `${base}/cal.ics` } });
+
+    const processor = t.app.get(SyncProcessor);
+    const result = await processor.process({ name: 'sync-all', data: {} } as never);
+    expect(result).toEqual({ enqueued: 1 });
+
+    const deadline = Date.now() + 8000;
+    let row = await t.prisma.icalFeed.findUniqueOrThrow({ where: { id: feed.id } });
+    while (row.lastStatus === 'NEVER' && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 100));
+      row = await t.prisma.icalFeed.findUniqueOrThrow({ where: { id: feed.id } });
+    }
+    expect(row.lastStatus).toBe('OK');
+    expect(await t.prisma.booking.count({ where: { feedId: feed.id } })).toBe(2);
+
+    // Firing again inside the same interval is a harmless no-op, not an error.
+    await expect(processor.process({ name: 'sync-all', data: {} } as never)).resolves.toEqual({ enqueued: 1 });
   });
 });

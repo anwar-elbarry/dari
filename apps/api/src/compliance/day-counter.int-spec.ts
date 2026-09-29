@@ -91,4 +91,15 @@ describe('day counter (integration)', () => {
     await a.as.OWNER_MANAGER.patch(`/api/bookings/${b.id}/classification`, { classification: 'UNCERTAIN' }).expect(400);
     expect(await t.prisma.auditLog.count({ where: { action: 'booking.classified' } })).toBe(1);
   });
+
+  it('refuses impossible dates in the stays filter and never returns the stored event summary', async () => {
+    await stay(`${year}-02-01`, `${year}-02-04`, { summary: 'Reserved — Jean Dupont' });
+    await a.as.OWNER_MANAGER.get(`/api/properties/${propertyId}/bookings?from=2026-13-45`).expect(400);
+    await a.as.OWNER_MANAGER.get(`/api/properties/${propertyId}/bookings?to=not-a-date`).expect(400);
+    for (const c of [a.as.OWNER_MANAGER, a.as.STAFF]) {
+      const res = await c.get(`/api/properties/${propertyId}/bookings`).expect(200);
+      expect(JSON.stringify(res.body)).not.toContain('Dupont');
+      expect(res.body[0]).not.toHaveProperty('summary');
+    }
+  });
 });

@@ -64,7 +64,7 @@ describe('CSV import (integration)', () => {
     expect(rows.map((r) => [r.checkIn.toISOString().slice(0, 10), r.source, r.confirmationCode, r.classification, r.classifiedBy, r.nightlyRevenue?.toString()])).toEqual([
       ['2026-01-10', 'AIRBNB', 'HM1', 'BOOKING', 'MANUAL', '3200'],
       ['2026-01-20', 'BOOKING', 'BK9', 'BOOKING', 'MANUAL', '1800'],
-      ['2026-02-01', 'DIRECT', 'import:2026-02-01:2026-02-05:DIRECT', 'BOOKING', 'MANUAL', '2000'],
+      ['2026-02-01', 'DIRECT', 'import:2026-02-01:2026-02-05', 'BOOKING', 'MANUAL', '2000'],
     ]);
     expect(rows.every((r) => r.accountId === a.accountId && r.propertyId === propertyId && r.status === 'CONFIRMED')).toBe(true);
     const batch = await t.prisma.importBatch.findFirstOrThrow();
@@ -117,5 +117,33 @@ describe('CSV import (integration)', () => {
     const dump = JSON.stringify(await t.prisma.booking.findMany());
     expect(dump).not.toContain('Dupont');
     expect(dump).not.toContain('jean@example.test');
+  });
+
+  it('treats mapping keys such as constructor and __proto__ as ordinary columns', async () => {
+    const csv = 'constructor,__proto__,c\n2026-05-01,2026-05-03,120\n';
+    const mapping = '{"constructor":"check_in","__proto__":"check_out","c":"nightly_revenue"}';
+    const res = await commit(csv, { mapping }).expect(201);
+    expect(res.body.imported).toBe(1);
+    await preview('a,b\n1,2\n', { mapping: '{"a":"check_in","b":"__proto__"}' }).expect(400);
+  });
+
+  it('does not echo the submitted field name in mapping errors', async () => {
+    const res = await preview('a,b\n2026-01-01,2026-01-03\n', { mapping: '{"a":"check_in","b":"secret-value-123"}' }).expect(400);
+    expect(JSON.stringify(res.body)).not.toContain('secret-value-123');
+  });
+
+  it('keeps two stays that share a reference on different platforms', async () => {
+    const csv = 'check_in,check_out,platform,confirmation_code\n2026-01-01,2026-01-03,AIRBNB,SAME\n2026-02-01,2026-02-03,BOOKING,SAME\n';
+    const first = await commit(csv).expect(201);
+    expect(first.body).toMatchObject({ imported: 2, skippedExisting: 0 });
+    expect(await t.prisma.booking.count()).toBe(2);
+    expect((await commit(csv).expect(201)).body).toMatchObject({ imported: 0, skippedExisting: 2 });
+  });
+
+  it('stops reading a huge file early and refuses it', async () => {
+    const rows = 'check_in,check_out\n' + '2026-01-01,2026-01-03\n'.repeat(5001);
+    const started = Date.now();
+    await preview(rows).expect(400);
+    expect(Date.now() - started).toBeLessThan(3000);
   });
 });

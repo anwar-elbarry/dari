@@ -17,6 +17,10 @@ export interface ParseResult {
 
 export const CALENDAR_TZ = 'Africa/Casablanca';
 
+/** Limits on what one feed may make the server store. A property has a few hundred events a year at most. */
+export const MAX_EVENTS = 2000;
+export const MAX_UID_LENGTH = 255;
+
 const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
 
 /** Calendar date of an instant in the platform's timezone. Date-only values are taken as given. */
@@ -33,7 +37,7 @@ export function parseIcs(text: string): ParseResult {
     const ev = item;
     const start = ev.start instanceof Date ? ev.start : null;
     const uid = typeof ev.uid === 'string' ? ev.uid.trim() : '';
-    if (!start || !uid || ev.rrule) {
+    if (!start || !uid || uid.length > MAX_UID_LENGTH || ev.rrule) {
       skipped++;
       continue;
     }

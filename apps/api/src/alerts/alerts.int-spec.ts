@@ -118,4 +118,24 @@ describe('threshold alerts and dashboard (integration)', () => {
     const m = (await a.as.OWNER_MANAGER.get('/api/dashboard').expect(200)).body;
     expect(m.properties[0].feedProblems).toBe(1);
   });
+
+  it('does not record an email as sent when the send fails, and marks only its own property', async () => {
+    const owner2 = await t.prisma.propertyOwner.create({ data: { accountId: a.accountId, name: 'O2', residency: 'RESIDENT' } });
+    const other = (await t.prisma.property.create({ data: { accountId: a.accountId, ownerId: owner2.id, name: 'Other', address: 'x', commune: 'Marrakech', licenseType: 'RIAD', licenseStatus: 'UNLICENSED' } })).id;
+    const send = t.mail.send;
+    t.mail.send = async () => {
+      throw new Error('smtp down');
+    };
+    try {
+      await importCsv(csv(1, 7, 'FAIL')); // amber for the first property, mail fails
+    } finally {
+      t.mail.send = send;
+    }
+    expect((await alerts()).map((r) => r.sentVia)).toEqual([['dashboard']]);
+
+    // The second property crosses its threshold with a working mail: only its own alert becomes "emailed".
+    await a.as.OWNER_MANAGER.upload(`/api/properties/${other}/imports`, csv(1, 7, 'OK2')).expect(201);
+    const rows = await t.prisma.notification.findMany({ orderBy: { createdAt: 'asc' } });
+    expect(rows.map((r) => [r.propertyId, r.sentVia])).toEqual([[propertyId, ['dashboard']], [other, ['dashboard', 'email']]]);
+  });
 });

@@ -140,7 +140,7 @@ export function parseImport(text: string, mapping?: Mapping, maxRows = 5000): Pa
   let records: Record<string, string>[];
   let headers: string[];
   try {
-    records = parse(body, { columns: true, delimiter, skip_empty_lines: true, trim: true, relax_column_count: true, relax_quotes: true, bom: true }) as Record<string, string>[];
+    records = parse(body, { columns: true, delimiter, skip_empty_lines: true, trim: true, relax_column_count: true, relax_quotes: true, bom: true, to: maxRows + 1 }) as Record<string, string>[];
     headers = ((parse(firstLine, { delimiter, trim: true, relax_quotes: true }) as string[][])[0] ?? []).map(String);
   } catch {
     return { headers: [], delimiter, suggestedMapping: {}, rows: [], errors: [{ line: 1, field: null, code: 'required' }], totalRows: 0 };
@@ -157,7 +157,9 @@ export function parseImport(text: string, mapping?: Mapping, maxRows = 5000): Pa
     const line = i + 2; // 1-based, after the header
     const get = (field: ImportField) => {
       const col = columnFor(field);
-      return col === undefined ? '' : (record[col] ?? '').trim();
+      // Own string values only: a header named "constructor" or "__proto__" must not reach inherited members.
+      const value = col !== undefined && Object.hasOwn(record, col) ? record[col] : '';
+      return typeof value === 'string' ? value.trim() : '';
     };
     const rowErrors: ImportError[] = [];
     for (const f of REQUIRED_FIELDS) if (get(f) === '') rowErrors.push({ line, field: f, code: 'required' });
@@ -182,7 +184,8 @@ export function parseImport(text: string, mapping?: Mapping, maxRows = 5000): Pa
     }
     const confirmationCode = get('confirmation_code').slice(0, 64) || null;
     if (rowErrors.length === 0 && checkIn && checkOut && platform) {
-      const key = confirmationCode ?? `${checkIn}:${checkOut}:${platform}`;
+      // The same code on two platforms is two stays; the same dates on the same platform without a code are one.
+      const key = `${platform}:${confirmationCode ?? `${checkIn}:${checkOut}`}`;
       if (seen.has(key)) rowErrors.push({ line, field: confirmationCode ? 'confirmation_code' : null, code: 'duplicate_in_file' });
       seen.add(key);
     }

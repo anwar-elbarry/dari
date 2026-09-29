@@ -44,7 +44,10 @@ export function classify(platform: BookingSource, summary: string): Classificati
   }
 }
 
-/** Summaries from direct or unknown calendars may contain guest names: only platform summaries are stored. */
+/**
+ * Summaries from direct or unknown calendars may contain guest names: only platform summaries are stored,
+ * and even those are used for review only: the API does not return them to users.
+ */
 export function storableSummary(platform: BookingSource, summary: string): string | null {
   return platform === 'AIRBNB' || platform === 'BOOKING' ? summary.slice(0, 120) : null;
 }

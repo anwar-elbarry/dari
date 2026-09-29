@@ -10,6 +10,15 @@ export const JOB_SYNC_ALL = 'sync-all';
 export const JOB_SYNC_FEED = 'sync-feed';
 
 /**
+ * Job id for one feed in one sync interval. BullMQ rejects custom ids containing ':', and finished jobs are
+ * kept (removeOnComplete), so a fixed id per feed would block every later run. One id per feed and interval
+ * bucket also stops duplicate jobs if "sync-all" fires twice in the same interval.
+ */
+export function feedJobId(feedId: string, intervalMs: number, now = Date.now()): string {
+  return `${JOB_SYNC_FEED}-${feedId}-${Math.floor(now / intervalMs)}`;
+}
+
+/**
  * Scheduled sync. A repeatable "sync-all" job fans out one "sync-feed" job per feed (ids only in
  * payloads). Registered only when Redis is configured (see JobsModule).
  */
@@ -34,7 +43,8 @@ export class SyncProcessor extends WorkerHost implements OnModuleInit {
   async process(job: Job<{ feedId?: string }>): Promise<unknown> {
     if (job.name === JOB_SYNC_ALL) {
       const feeds = await this.prisma.icalFeed.findMany({ select: { id: true } });
-      await this.queue.addBulk(feeds.map((f) => ({ name: JOB_SYNC_FEED, data: { feedId: f.id }, opts: { jobId: `${JOB_SYNC_FEED}:${f.id}` } })));
+      const interval = this.config.ICAL_SYNC_INTERVAL_HOURS * 3_600_000;
+      if (feeds.length) await this.queue.addBulk(feeds.map((f) => ({ name: JOB_SYNC_FEED, data: { feedId: f.id }, opts: { jobId: feedJobId(f.id, interval) } })));
       return { enqueued: feeds.length };
     }
     if (job.name === JOB_SYNC_FEED && job.data.feedId) {

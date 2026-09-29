@@ -31,7 +31,8 @@ These are not code. Until they are done, the feature stays behind `GUEST_CHECKIN
 | `__Host-` session cookies once the domain is fixed | Security review follow-up; more sensitive data now |
 | Composite (ownerId, accountId) foreign key, and the same pattern for new tenant tables (`GuestCheckIn.accountId`) | Database-level guard behind the account scope |
 | Redact personal data from logs by construction (a logging test) | Guests' names and document numbers must never appear in logs |
-| Phase 2 review follow-ups | Listed in `phase-2.md` outcome once the review is closed |
+| Confirm the 90 / 110 / 120 night thresholds with counsel; compare the counter with real Airbnb / Booking.com exports | Before the pilot; the counter is what customers pay for |
+| Wire the 4 Phase 2 accepted limits into the pilot checklist (see `phase-2.md` outcome) | Nothing new to build; track them |
 
 ---
 
