@@ -39,7 +39,7 @@ Two rules from the product override any visual choice:
 | Warning | `#8a5300` on `#fff4d6` | `--color-warning` / `--color-warning-soft` | "To check", threshold approaching (for example the day counter nearing the limit stored in `RuleConfig`). Kept amber-brown so it never reads as the brand lime. |
 | Danger | `#b42318` on `#fde8e6` | `--color-danger` / `--color-danger-soft` | Errors, "Missing", "Overdue". |
 | Info | `#0b62c4` on `#e5f0fc` | `--color-info` / `--color-info-soft` | Neutral information, "In progress". The only blue in the system. |
-| Lime Conic | `conic-gradient(from 90deg, #b9cc00 0%, #e4f222 22%, #f6fac8 42%, #ffffff 50%, #f6fac8 58%, #e4f222 78%, #b9cc00 100%)` | `--gradient-lime-conic` | Rotating border around one hero element per page. Replaces the reference's rainbow conic. |
+| Lime Conic | `conic-gradient(from 90deg, #b9cc00 0%, #e4f222 25%, #f4fc7a 50%, #e4f222 75%, #b9cc00 100%)` | `--gradient-lime-conic` | Rotating border around one hero element per page. Replaces the reference's rainbow conic. |
 | Brand Gradient | `linear-gradient(135deg, #e4f222 0%, #b9cc00 100%)` | `--gradient-brand` | The logo's R on dark, and at most one display word per dark panel. |
 | Dark Fade | `linear-gradient(#111111 24%, #000000)` | `--gradient-dark-fade` | Dark feature panels. |
 
