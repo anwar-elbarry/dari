@@ -6,7 +6,7 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - `apps/api` — NestJS + Prisma (PostgreSQL). Schema: `apps/api/prisma/schema.prisma`.
 - `apps/web` — Next.js (SSR for public token pages `/checkin/*`, `/s/*`; SPA dashboard). FR/EN/AR with RTL.
 - `services/ocr` — Python FastAPI worker for passport MRZ (ICAO) and CIN structured OCR. Self-hosted only.
-- Infra for dev: `docker-compose.yml` (Postgres, Redis, MinIO). Copy `.env.example` to `.env`.
+- Infra for dev: `docker-compose.yml` (Postgres, Redis, an s3rver S3 server). Copy `.env.example` to `.env`.
 - Deployment requirements (client IP, production env, single instance): `docs/deployment.md`.
 
 ## Commands
