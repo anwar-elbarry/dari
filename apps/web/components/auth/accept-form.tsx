@@ -7,7 +7,7 @@ import { api } from '../../lib/api';
 import type { Role } from '../../lib/types';
 import { useSubmit } from '../../lib/use-submit';
 import { Alert, Button, Field, fieldAria, Input } from '../ui';
-import { useStripTokenFromUrl } from './strip-token';
+import { useHashToken } from './use-hash-token';
 
 interface Preview {
   email: string;
@@ -15,7 +15,7 @@ interface Preview {
   companyName: string;
 }
 
-export function AcceptForm({ token }: { token?: string }) {
+export function AcceptForm() {
   const t = useTranslations('auth.accept');
   const tr = useTranslations('roles');
   const ts = useTranslations('auth.signup');
@@ -23,9 +23,10 @@ export function AcceptForm({ token }: { token?: string }) {
   const router = useRouter();
   const [preview, setPreview] = useState<Preview | null | 'invalid'>(null);
   const { pending, error, fieldErrors, run } = useSubmit();
-  useStripTokenFromUrl();
+  const token = useHashToken();
 
   useEffect(() => {
+    if (token === undefined) return;
     if (!token) return setPreview('invalid');
     api<Preview>('POST', '/invitations/preview', { token })
       .then(setPreview)

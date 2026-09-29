@@ -16,6 +16,8 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 | Move login lockout and rate-limit counters to Redis | Redis arrives with the job runner; allows more than one API instance |
 | Edge proxy overwrites `X-Forwarded-For` (see [`deployment.md`](deployment.md)) | Must be in place before any public deployment |
 | Hosting region decision | Needed before any real calendar or revenue data is stored |
+| `__Host-` cookie prefix once the domain is fixed | Security review follow-up (see `deployment.md`) |
+| Composite (ownerId, accountId) foreign key, same pattern for new tables | Database-level guard behind the account scope |
 
 ---
 

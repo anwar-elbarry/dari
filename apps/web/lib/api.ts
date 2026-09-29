@@ -73,7 +73,18 @@ export async function api<T = unknown>(method: Method, path: string, body?: unkn
   return (await res.json()) as T;
 }
 
-/** Only same-site relative paths, to avoid open redirects through ?next=. */
-export function safeNext(next: string | null | undefined, fallback = '/'): string {
-  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : fallback;
+/**
+ * Only same-origin paths, to avoid open redirects through ?next=.
+ * Browsers drop tabs/newlines while parsing URLs ("/\t/evil.com" becomes "//evil.com"), so the value is
+ * resolved the way the browser would and its origin compared, and control characters or backslashes are refused.
+ */
+export function safeNext(next: string | null | undefined, fallback = '/', origin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin): string {
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what must be refused
+  if (!next || !next.startsWith('/') || /[\u0000-\u001f\u007f\\]/.test(next)) return fallback;
+  try {
+    const url = new URL(next, origin);
+    return url.origin === origin ? url.pathname + url.search + url.hash : fallback;
+  } catch {
+    return fallback;
+  }
 }

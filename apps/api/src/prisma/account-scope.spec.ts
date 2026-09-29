@@ -30,6 +30,12 @@ describe('scopeArgs', () => {
     expect(args.create).toEqual({ name: 'x', accountId: A });
   });
 
+  it('refuses nested relation writes', () => {
+    expect(() => scopeArgs('Property', 'create', { data: { name: 'x', owner: { connect: { id: 'o' } } } }, A)).toThrow(/nested write/);
+    expect(() => scopeArgs('Property', 'update', { where: { id: 'p' }, data: { owner: { update: { name: 'y' } } } }, A)).toThrow(/nested write/);
+    expect(scopeArgs('Property', 'update', { where: { id: 'p' }, data: { updatedAt: new Date(0) } }, A).where).toEqual({ id: 'p', accountId: A });
+  });
+
   it('refuses models without a scope rule', () => {
     expect(() => scopeArgs('Booking', 'findMany', {}, A)).toThrow(/no account scope rule/);
     expect(() => scopeArgs('Account', 'findMany', {}, A)).toThrow(/no account scope rule/);

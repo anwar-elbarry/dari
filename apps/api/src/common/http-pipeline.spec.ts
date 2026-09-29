@@ -93,6 +93,25 @@ describe('HTTP pipeline', () => {
     await request(app.getHttpServer()).post('/api/test/echo').set(CSRF_HEADER, CSRF_HEADER_VALUE).send(body).expect(201, body);
   });
 
+  it('does not echo malformed JSON back in the error', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/test/echo')
+      .set(CSRF_HEADER, CSRF_HEADER_VALUE)
+      .set('Content-Type', 'application/json')
+      .send('{"email":"a@b.test","password":hunter2-SECRET}')
+      .expect(400);
+    expect(res.body.error).toEqual({ code: 'BAD_REQUEST', message: 'Bad request.' });
+  });
+
+  it('answers 413, not 500, to an oversized body', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/test/echo')
+      .set(CSRF_HEADER, CSRF_HEADER_VALUE)
+      .send({ email: 'a@b.test', padding: 'x'.repeat(200_000) })
+      .expect(413);
+    expect(res.body.error.code).toBe('PAYLOAD_TOO_LARGE');
+  });
+
   it('rejects state-changing requests without the CSRF header', async () => {
     const res = await request(app.getHttpServer()).post('/api/test/echo').send({}).expect(403);
     expect(res.body.error.code).toBe('CSRF_HEADER_MISSING');

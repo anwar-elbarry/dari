@@ -6,14 +6,14 @@ import { useState } from 'react';
 import { api } from '../../lib/api';
 import { useSubmit } from '../../lib/use-submit';
 import { Alert, Button, Field, fieldAria, Input } from '../ui';
-import { useStripTokenFromUrl } from './strip-token';
+import { useHashToken } from './use-hash-token';
 
-export function ResetForm({ token }: { token?: string }) {
+export function ResetForm() {
   const t = useTranslations('auth.reset');
   const ts = useTranslations('auth.signup');
   const [done, setDone] = useState(false);
   const { pending, error, fieldErrors, run } = useSubmit();
-  useStripTokenFromUrl();
+  const token = useHashToken();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -24,7 +24,7 @@ export function ResetForm({ token }: { token?: string }) {
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">{t('title')}</h1>
-      {!token ? (
+      {token === undefined ? null : !token ? (
         <Alert>{t('missingToken')}</Alert>
       ) : done ? (
         <Alert tone="success">{t('done')}</Alert>
@@ -39,7 +39,7 @@ export function ResetForm({ token }: { token?: string }) {
           </Button>
         </form>
       )}
-      {(done || !token) && (
+      {(done || token === null) && (
         <Link href="/login" className="block text-sm font-medium text-brand-700 hover:underline">
           {t('backToLogin')}
         </Link>

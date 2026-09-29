@@ -7,7 +7,12 @@ const prisma = new PrismaClient();
 const DEMO_PASSWORD = process.env.SEED_PASSWORD ?? 'demo-password-123';
 
 async function main() {
-  if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed in production');
+  // Known demo passwords: only on a local database, or when explicitly allowed (CI, throwaway DBs).
+  const host = new URL(process.env.DATABASE_URL ?? '').hostname;
+  const local = ['localhost', '127.0.0.1', '::1', 'db', 'postgres'].includes(host);
+  if (process.env.NODE_ENV === 'production' || (!local && process.env.ALLOW_DEMO_SEED !== 'true')) {
+    throw new Error('Refusing to seed demo users: not a local database (set ALLOW_DEMO_SEED=true for a disposable one).');
+  }
 
   const passwordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
 

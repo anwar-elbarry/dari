@@ -14,8 +14,8 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | Phase | Scope | Gate to exit | Status |
 |---|---|---|---|
 | 0 | Foundations + legal kickoff | Repo builds, CI checks pass, legal tracks started | Code done · legal open |
-| 1 | Auth, RBAC, accounts, properties, onboarding | A manager can sign up and add a property | In progress (steps 1.0–1.7 done) |
-| 2 | iCal sync, CSV import, 120-day counter, dashboard, alerts | Day counter matches a hand-checked real calendar | Not started |
+| 1 | Auth, RBAC, accounts, properties, onboarding | A manager can sign up and add a property | **Done** (see outcome in `docs/phase-1.md`) |
+| 2 | iCal sync, CSV import, 120-day counter, dashboard, alerts | Day counter matches a hand-checked real calendar | Planned — [`docs/phase-2.md`](docs/phase-2.md) |
 | 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | Not started |
 | 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | Not started |
 | 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | Blocked on fiduciaire |
@@ -93,6 +93,8 @@ Not code, but it decides when real customer data may be processed. Start in week
 **Exit:** permission-matrix tests pass; a Staff user cannot reach any financial or ID endpoint.
 
 ## Phase 2 — Calendar sync and 120-day counter
+
+**Detailed plan:** [`docs/phase-2.md`](docs/phase-2.md)
 
 **Goal:** an accurate, trustworthy day count per unlicensed property.
 

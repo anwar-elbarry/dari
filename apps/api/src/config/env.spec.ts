@@ -31,6 +31,14 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...base, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
   });
 
+  it('refuses placeholder or short JWT secrets in production', () => {
+    const prod = { ...base, NODE_ENV: 'production', MAIL_DRIVER: 'console' };
+    expect(() => parseEnv({ ...prod, JWT_ACCESS_SECRET: 'change-me-to-a-long-random-value-000000' })).toThrow(/JWT_ACCESS_SECRET/);
+    expect(() => parseEnv({ ...prod, JWT_ACCESS_SECRET: 'x'.repeat(40) })).toThrow(/JWT_ACCESS_SECRET/);
+    // Only MAIL_DRIVER remains wrong with a proper secret.
+    expect(() => parseEnv({ ...prod, JWT_ACCESS_SECRET: 'Zq3'.repeat(15) })).toThrow(/^(?!.*JWT_ACCESS_SECRET).*MAIL_DRIVER/s);
+  });
+
   it('derives secure cookies from NODE_ENV and refuses insecure cookies in production', () => {
     expect(parseEnv(base).COOKIE_SECURE).toBe(false);
     expect(parseEnv({ ...base, COOKIE_SECURE: 'true' }).COOKIE_SECURE).toBe(true);

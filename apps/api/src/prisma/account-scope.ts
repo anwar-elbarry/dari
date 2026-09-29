@@ -47,11 +47,29 @@ function assertNoOtherAccount(value: unknown, accountId: string, where: string) 
  * Foreign keys to other tenant rows (e.g. Property.ownerId) are NOT checked here: services must
  * load the referenced row through the scoped client first.
  */
+const NESTED_WRITE_KEYS = ['connect', 'connectOrCreate', 'create', 'createMany', 'update', 'updateMany', 'upsert', 'set', 'disconnect', 'delete', 'deleteMany'];
+
+/** Nested writes could reach rows of another account; tenant writes must use plain foreign-key columns. */
+function assertNoNestedWrites(data: unknown, where: string) {
+  const rows = Array.isArray(data) ? data : [data];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    for (const [key, value] of Object.entries(row)) {
+      if (value && typeof value === 'object' && !(value instanceof Date) && NESTED_WRITE_KEYS.some((k) => k in value)) {
+        throw new AccountScopeError(`${where}: nested write on "${key}" is not allowed; set the foreign key and check it through forAccount()`);
+      }
+    }
+  }
+}
+
 export function scopeArgs(model: string, operation: string, args: Args, accountId: string): Args {
   if (!TENANT_MODELS.has(model)) {
     throw new AccountScopeError(`Model ${model} has no account scope rule; add one before using it through forAccount().`);
   }
   const next: Args = { ...args };
+  for (const k of ['data', 'create', 'update'] as const) {
+    if (next[k] !== undefined) assertNoNestedWrites(next[k], `${model}.${operation} ${k}`);
+  }
 
   if (WHERE_OPS.has(operation)) {
     assertNoOtherAccount(next.where, accountId, `${model}.${operation} where`);

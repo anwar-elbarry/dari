@@ -84,6 +84,15 @@ describe('auth (integration)', () => {
       expect(actions).toEqual(['account.signup', 'auth.login.failure', 'auth.login.success']);
     });
 
+    it('counts parallel guesses before verifying them', async () => {
+      await signup(t.app, 'burst@x.test');
+      const results = await Promise.all(
+        Array.from({ length: 20 }, (_, i) => client(t.app).post('/api/auth/login', { email: 'burst@x.test', password: `guess-${i}-password` })),
+      );
+      expect(results.filter((r) => r.status === 401)).toHaveLength(5);
+      expect(results.filter((r) => r.status === 429)).toHaveLength(15);
+    });
+
     it('blocks an email after 5 failures, even with the right password', async () => {
       await signup(t.app, 'brute@x.test');
       for (let i = 0; i < 5; i++) {
@@ -169,15 +178,15 @@ describe('auth (integration)', () => {
   describe('password reset', () => {
     it('does not reveal whether an email exists', async () => {
       await client(t.app).post('/api/auth/forgot-password', { email: 'ghost@x.test' }).expect(204);
+      await new Promise((r) => setTimeout(r, 200));
       expect(t.mail.sent).toHaveLength(0);
     });
 
     it('resets once, revokes sessions, and the new password works', async () => {
       const session = await signup(t.app, 'reset@x.test');
       await client(t.app).post('/api/auth/forgot-password', { email: 'Reset@x.test' }).expect(204);
-      await new Promise((r) => setImmediate(r));
-      const token = t.mail.lastToken('reset@x.test');
-      expect(t.mail.sent.at(-1)?.text).toContain(`${t.config.APP_URL}/reset-password?token=`);
+      const token = await t.mail.waitFor('reset@x.test', 1);
+      expect(t.mail.sent.at(-1)?.text).toContain(`${t.config.APP_URL}/reset-password#token=`);
 
       const newPassword = 'a-brand-new-password';
       await client(t.app).post('/api/auth/reset-password', { token, password: newPassword }).expect(204);
@@ -192,11 +201,9 @@ describe('auth (integration)', () => {
     it('refuses an expired token and invalidates older tokens when a new one is requested', async () => {
       await signup(t.app, 'old@x.test');
       await client(t.app).post('/api/auth/forgot-password', { email: 'old@x.test' }).expect(204);
-      await new Promise((r) => setImmediate(r));
-      const first = t.mail.lastToken('old@x.test');
+      const first = await t.mail.waitFor('old@x.test', 1);
       await client(t.app).post('/api/auth/forgot-password', { email: 'old@x.test' }).expect(204);
-      await new Promise((r) => setImmediate(r));
-      const second = t.mail.lastToken('old@x.test');
+      const second = await t.mail.waitFor('old@x.test', 2);
 
       await client(t.app).post('/api/auth/reset-password', { token: first, password: 'a-brand-new-password' }).expect(400);
       await t.prisma.passwordResetToken.updateMany({ where: { tokenHash: hashToken(second) }, data: { expiresAt: new Date(Date.now() - 1000) } });
@@ -209,8 +216,7 @@ describe('auth (integration)', () => {
     await c.post('/api/auth/refresh').expect(200);
     await client(t.app).post('/api/auth/login', { email: 'audit@x.test', password: 'wrong-password' });
     await client(t.app).post('/api/auth/forgot-password', { email: 'audit@x.test' });
-    await new Promise((r) => setImmediate(r));
-    const token = t.mail.lastToken('audit@x.test');
+    const token = await t.mail.waitFor('audit@x.test', 1);
     const dump = JSON.stringify(await t.prisma.auditLog.findMany());
     for (const secret of [PASSWORD, 'wrong-password', token, hashToken(token)]) expect(dump).not.toContain(secret);
   });

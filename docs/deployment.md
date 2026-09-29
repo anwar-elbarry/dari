@@ -22,6 +22,11 @@ The Next.js `/api` rewrite forwards the incoming `X-Forwarded-For` header **unch
 
 The per-email login lockout does not depend on IP and stays effective either way.
 
+## Domain and cookies
+
+- Serve the app from a **dedicated host** (e.g. `app.<domain>`) and do not run other people's or untrusted apps on sibling subdomains. Session cookies are host-only but have no `__Host-` prefix yet, so a compromised sibling subdomain could plant its own session cookie in a user's browser (security review, Phase 1). Switching to `__Host-` cookies is planned once the domain is fixed.
+- Password-reset and invitation links carry the token in the URL fragment (`#token=`), which browsers never send to servers, so it stays out of proxy and access logs.
+
 ## API environment (production)
 
 Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on an invalid value.
@@ -30,7 +35,7 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 |---|---|
 | `NODE_ENV` | `production` (forces secure cookies, refuses dev mail drivers and disabled rate limits) |
 | `DATABASE_URL` | Managed Postgres, TLS, private network |
-| `JWT_ACCESS_SECRET` | 48+ random bytes (`openssl rand -base64 48`), from the secret store |
+| `JWT_ACCESS_SECRET` | `openssl rand -base64 48`, from the secret store. Placeholders and values under 43 characters are refused in production |
 | `APP_URL` | Public HTTPS URL of the web app (used in emailed links) |
 | `TRUST_PROXY` | `1` (see above) |
 | `MAIL_DRIVER` | Production driver — **not built yet** (Resend or Brevo, open decision). The API will not start in production until it exists. |
@@ -38,6 +43,10 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 ## Single instance for now
 
 The login lockout and the rate-limit counters are in memory. Run **one** API instance until they move to Redis (planned with the job runner in Phase 2).
+
+## Demo seed
+
+`npm run db:seed` creates users with a known password. It refuses non-local databases unless `ALLOW_DEMO_SEED=true`; never set that on staging or production.
 
 ## Before real customer data
 

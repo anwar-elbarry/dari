@@ -11,7 +11,7 @@ export async function lastLink(to: string, timeoutMs = 5000): Promise<string> {
     for (const f of files) {
       const msg = JSON.parse(readFileSync(join(MAIL_DIR, f), 'utf8')) as { to: string; text: string };
       if (msg.to === to) {
-        const link = msg.text.match(/https?:\/\/\S+token=[A-Za-z0-9_-]+/)?.[0];
+        const link = msg.text.match(/https?:\/\/\S+[?#]token=[A-Za-z0-9_-]+/)?.[0];
         if (link) return link;
       }
     }

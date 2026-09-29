@@ -129,7 +129,7 @@ export class InvitationsService {
   }
 
   private invitationMail(companyName: string, role: string, raw: string) {
-    const link = `${this.config.APP_URL}/accept-invitation?token=${raw}`;
+    const link = `${this.config.APP_URL}/accept-invitation#token=${raw}`;
     const label = ROLE_LABEL[role] ?? { fr: role, en: role };
     const days = this.config.INVITATION_TTL_DAYS;
     return {

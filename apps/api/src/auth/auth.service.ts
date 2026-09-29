@@ -72,15 +72,17 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, meta: ClientMeta): Promise<SessionTokens> {
+    // Check and record in the same synchronous step, before any await: parallel guesses cannot all
+    // slip past the check while the password hash is being verified. A success clears the record.
     if (this.limiter.isBlocked(dto.email)) {
       throw new HttpException({ code: 'TOO_MANY_ATTEMPTS', message: 'Too many attempts. Try again in 15 minutes.' }, HttpStatus.TOO_MANY_REQUESTS);
     }
+    this.limiter.fail(dto.email);
 
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     const valid = await argon2.verify(user?.passwordHash ?? (await this.dummyHash), dto.password);
 
     if (!user || !valid || user.disabledAt) {
-      this.limiter.fail(dto.email);
       if (user) {
         await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'auth.login.failure', resourceType: 'User', resourceId: user.id, ip: meta.ip });
       }
@@ -134,7 +136,10 @@ export class AuthService {
     await this.audit.record({ accountId: token.user.accountId, actorId: token.userId, action: 'auth.logout', resourceType: 'User', resourceId: token.userId, ip: meta.ip });
   }
 
-  /** Always succeeds from the caller's point of view, so it cannot be used to discover accounts. */
+  /**
+   * Always succeeds from the caller's point of view. The controller does not await it, so neither
+   * the database work nor the mail send shows in the response time.
+   */
   async forgotPassword(email: string, meta: ClientMeta): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.disabledAt) return;
@@ -149,8 +154,7 @@ export class AuthService {
     ]);
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'auth.password_reset.requested', resourceType: 'User', resourceId: user.id, ip: meta.ip });
 
-    const link = `${this.config.APP_URL}/reset-password?token=${raw}`;
-    // Not awaited: sending time must not reveal that the account exists.
+    const link = `${this.config.APP_URL}/reset-password#token=${raw}`;
     this.mail
       .send({
         to: user.email,

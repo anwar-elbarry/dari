@@ -1,6 +1,6 @@
 import { ResetForm } from '../../../components/auth/reset-form';
 
-export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
-  const { token } = await searchParams;
-  return <ResetForm token={token} />;
+/** The token arrives in the URL fragment and is read in the browser only. */
+export default function Page() {
+  return <ResetForm />;
 }

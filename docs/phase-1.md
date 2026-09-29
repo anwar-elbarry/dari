@@ -142,7 +142,7 @@ Suggested order. Each step ends with green lint, typecheck and tests, and a comm
 | 1.5 ✅ | Property and PropertyOwner API with reduced projection for Staff | fast |
 | 1.6 ✅ | Web: shell, i18n (FR / EN), `/api` proxy, login, signup, reset, accept-invitation screens | fast |
 | 1.7 ✅ | Web: add-property wizard, property list, role-aware navigation | fast |
-| 1.8 | Hardening pass: `/security-review`, end-to-end happy path, README and `CLAUDE.md` updates | strong |
+| 1.8 ✅ | Hardening pass: `/security-review`, end-to-end happy path, README and `CLAUDE.md` updates | strong |
 
 Rough effort solo: 2–3 weeks full-time. Steps 1.2 and 1.3 carry the risk; do not rush them.
 
@@ -200,3 +200,23 @@ API integration tests need Postgres. They run in CI with a service container; in
 2. Mail provider: Resend or Brevo.
 3. Is email-only login acceptable for the pilot, or will conciergeries expect phone login?
 4. Does Staff need any access to owner names, or is the reduced view (property name, address, license status) enough?
+
+---
+
+## Outcome (Phase 1 closed)
+
+All steps 1.0–1.8 are done; CI runs lint, typecheck, unit, integration (Postgres) and end-to-end (Playwright, phone viewport) tests on every push.
+
+**Decisions taken by default** (the founder can still change them): email-only login; Staff see the reduced property view; console/file mail drivers only (no production driver yet); hosting region not chosen.
+
+**Security review (independent pass):** no high-severity finding. Fixed: open redirect through `?next=` with control characters; per-email login lockout bypass with parallel requests; placeholder JWT secret accepted in production; framework error messages echoing request bodies; oversized bodies answering 500; forgot-password timing; reset/invitation tokens in query strings (now `#token=`); nested relation writes through the account scope (now refused); demo seed on non-local databases.
+
+**Known limits, accepted for now:**
+- Signup and invitations reveal that an email is registered (409). Needs email verification at signup (after the pilot).
+- Login lockout and rate limits are in memory: one API instance until Redis (Phase 2).
+- Access token stays valid up to 15 minutes after logout (standard short-lived JWT).
+- CSP allows inline scripts (Next.js); move to nonces later.
+- Session cookies have no `__Host-` prefix; dedicated host required (see `deployment.md`).
+- `Property.ownerId` has no composite (ownerId, accountId) foreign key; the service check and isolation tests are the guard.
+- The edge proxy must overwrite `X-Forwarded-For` (see `deployment.md`).
+- Minimal Team page (invite, cancel) instead of full team management, which stays in Phase 6.

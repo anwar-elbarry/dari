@@ -25,20 +25,48 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let body: ErrorBody['error'] = { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' };
+    const clientStatus = clientErrorStatus(exception);
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const response = exception.getResponse();
       const payload = typeof response === 'object' && response !== null ? (response as Record<string, unknown>) : {};
+      // Only our own errors (thrown with an explicit code) carry their message. Framework messages can
+      // quote the request (e.g. JSON parse errors), so they are replaced by a fixed text per status.
+      const own = typeof payload.code === 'string' && typeof payload.message === 'string';
       body = {
-        code: typeof payload.code === 'string' ? payload.code : (HttpStatus[status] ?? 'ERROR'),
-        message: typeof payload.message === 'string' ? payload.message : exception.message,
-        ...(payload.details !== undefined ? { details: payload.details } : {}),
+        code: own ? (payload.code as string) : (HttpStatus[status] ?? 'ERROR'),
+        message: own ? (payload.message as string) : fixedMessage(status),
+        ...(own && payload.details !== undefined ? { details: payload.details } : {}),
       };
+    } else if (clientStatus) {
+      // body-parser errors (too large, bad JSON, bad charset) are client errors, not crashes.
+      status = clientStatus;
+      body = { code: HttpStatus[status] ?? 'BAD_REQUEST', message: fixedMessage(status) };
     } else {
       this.logger.error(`[${requestId ?? '-'}] ${exception instanceof Error ? exception.stack : String(exception)}`);
     }
 
     res.status(status).json({ error: body, requestId } satisfies ErrorBody);
   }
+}
+
+const FIXED_MESSAGES: Partial<Record<number, string>> = {
+  400: 'Bad request.',
+  401: 'Authentication required.',
+  403: 'Forbidden.',
+  404: 'Not found.',
+  413: 'Request body too large.',
+  415: 'Unsupported content type.',
+  429: 'Too many requests. Try again later.',
+};
+
+function fixedMessage(status: number): string {
+  return FIXED_MESSAGES[status] ?? (status >= 500 ? 'An unexpected error occurred.' : 'Request failed.');
+}
+
+function clientErrorStatus(e: unknown): number | undefined {
+  if (!e || typeof e !== 'object') return undefined;
+  const s = (e as { status?: unknown; statusCode?: unknown }).status ?? (e as { statusCode?: unknown }).statusCode;
+  return typeof s === 'number' && s >= 400 && s < 500 ? s : undefined;
 }

@@ -18,9 +18,18 @@ export class CapturingMailDriver implements MailDriver {
   /** Extracts the `token` query parameter from the last message sent to `to`. */
   lastToken(to: string): string {
     const msg = [...this.sent].reverse().find((m) => m.to === to);
-    const match = msg?.text.match(/[?&]token=([A-Za-z0-9_-]+)/);
+    const match = msg?.text.match(/[?&#]token=([A-Za-z0-9_-]+)/);
     if (!match) throw new Error(`No token mail found for ${to}`);
     return match[1];
+  }
+  /** For mails sent after the response (password reset): waits until `count` messages reached `to`. */
+  async waitFor(to: string, count: number, timeoutMs = 3000): Promise<string> {
+    const deadline = Date.now() + timeoutMs;
+    while (this.sent.filter((m) => m.to === to).length < count) {
+      if (Date.now() > deadline) throw new Error(`Timed out waiting for mail #${count} to ${to}`);
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    return this.lastToken(to);
   }
 }
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Logger, Post, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { APP_CONFIG, AppConfig } from '../config/env';
@@ -15,6 +15,8 @@ const STRICT = { default: { limit: 10, ttl: 60_000 } };
 
 @Controller()
 export class AuthController {
+  private readonly logger = new Logger('Auth');
+
   constructor(
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
@@ -61,8 +63,9 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('auth/forgot-password')
   @HttpCode(204)
-  async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
-    await this.auth.forgotPassword(dto.email, clientMeta(req));
+  forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
+    // Not awaited: the response time must not reveal whether the email has an account.
+    this.auth.forgotPassword(dto.email, clientMeta(req)).catch((e: unknown) => this.logger.error(`forgot-password failed: ${e instanceof Error ? e.message : String(e)}`));
   }
 
   @Public()

@@ -42,6 +42,9 @@ const envSchema = z
         message: `${env.MAIL_DRIVER} mail driver is not allowed in production`,
       });
     }
+    if (env.NODE_ENV === 'production' && (env.JWT_ACCESS_SECRET.length < 43 || /change-?me|example|placeholder|secret/i.test(env.JWT_ACCESS_SECRET))) {
+      ctx.addIssue({ code: 'custom', path: ['JWT_ACCESS_SECRET'], message: 'must be a random value of at least 43 characters in production (openssl rand -base64 48)' });
+    }
     if (env.NODE_ENV === 'production' && !env.RATE_LIMIT_ENABLED) {
       ctx.addIssue({ code: 'custom', path: ['RATE_LIMIT_ENABLED'], message: 'rate limiting cannot be disabled in production' });
     }

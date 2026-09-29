@@ -55,6 +55,7 @@ test('manager onboarding and staff invitation', async ({ page, browser }) => {
     await sp.goto(link);
     await expect(sp.getByText('Conciergerie Atlas vous invite en tant que Équipe (check-in, ménage).')).toBeVisible();
     expect(sp.url()).not.toContain('token=');
+    expect(link).toContain('#token=');
 
     await sp.getByLabel('Votre nom').fill('Hind');
     await sp.getByLabel('Choisissez un mot de passe').fill(password);
@@ -84,6 +85,24 @@ test('manager onboarding and staff invitation', async ({ page, browser }) => {
     await page.getByRole('button', { name: 'Se connecter' }).click();
     await expect(page).toHaveURL(/\/properties$/);
   });
+});
+
+test('login ignores off-site ?next= targets', async ({ page }) => {
+  const email = `next-${Date.now()}@e2e.test`;
+  await page.goto('/signup');
+  await page.getByLabel('Nom de la société ou conciergerie').fill('Next Co');
+  await page.getByLabel('Votre nom').fill('Nora');
+  await page.getByLabel('E-mail professionnel').fill(email);
+  await page.getByLabel('Mot de passe').fill('e2e-password-123');
+  await page.getByRole('button', { name: 'Créer le compte' }).click();
+  await expect(page).toHaveURL(/\/properties\/new$/);
+  await page.getByRole('button', { name: 'Se déconnecter' }).click();
+
+  await page.goto('/login?next=%2F%09%2Fevil.example');
+  await page.getByLabel('E-mail').fill(email);
+  await page.getByLabel('Mot de passe').fill('e2e-password-123');
+  await page.getByRole('button', { name: 'Se connecter' }).click();
+  await expect(page).toHaveURL(/^http:\/\/localhost:3000\/properties/);
 });
 
 test('language switch and generic login error', async ({ page }) => {

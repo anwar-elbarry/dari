@@ -29,7 +29,7 @@ describe('invitations (integration)', () => {
 
     const mail = t.mail.sent.at(-1)!;
     expect(mail.to).toBe('new.staff@x.test');
-    expect(mail.text).toContain(`${t.config.APP_URL}/accept-invitation?token=`);
+    expect(mail.text).toContain(`${t.config.APP_URL}/accept-invitation#token=`);
     expect(mail.text).toContain('Alpha Conciergerie');
 
     const list = await a.as.OWNER_MANAGER.get('/api/invitations').expect(200);
