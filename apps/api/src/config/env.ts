@@ -67,6 +67,13 @@ const envSchema = z
      * Document worker (services/ocr) on the private network. Optional: without it the guest types the fields
      * (OCR is assistive). The secret must be 32+ characters and is sent in `X-Worker-Secret`.
      */
+    /**
+     * Headless Chromium that renders the Fiche de Police PDF. Path to the binary (default: Playwright's own).
+     * PDF_NO_SANDBOX is only for containers that cannot give Chromium a sandbox: the renderer loads our own
+     * escaped HTML with JavaScript off and the network blocked, but prefer a non-root user with the sandbox.
+     */
+    PDF_CHROMIUM_PATH: z.string().min(1).optional(),
+    PDF_NO_SANDBOX: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
     OCR_SERVICE_URL: z.string().url().optional(),
     OCR_SHARED_SECRET: z.string().min(32, 'must be at least 32 characters').optional(),
     STORAGE_MAX_BYTES: z.coerce.number().int().positive().default(16 * 1024 * 1024),

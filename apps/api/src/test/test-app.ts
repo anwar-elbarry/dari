@@ -53,6 +53,9 @@ export function testConfig(overrides: Record<string, string> = {}): AppConfig {
     JWT_ACCESS_SECRET: 'test-secret-test-secret-test-secret-000',
     ICAL_FETCH_TIMEOUT_MS: '1500',
     RATE_LIMIT_ENABLED: 'false',
+    // Fiche PDFs: this sandbox runs as root, where Chromium needs --no-sandbox; PW_CHROMIUM_PATH points at the browser.
+    PDF_NO_SANDBOX: 'true',
+    ...(process.env.PW_CHROMIUM_PATH ? { PDF_CHROMIUM_PATH: process.env.PW_CHROMIUM_PATH } : {}),
     ...overrides,
   });
 }

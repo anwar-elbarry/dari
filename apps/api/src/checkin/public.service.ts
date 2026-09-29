@@ -8,6 +8,7 @@ import { RulesService } from '../compliance/rules.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { ConsentService } from './consent.service';
+import { FicheService } from './fiche.service';
 import { parseIsoDate, SubmitDto } from './dto';
 import { ImageRejectedError, MAX_UPLOAD_BYTES, sanitizeImage } from './image-sanitizer';
 import { OcrClient, OcrOutcome, suggestionHashes } from './ocr.client';
@@ -44,6 +45,7 @@ export class PublicCheckInService {
     private readonly storage: StorageService,
     private readonly ocr: OcrClient,
     private readonly rules: RulesService,
+    private readonly fiche: FicheService,
     @Inject(WINDOW_COUNTER) private readonly counter: WindowCounter,
   ) {}
 
@@ -214,6 +216,7 @@ export class PublicCheckInService {
     }
 
     await this.audit.record({ accountId, actorId: null, action: 'checkin.submitted', resourceType: 'GuestCheckIn', resourceId: draft.id, ip: meta.ip });
+    this.fiche.generateInBackground(accountId, draft.id);
     const remaining = link.maxGuests - (link.guestsSubmitted + 1);
     return { status: 'submitted', guestIndex, remaining, canAddGuest: remaining > 0 };
   }

@@ -5,6 +5,7 @@
  */
 import { DiscoveryModule } from '@nestjs/core';
 import { listRoutes } from '../test/routes';
+import { PdfRenderer } from '../checkin/pdf-renderer';
 import { StorageService } from '../storage/storage.service';
 import { Client, createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 
@@ -46,6 +47,8 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'GET', route: '/api/properties/:id/arrivals', call: (c, a) => c.get(`/api/properties/${a.propertyId}/arrivals`) },
   { method: 'GET', route: '/api/guests/:id', call: (c, a) => c.get(`/api/guests/${a.guestId}`) },
   { method: 'PATCH', route: '/api/guests/:id', call: (c, a) => c.patch(`/api/guests/${a.guestId}`, { profession: 'Hijacked' }) },
+  { method: 'GET', route: '/api/guests/:id/fiche', call: (c, a) => c.get(`/api/guests/${a.guestId}/fiche`) },
+  { method: 'POST', route: '/api/guests/:id/fiche/regenerate', call: (c, a) => c.post(`/api/guests/${a.guestId}/fiche/regenerate`) },
   { method: 'GET', route: '/api/guests/:id/document', call: (c, a) => c.get(`/api/guests/${a.guestId}/document`) },
 ];
 
@@ -82,6 +85,9 @@ describe('tenant isolation (integration)', () => {
     const guest = await t.prisma.guestCheckIn.create({
       data: { accountId: a.accountId, bookingId: stay.id, propertyId: property.id, linkId: link.id, guestIndex: 1, status: 'SUBMITTED', docImageId: image.id, submittedAt: new Date() },
     });
+    jest.spyOn(t.app.get(PdfRenderer), 'render').mockResolvedValue(Buffer.from('%PDF-1.4 stub'));
+    const pdf = await t.app.get(StorageService).put(a.accountId, 'FICHE_PDF', Buffer.from('%PDF-1.4 stub'));
+    await t.prisma.ficheDePolice.create({ data: { accountId: a.accountId, guestCheckInId: guest.id, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64) } });
     idsA = { ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id, bookingId: booking.id, alertId: alert.id, stayId: stay.id, linkId: link.id, guestId: guest.id };
   });
 
@@ -133,6 +139,8 @@ describe('tenant isolation (integration)', () => {
     expect(await t.prisma.checkInLink.count({ where: { bookingId: idsA.stayId } })).toBe(1); // no link was created or resent for A by B
     expect((await t.prisma.guestCheckIn.findUniqueOrThrow({ where: { id: idsA.guestId } })).profession).toBeNull();
     expect(await t.prisma.auditLog.count({ where: { action: 'guest.document.read' } })).toBe(0); // B never read A's image
+    expect(await t.prisma.auditLog.count({ where: { action: 'guest.fiche.read' } })).toBe(0); // nor A's Fiche
+    expect(await t.prisma.ficheDePolice.count()).toBe(1); // and B's regenerate did not touch it
     expect(await t.prisma.importBatch.count()).toBe(0);
     expect((await t.prisma.notification.findUniqueOrThrow({ where: { id: idsA.alertId } })).resolvedAt).toBeNull();
   });

@@ -26,6 +26,7 @@ jobs:
       DATABASE_URL: postgresql://dari:dari@localhost:5432/dari_test
       TEST_REDIS_URL: redis://localhost:6379/15
       TEST_S3_ENDPOINT: http://localhost:9000
+      REQUIRE_CHROMIUM: "1" # a missing browser fails the PDF tests instead of skipping them
     steps:
       - uses: actions/checkout@v4
       # MinIO cannot be a `services:` container (it needs a command), so it is started here. The storage
@@ -39,6 +40,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The Fiche PDF tests drive a real Chromium and check that Arabic text renders (needs an Arabic-capable font).
+      - name: Install Chromium and fonts for the PDF tests
+        run: |
+          npx playwright-core install --with-deps chromium
+          sudo apt-get install -y --no-install-recommends fonts-noto-core
       - run: npm run db:generate
       - run: npm run db:validate
       - name: Apply migrations and seed (proves the migration set is complete)

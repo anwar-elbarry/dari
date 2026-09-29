@@ -5,6 +5,7 @@ import { MemoryObjectStore } from '../storage/memory-object-store';
 import { OBJECT_STORE } from '../storage/object-store';
 import { StorageService } from '../storage/storage.service';
 import { createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
+import { FicheService } from './fiche.service';
 import { mapWorkerResponse, OcrClient } from './ocr.client';
 
 requireDatabase();
@@ -54,6 +55,7 @@ describe('guest check-in (integration)', () => {
   let consentFr: string;
   let store: MemoryObjectStore;
   let storage: StorageService;
+  let fiche: jest.SpyInstance;
 
   beforeAll(async () => {
     t = await createTestApp();
@@ -69,6 +71,8 @@ describe('guest check-in (integration)', () => {
     for (const key of store.keys()) await store.delete(key);
     jest.restoreAllMocks();
     jest.spyOn(t.app.get(OcrClient), 'extract').mockResolvedValue(mapWorkerResponse(WORKER_OK));
+    // The Fiche PDF has its own suite (real Chromium); here only the trigger is observed.
+    fiche = jest.spyOn(FicheService.prototype, 'generateInBackground').mockImplementation(() => undefined);
 
     a = await seedAccount(t, 'Alpha');
     const owner = await t.prisma.propertyOwner.create({ data: { accountId: a.accountId, name: 'Owner', residency: 'RESIDENT' } });
@@ -543,6 +547,23 @@ describe('guest check-in (integration)', () => {
       expect((await submit(link.token, draftId)).status).toBe(404);
       expect((await t.prisma.checkInLink.findUniqueOrThrow({ where: { id: link.id } })).guestsSubmitted).toBe(0);
       expect((await t.prisma.guestCheckIn.findUniqueOrThrow({ where: { id: draftId } })).status).toBe('PENDING');
+    });
+
+    it('starts the Fiche PDF for the guest after a successful submit, and not after a failed one', async () => {
+      const link = await newLink();
+      const draftId = await draftFor(link.token);
+      await submit(link.token, draftId, { profession: '' }).expect(400);
+      expect(fiche).not.toHaveBeenCalled();
+      await submit(link.token, draftId).expect(200);
+      expect(fiche).toHaveBeenCalledTimes(1);
+      expect(fiche).toHaveBeenCalledWith(a.accountId, draftId);
+    });
+
+    it('does not let a failing PDF renderer fail or delay the guest', async () => {
+      fiche.mockRestore();
+      jest.spyOn(t.app.get(FicheService), 'generate').mockRejectedValue(new Error('chromium exploded with Anna Eriksson'));
+      const link = await newLink();
+      await submit(link.token, await draftFor(link.token)).expect(200);
     });
 
     it('never puts anything but the outcome in the response', async () => {

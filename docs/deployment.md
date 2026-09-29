@@ -69,6 +69,17 @@ Every object is encrypted by the API (AES-256-GCM, one data key per object, wrap
 - Master key rotation: prepend a new key to `STORAGE_MASTER_KEYS`, deploy, run the rewrap (`StorageService.rewrapOutdatedKeys`) until it returns 0, then drop the old key. Losing every key that wraps an object makes that object permanently unreadable.
 - Deleting an object first blanks its wrapped key in the database, then removes it from the bucket.
 
+## Fiche de Police PDF (Chromium)
+
+The API renders the Fiche with headless Chromium (`playwright-core`); the API host or image needs:
+
+- A Chromium build (`npx playwright-core install --with-deps chromium`, or a distro package with `PDF_CHROMIUM_PATH` pointing at it).
+- **An Arabic-capable font** (for example `fonts-noto-core`): without one, Arabic names print as empty boxes. `fiche.int-spec.ts` checks this.
+- Preferably a non-root user with Chromium's sandbox. Containers that cannot provide one can set `PDF_NO_SANDBOX=true`; the renderer only loads our own escaped HTML with JavaScript off and every network request aborted (tested), so the exposure is small, but prefer the sandbox.
+- Memory for one shared browser (at most two renders run at once). If Chromium is missing, guests can still check in: the Fiche is generated after submission, the manager sees "no Fiche yet" and `Regenerate` answers 503 `PDF_UNAVAILABLE` until it is fixed.
+
+The layout is a working draft (`TEMPLATE_VERSION` in `checkin/fiche-template.ts`); it must be matched to the official form once the prefecture provides it, and the version bumped.
+
 ## Redis
 
 `REDIS_URL` is required in production: rate-limit counters, the login lockout and the job queues live there, so several API instances share them. Use a managed Redis in the same region as Postgres, not publicly reachable, with a password or TLS (`rediss://`).

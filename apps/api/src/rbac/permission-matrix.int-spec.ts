@@ -5,6 +5,7 @@
  */
 import { DiscoveryModule } from '@nestjs/core';
 import { listRoutes } from '../test/routes';
+import { PdfRenderer } from '../checkin/pdf-renderer';
 import { StorageService } from '../storage/storage.service';
 import { createTestApp, requireDatabase, resetDatabase, RoleName, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 
@@ -101,6 +102,8 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/properties/:id/arrivals', url: (f) => `/api/properties/${f.propertyId}/arrivals`, expect: STAFF_READ },
   { method: 'GET', route: '/api/guests/:id', url: (f) => `/api/guests/${f.guestId}`, expect: STAFF_READ },
   { method: 'PATCH', route: '/api/guests/:id', url: (f) => `/api/guests/${f.guestId}`, body: () => ({ profession: 'Engineer' }), expect: MANAGER_ONLY(200) },
+  { method: 'GET', route: '/api/guests/:id/fiche', url: (f) => `/api/guests/${f.guestId}/fiche`, expect: MANAGER_ONLY(200) },
+  { method: 'POST', route: '/api/guests/:id/fiche/regenerate', url: (f) => `/api/guests/${f.guestId}/fiche/regenerate`, body: () => ({}), expect: MANAGER_ONLY(200) },
   { method: 'GET', route: '/api/guests/:id/document', url: (f) => `/api/guests/${f.guestId}/document`, expect: MANAGER_ONLY(200) },
 ];
 
@@ -130,6 +133,10 @@ describe('permission matrix (integration)', () => {
     const guest = await t.prisma.guestCheckIn.create({
       data: { accountId: acc.accountId, bookingId: stay.id, propertyId: property.id, linkId: link.id, guestIndex: 1, status: 'SUBMITTED', fullName: 'Test Guest', docImageId: image.id, submittedAt: new Date() },
     });
+    // The matrix tests who may call the routes, not the browser: the renderer is stubbed.
+    jest.spyOn(t.app.get(PdfRenderer), 'render').mockResolvedValue(Buffer.from('%PDF-1.4 stub'));
+    const pdf = await t.app.get(StorageService).put(acc.accountId, 'FICHE_PDF', Buffer.from('%PDF-1.4 stub'));
+    await t.prisma.ficheDePolice.create({ data: { accountId: acc.accountId, guestCheckInId: guest.id, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64) } });
     let n = 0;
     f = {
       stayId: stay.id,

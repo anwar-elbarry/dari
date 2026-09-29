@@ -4,11 +4,13 @@ import { ComplianceModule } from '../compliance/compliance.module';
 import { REDIS, RedisClient } from '../redis/redis.module';
 import { CheckInEnabledGuard } from './checkin-enabled.guard';
 import { ConsentService } from './consent.service';
+import { FicheService } from './fiche.service';
 import { GuestsController } from './guests.controller';
 import { GuestsService } from './guests.service';
 import { LinksController } from './links.controller';
 import { LinksService } from './links.service';
 import { OcrClient } from './ocr.client';
+import { PdfRenderer } from './pdf-renderer';
 import { PublicCheckInController } from './public.controller';
 import { PublicCheckInService, WINDOW_COUNTER } from './public.service';
 
@@ -25,6 +27,8 @@ import { PublicCheckInService, WINDOW_COUNTER } from './public.service';
     ConsentService,
     CheckInEnabledGuard,
     OcrClient,
+    PdfRenderer,
+    FicheService,
     LinksService,
     PublicCheckInService,
     GuestsService,
