@@ -13,3 +13,5 @@ coverage/
 test-results/
 playwright-report/
 .mail/
+
+dump.rdb
