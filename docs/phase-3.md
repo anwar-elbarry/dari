@@ -151,7 +151,7 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 | 3.3 | **OCR worker**: MRZ parsing with check digits, image pre-checks, CIN approach after the card test, confidence scores; synthetic ICAO specimen fixtures only | strong |
 | 3.4 | Check-in links API (create, list, resend, revoke) and the public API (view, upload with sanitising, submit with server-side rules and consent) — **done** (see the API changes below) | strong |
 | 3.5 | Fiche de Police PDF generator (template version, checksum, stored encrypted) — **done** (layout is a draft until the official form is obtained; generated in the background after submit; Arabic needs a system font, see `deployment.md`) | fast |
-| 3.6 | Retention job (Redis queue): purge images and artefacts after the window, keep structured records, audit | strong |
+| 3.6 | Retention job (Redis queue): purge images and artefacts after the window, keep structured records, audit — **done** (see below) | strong |
 | 3.7 | Web: arrivals, link dialog, guest list, Fiche and ID viewers | fast |
 | 3.8 | Web: guest form (mobile-first, camera guidance, review screen, consent) | fast |
 | 3.9 | Hardening: abuse tests, log-redaction test, security review, E2E on a phone with a synthetic passport, docs, Phase 4 plan | strong |
@@ -159,6 +159,13 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 Rough effort solo: 4–6 weeks full-time. Steps 3.1, 3.3, 3.4 and 3.6 carry the risk.
 
 ---
+
+### Retention rules as built (3.6)
+
+- The job runs hourly (Redis). Four idempotent sweeps: **abandoned drafts** (photo sent, form not submitted) after 24 h, photo and row; **objects past their own `expiresAt`** (set at upload to checkout + retention days); **ID images past the current `retention.id_images_days`** (shortening the rule applies to images already stored; lengthening it does not extend images already scheduled, the privacy-safe default); **half-finished deletions** (key shredded, bucket delete failed).
+- Kept: the structured guest record (fields, consent, OCR flags) and Fiche PDFs (no purge date until counsel sets the Fiche retention).
+- Every deletion writes `retention.purged` (identifiers only). One failing object never stops the others; the job then fails (visible and retried), logs, and emails `OPS_ALERT_EMAIL` (counts only). Anything more than a day past its purge date also raises the alert.
+- Backups: the wrapped key is blanked on deletion, so an image left in a backup or an old bucket version is unreadable.
 
 ## Tests required
 

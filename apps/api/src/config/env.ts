@@ -67,6 +67,8 @@ const envSchema = z
      * Document worker (services/ocr) on the private network. Optional: without it the guest types the fields
      * (OCR is assistive). The secret must be 32+ characters and is sent in `X-Worker-Secret`.
      */
+    /** Where the retention job reports a failed or overdue purge (counts only, no personal data). Optional. */
+    OPS_ALERT_EMAIL: z.string().email().optional(),
     /**
      * Headless Chromium that renders the Fiche de Police PDF. Path to the binary (default: Playwright's own).
      * PDF_NO_SANDBOX is only for containers that cannot give Chromium a sandbox: the renderer loads our own

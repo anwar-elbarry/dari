@@ -5,6 +5,7 @@ import { AppConfig } from '../config/env';
 /** Queue names. Payloads carry ids only: never URLs, tokens or personal data. */
 export const QUEUE_SYNC = 'ical-sync';
 export const QUEUE_ALERTS = 'alerts';
+export const QUEUE_RETENTION = 'retention';
 
 /**
  * BullMQ connection. Feature modules register the queues they use with `BullModule.registerQueue`
