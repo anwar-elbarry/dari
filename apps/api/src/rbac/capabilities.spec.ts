@@ -6,10 +6,11 @@ describe('role capabilities', () => {
   });
 
   it('keeps Staff away from owners, financial fields and team management', () => {
-    for (const c of ['property:read_full', 'property:write', 'owner:read', 'owner:write', 'team:manage'] as const) {
+    for (const c of ['property:read_full', 'property:write', 'owner:read', 'owner:write', 'team:manage', 'booking:write', 'ical:manage', 'revenue:read'] as const) {
       expect(can('STAFF', c)).toBe(false);
     }
     expect(can('STAFF', 'property:read')).toBe(true);
+    expect(can('STAFF', 'booking:read')).toBe(true);
   });
 
   it('gives Accountant nothing in Phase 1 (reports arrive in Phase 5)', () => {

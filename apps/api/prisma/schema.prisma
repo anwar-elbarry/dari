@@ -66,6 +66,29 @@ enum BookingSource {
   OTHER
 }
 
+/// What a calendar event is. UNCERTAIN never counts until a person confirms it.
+enum BookingClassification {
+  BOOKING
+  OWNER_BLOCK
+  UNCERTAIN
+}
+
+enum ClassifiedBy {
+  AUTO
+  MANUAL
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+enum FeedStatus {
+  NEVER
+  OK
+  ERROR
+}
+
 enum DocType {
   PASSPORT
   CIN
@@ -127,6 +150,9 @@ model Account {
   invitations   Invitation[]
   owners        PropertyOwner[]
   properties    Property[]
+  bookings      Booking[]
+  icalFeeds     IcalFeed[]
+  importBatches ImportBatch[]
   shareLinks    ShareLink[]
   notifications Notification[]
   auditLogs     AuditLog[]
@@ -234,6 +260,8 @@ model Property {
   account        Account         @relation(fields: [accountId], references: [id])
   owner          PropertyOwner   @relation(fields: [ownerId], references: [id])
   bookings       Booking[]
+  icalFeeds      IcalFeed[]
+  importBatches  ImportBatch[]
   checklistItems ChecklistItem[]
   policeRegisters PoliceRegister[]
   taxReports     TaxReport[]
@@ -244,29 +272,86 @@ model Property {
 }
 
 // Monetary amounts are Decimal(12,2) MAD.
+// Past stays are frozen: a booking whose checkout is in the past is never deleted or cancelled by a sync,
+// even if the platform trimmed it from the feed.
 model Booking {
-  id                String        @id @default(uuid())
-  propertyId        String
-  checkIn           DateTime      @db.Date
-  checkOut          DateTime      @db.Date
-  partySize         Int?
-  nightlyRevenue    Decimal?      @db.Decimal(12, 2)
-  cleaningFee       Decimal?      @db.Decimal(12, 2)
-  addonRevenue      Decimal?      @db.Decimal(12, 2)
-  discounts         Decimal?      @db.Decimal(12, 2)
-  refunds           Decimal?      @db.Decimal(12, 2)
-  platformCommission Decimal?     @db.Decimal(12, 2)
-  taxeSejourAmount  Decimal?      @db.Decimal(12, 2)
-  source            BookingSource
-  externalUid       String? // iCal UID, for idempotent sync
-  isOwnerBlock      Boolean       @default(false) // excluded from the day count, shown for review
+  id                 String                @id @default(uuid())
+  accountId          String
+  propertyId         String
+  feedId             String?
+  importBatchId      String?
+  checkIn            DateTime              @db.Date
+  checkOut           DateTime              @db.Date
+  partySize          Int?
+  nightlyRevenue     Decimal?              @db.Decimal(12, 2)
+  cleaningFee        Decimal?              @db.Decimal(12, 2)
+  addonRevenue       Decimal?              @db.Decimal(12, 2)
+  discounts          Decimal?              @db.Decimal(12, 2)
+  refunds            Decimal?              @db.Decimal(12, 2)
+  platformCommission Decimal?              @db.Decimal(12, 2)
+  taxeSejourAmount   Decimal?              @db.Decimal(12, 2)
+  source             BookingSource
+  externalUid        String? // iCal UID, for idempotent sync
+  confirmationCode   String? // platform reference or import key, for idempotent imports
+  summary            String? // trimmed event summary; never a guest name from an import
+  classification     BookingClassification @default(BOOKING)
+  classifiedBy       ClassifiedBy          @default(AUTO)
+  status             BookingStatus         @default(CONFIRMED)
+  cancelledAt        DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
-  property Property        @relation(fields: [propertyId], references: [id])
-  checkIns GuestCheckIn[]
-  orders   AddOnOrder[]
+  account     Account        @relation(fields: [accountId], references: [id])
+  property    Property       @relation(fields: [propertyId], references: [id])
+  feed        IcalFeed?      @relation(fields: [feedId], references: [id], onDelete: SetNull)
+  importBatch ImportBatch?   @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  checkIns    GuestCheckIn[]
+  orders      AddOnOrder[]
 
-  @@unique([propertyId, externalUid])
+  @@unique([feedId, externalUid])
+  @@unique([propertyId, confirmationCode])
+  @@index([accountId])
   @@index([propertyId, checkIn])
+}
+
+// The iCal URL is a secret: anyone holding it can read the calendar. Owner/Manager only; never logged.
+model IcalFeed {
+  id           String        @id @default(uuid())
+  accountId    String
+  propertyId   String
+  platform     BookingSource
+  url          String
+  lastSyncedAt DateTime?
+  lastStatus   FeedStatus    @default(NEVER)
+  lastError    String? // sanitised: never contains the URL
+  eventCount   Int           @default(0)
+  createdAt    DateTime      @default(now())
+
+  account  Account   @relation(fields: [accountId], references: [id])
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@unique([propertyId, platform])
+  @@index([accountId])
+}
+
+model ImportBatch {
+  id            String   @id @default(uuid())
+  accountId     String
+  propertyId    String
+  fileName      String
+  rowCount      Int
+  importedCount Int
+  errorCount    Int
+  createdBy     String
+  createdAt     DateTime @default(now())
+
+  account  Account   @relation(fields: [accountId], references: [id])
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([accountId])
+  @@index([propertyId])
 }
 
 // Highest-risk data: ID scans are purged after the retention window (expiresAt); structured fields may be kept.
@@ -423,6 +508,7 @@ model Notification {
   severity   Severity  @default(INFO)
   propertyId String?
   bookingId  String?
+  year       Int? // threshold alerts: one per type, property and year
   message    String
   sentVia    String[]
   readAt     DateTime?
@@ -432,6 +518,7 @@ model Notification {
   account  Account   @relation(fields: [accountId], references: [id])
   property Property? @relation(fields: [propertyId], references: [id])
 
+  @@unique([accountId, type, propertyId, year])
   @@index([accountId, resolvedAt])
 }
 

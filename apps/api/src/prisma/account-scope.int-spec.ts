@@ -52,7 +52,18 @@ describe('forAccount (integration)', () => {
   it('refuses writes aimed at another account and models without a rule', async () => {
     const scoped = t.prisma.forAccount(a);
     await expect(scoped.propertyOwner.create({ data: { accountId: b, name: 'x', residency: 'RESIDENT' } })).rejects.toThrow(AccountScopeError);
-    await expect(scoped.booking.findMany()).rejects.toThrow(/no account scope rule/);
+    await expect(scoped.taxReport.findMany()).rejects.toThrow(/no account scope rule/);
+  });
+
+  it('scopes bookings, feeds and import batches', async () => {
+    const feedB = await t.prisma.icalFeed.create({ data: { accountId: b, propertyId: propertyB, platform: 'AIRBNB', url: 'https://example.test/b.ics' } });
+    await t.prisma.booking.create({ data: { accountId: b, propertyId: propertyB, feedId: feedB.id, checkIn: new Date('2026-03-01'), checkOut: new Date('2026-03-04'), source: 'AIRBNB' } });
+    await t.prisma.importBatch.create({ data: { accountId: b, propertyId: propertyB, fileName: 'b.csv', rowCount: 1, importedCount: 1, errorCount: 0, createdBy: 'u' } });
+    const scoped = t.prisma.forAccount(a);
+    expect(await scoped.booking.count()).toBe(0);
+    expect(await scoped.icalFeed.findUnique({ where: { id: feedB.id } })).toBeNull();
+    expect(await scoped.importBatch.count()).toBe(0);
+    expect(await t.prisma.icalFeed.count()).toBe(1);
   });
 
   it('keeps the scope inside interactive transactions', async () => {

@@ -12,13 +12,17 @@ export const CAPABILITIES = [
   'owner:read',
   'owner:write',
   'team:manage', // invitations now; roles and removal in Phase 6
+  'booking:read', // stays, day counter, alerts (Staff: dates and classification only)
+  'booking:write', // classification overrides, CSV imports
+  'ical:manage', // feeds and their URLs
+  'revenue:read', // revenue fields on bookings
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
 
 export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   OWNER_MANAGER: CAPABILITIES,
-  STAFF: ['property:read'],
+  STAFF: ['property:read', 'booking:read'],
   // Reports only, from Phase 5. No property, owner or guest data.
   ACCOUNTANT: [],
 };

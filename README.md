@@ -15,7 +15,7 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 |---|---|---|---|
 | 0 | Foundations + legal kickoff | Repo builds, CI checks pass, legal tracks started | Code done · legal open |
 | 1 | Auth, RBAC, accounts, properties, onboarding | A manager can sign up and add a property | **Done** (see outcome in `docs/phase-1.md`) |
-| 2 | iCal sync, CSV import, 120-day counter, dashboard, alerts | Day counter matches a hand-checked real calendar | In progress (step 2.0 done) — [`docs/phase-2.md`](docs/phase-2.md) |
+| 2 | iCal sync, CSV import, 120-day counter, dashboard, alerts | Day counter matches a hand-checked real calendar | In progress (steps 2.0–2.1 done) — [`docs/phase-2.md`](docs/phase-2.md) |
 | 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | Not started |
 | 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | Not started |
 | 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | Blocked on fiduciaire |
