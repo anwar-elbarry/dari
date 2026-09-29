@@ -141,7 +141,7 @@ Suggested order. Each step ends with green lint, typecheck and tests, and a comm
 | 1.4 ✅ | Invitations API (create, list, revoke, accept) | fast |
 | 1.5 ✅ | Property and PropertyOwner API with reduced projection for Staff | fast |
 | 1.6 ✅ | Web: shell, i18n (FR / EN), `/api` proxy, login, signup, reset, accept-invitation screens | fast |
-| 1.7 | Web: add-property wizard, property list, role-aware navigation | fast |
+| 1.7 ✅ | Web: add-property wizard, property list, role-aware navigation | fast |
 | 1.8 | Hardening pass: `/security-review`, end-to-end happy path, README and `CLAUDE.md` updates | strong |
 
 Rough effort solo: 2–3 weeks full-time. Steps 1.2 and 1.3 carry the risk; do not rush them.
