@@ -31,6 +31,8 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'GET', route: '/api/properties/:id/day-counter', call: (c, a) => c.get(`/api/properties/${a.propertyId}/day-counter`) },
   { method: 'GET', route: '/api/properties/:id/bookings', call: (c, a) => c.get(`/api/properties/${a.propertyId}/bookings`) },
   { method: 'PATCH', route: '/api/bookings/:id/classification', call: (c, a) => c.patch(`/api/bookings/${a.bookingId}/classification`, { classification: 'OWNER_BLOCK' }) },
+  { method: 'POST', route: '/api/properties/:id/imports/preview', call: (c, a) => c.upload(`/api/properties/${a.propertyId}/imports/preview`, 'check_in,check_out\n2026-01-01,2026-01-03\n') },
+  { method: 'POST', route: '/api/properties/:id/imports', call: (c, a) => c.upload(`/api/properties/${a.propertyId}/imports`, 'check_in,check_out\n2026-01-01,2026-01-03\n') },
 ];
 
 describe('tenant isolation (integration)', () => {
@@ -97,5 +99,7 @@ describe('tenant isolation (integration)', () => {
     expect((await t.prisma.invitation.findUniqueOrThrow({ where: { id: idsA.invitationId } })).revokedAt).toBeNull();
     expect((await t.prisma.icalFeed.findUniqueOrThrow({ where: { id: idsA.feedId } })).url).toBe('https://93.184.216.34/a.ics');
     expect((await t.prisma.booking.findUniqueOrThrow({ where: { id: idsA.bookingId } })).classification).toBe('BOOKING');
+    expect(await t.prisma.booking.count({ where: { propertyId: idsA.propertyId } })).toBe(1);
+    expect(await t.prisma.importBatch.count()).toBe(0);
   });
 });

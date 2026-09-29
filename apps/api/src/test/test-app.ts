@@ -96,6 +96,12 @@ export function client(app: INestApplication) {
     post: (url: string, body?: object) => agent.post(url).set(CSRF_HEADER, CSRF_HEADER_VALUE).send(body ?? {}),
     patch: (url: string, body?: object) => agent.patch(url).set(CSRF_HEADER, CSRF_HEADER_VALUE).send(body ?? {}),
     delete: (url: string) => agent.delete(url).set(CSRF_HEADER, CSRF_HEADER_VALUE),
+    /** multipart/form-data with one file field named "file" and optional text fields. */
+    upload: (url: string, file: string | Buffer, fields: Record<string, string> = {}, filename = 'import.csv') => {
+      let req = agent.post(url).set(CSRF_HEADER, CSRF_HEADER_VALUE).attach('file', Buffer.from(file), filename);
+      for (const [k, v] of Object.entries(fields)) req = req.field(k, v);
+      return req;
+    },
     agent,
   };
 }

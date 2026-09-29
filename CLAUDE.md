@@ -41,6 +41,10 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - `SafeFetchError` messages never contain the URL or host; they are safe to store and show.
 - Calendar events: `parseIcs()` (dates in `Africa/Casablanca`), `classify()` (BOOKING / OWNER_BLOCK / UNCERTAIN per platform; Booking.com "CLOSED - Not available" is UNCERTAIN by design), `storableSummary()` (only Airbnb/Booking summaries are stored).
 
+## Imports (apps/api/src/imports)
+- CSV import: `parseImport()` is pure and tested (French/English headers, `;`/`,`/tab, `DD/MM/YYYY`, `1 234,50`). Preview saves nothing; commit is idempotent by confirmation code (or dates + platform) and skips rows with errors. Only mapped columns are read: guest names and emails in a file are never stored.
+- Uploads: memory storage, 1 MB cap, one file. Anything written back to CSV goes through `csvCell()` (formula-injection safe).
+
 ## Auth, roles and tenancy (apps/api/src)
 - Sessions: access JWT in `dari_at` (path `/api`, 15 min) + rotating refresh token in `dari_rt` (path `/api/auth`). Both httpOnly, SameSite=Lax. Only token hashes are stored.
 - Every state-changing request needs the header `X-Requested-With: dari` (CSRF). The web client adds it.

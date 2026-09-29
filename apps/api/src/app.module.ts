@@ -13,6 +13,7 @@ import { ConfigModule } from './config/config.module';
 import { APP_CONFIG, AppConfig, parseEnv } from './config/env';
 import { HealthController } from './health/health.controller';
 import { IcalModule } from './ical/ical.module';
+import { ImportsModule } from './imports/imports.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { MailModule } from './mail/mail.module';
 import { CapabilitiesGuard } from './rbac/capabilities.guard';
@@ -47,6 +48,7 @@ export class AppModule {
         PropertiesModule,
         IcalModule.register(resolved),
         ComplianceModule,
+        ImportsModule,
       ],
       controllers: [HealthController],
       // Order matters: rate limit, then CSRF header, then session, then capabilities.

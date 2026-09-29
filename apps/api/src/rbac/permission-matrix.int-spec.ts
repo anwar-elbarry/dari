@@ -24,6 +24,8 @@ export interface Fixtures {
 
 interface Row {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  /** Send `csv` as an uploaded file instead of a JSON body. */
+  csv?: string;
   /** Route pattern as registered, e.g. /api/properties/:id */
   route: string;
   url: (f: Fixtures) => string | Promise<string>;
@@ -72,6 +74,11 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/properties/:id/day-counter', url: (f) => `/api/properties/${f.propertyId}/day-counter`, expect: STAFF_READ },
   { method: 'GET', route: '/api/properties/:id/bookings', url: (f) => `/api/properties/${f.propertyId}/bookings`, expect: STAFF_READ },
   { method: 'PATCH', route: '/api/bookings/:id/classification', url: (f) => `/api/bookings/${f.bookingId}/classification`, body: () => ({ classification: 'OWNER_BLOCK' }), expect: MANAGER_ONLY(200) },
+
+  // CSV import (booking:write)
+  { method: 'GET', route: '/api/imports/template.csv', url: () => '/api/imports/template.csv', expect: MANAGER_ONLY(200) },
+  { method: 'POST', route: '/api/properties/:id/imports/preview', url: (f) => `/api/properties/${f.propertyId}/imports/preview`, csv: 'check_in,check_out\n2026-01-01,2026-01-03\n', expect: MANAGER_ONLY(200) },
+  { method: 'POST', route: '/api/properties/:id/imports', url: (f) => `/api/properties/${f.propertyId}/imports`, csv: 'check_in,check_out\n2026-01-01,2026-01-03\n', expect: MANAGER_ONLY(201) },
 ];
 
 describe('permission matrix (integration)', () => {
@@ -130,8 +137,9 @@ describe('permission matrix (integration)', () => {
         const c = f.acc.as[who];
         const url = await row.url(f);
         const body = row.body?.(f);
-        const req =
-          row.method === 'GET' ? c.get(url) : row.method === 'POST' ? c.post(url, body) : row.method === 'PATCH' ? c.patch(url, body) : c.delete(url);
+        const req = row.csv
+          ? c.upload(url, row.csv)
+          : row.method === 'GET' ? c.get(url) : row.method === 'POST' ? c.post(url, body) : row.method === 'PATCH' ? c.patch(url, body) : c.delete(url);
         const res = await req;
         expect({ who, status: res.status }).toEqual({ who, status: row.expect[who] });
       }
