@@ -80,6 +80,8 @@ Not code, but it decides when real customer data may be processed. Start in week
 
 ## Phase 1 — Identity, accounts and properties
 
+**Detailed plan:** [`docs/phase-1.md`](docs/phase-1.md)
+
 **Goal:** a manager signs up, invites staff, and adds properties and owners.
 
 - Auth: signup, login, password reset, invitations; JWT with refresh
