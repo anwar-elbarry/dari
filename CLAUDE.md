@@ -35,6 +35,11 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Rate limiting: global default from env; stricter per-route limits with `@Throttle()`. Counters and the login lockout live in Redis when `REDIS_URL` is set (required in production), in memory otherwise.
 - Jobs: BullMQ queues in `jobs/jobs.module.ts` (`QUEUE_SYNC`, `QUEUE_ALERTS`); registered only with Redis. Payloads carry ids only. Inject queues as optional.
 
+## Outbound fetches (apps/api/src/ical)
+- Every user-supplied URL is fetched with `safeFetch()` only: https, host resolved and checked against `publicOnly` (no private, loopback, link-local, metadata, mapped or 6to4 addresses), connection pinned to the checked IP, redirects re-checked, 10 s / 2 MB caps. Never use `fetch`/`axios` on a user URL.
+- `SafeFetchError` messages never contain the URL or host; they are safe to store and show.
+- Calendar events: `parseIcs()` (dates in `Africa/Casablanca`), `classify()` (BOOKING / OWNER_BLOCK / UNCERTAIN per platform; Booking.com "CLOSED - Not available" is UNCERTAIN by design), `storableSummary()` (only Airbnb/Booking summaries are stored).
+
 ## Auth, roles and tenancy (apps/api/src)
 - Sessions: access JWT in `dari_at` (path `/api`, 15 min) + rotating refresh token in `dari_rt` (path `/api/auth`). Both httpOnly, SameSite=Lax. Only token hashes are stored.
 - Every state-changing request needs the header `X-Requested-With: dari` (CSRF). The web client adds it.
