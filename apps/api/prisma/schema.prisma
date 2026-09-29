@@ -157,6 +157,7 @@ model Account {
   notifications Notification[]
   auditLogs     AuditLog[]
   vendors       Vendor[]
+  storedObjects StoredObject[]
 }
 
 model User {
@@ -538,6 +539,32 @@ model AuditLog {
   account Account @relation(fields: [accountId], references: [id])
 
   @@index([accountId, createdAt])
+}
+
+// One row per encrypted object in private storage. The object is AES-256-GCM ciphertext under a per-object
+// data key; wrappedKey is that key wrapped by a master key (never stored in the database in clear).
+// Deleting an object also blanks wrappedKey (crypto-shredding: copies left in backups become unreadable).
+enum StoredObjectKind {
+  ID_IMAGE
+  FICHE_PDF
+}
+
+model StoredObject {
+  id         String           @id @default(uuid())
+  accountId  String
+  key        String           @unique // object key: random, never derived from personal data
+  kind       StoredObjectKind
+  sizeBytes  Int // plaintext size
+  sha256     String // of the plaintext
+  wrappedKey String
+  createdAt  DateTime         @default(now())
+  expiresAt  DateTime? // retention purge date
+  deletedAt  DateTime?
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@index([deletedAt, expiresAt]) // the retention job scans by this
 }
 
 // ---- Fast-follow ----

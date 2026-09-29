@@ -132,7 +132,7 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 | Step | Work | Model |
 |---|---|---|
 | 3.0 | Carry-overs: mail driver, `__Host-` cookies, composite FKs, log-redaction layer and test — **done** | fast |
-| 3.1 | **Storage service**: S3 client, envelope encryption, private access, streaming, `StoredObject`, audit hooks; MinIO in dev and CI | strong |
+| 3.1 | **Storage service**: S3 client, envelope encryption, private access, streaming, `StoredObject`, audit hooks; MinIO in dev and CI — **done** (objects are buffered in memory, capped at 16 MB, which is enough for images ≤ 8 MB and PDFs; GCM needs the whole object to authenticate) | strong |
 | 3.2 | Data model, migration, capabilities, consent texts, feature flag, retention settings | fast |
 | 3.3 | **OCR worker**: MRZ parsing with check digits, image pre-checks, CIN approach after the card test, confidence scores; synthetic ICAO specimen fixtures only | strong |
 | 3.4 | Check-in links API (create, list, resend, revoke) and the public API (view, upload with sanitising, submit with server-side rules and consent) | strong |

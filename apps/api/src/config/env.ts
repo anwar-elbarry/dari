@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { KeyringError, parseKeyring } from '../storage/envelope';
 
 /**
  * Environment contract. Parsed once at boot; the app refuses to start on an invalid value
@@ -45,10 +46,48 @@ const envSchema = z
     ICAL_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     ICAL_MAX_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
     ICAL_ALLOW_INSECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+    /**
+     * Private object storage for ID scans and Fiche PDFs (Phase 3). `memory` is dev/test only (refused in
+     * production). Everything is encrypted by the application before it reaches the store, so the provider
+     * only ever holds ciphertext; S3_SSE adds provider-side encryption on top.
+     */
+    STORAGE_DRIVER: z.enum(['memory', 's3']).default('memory'),
+    /**
+     * Master keys that wrap the per-object data keys: `id:base64,id:base64`, newest first (openssl rand -base64 32).
+     * Required in production and with the s3 driver. Outside production the memory driver runs with an
+     * ephemeral key when unset. From the secret store, never the repository.
+     */
+    STORAGE_MASTER_KEYS: z.string().optional(),
+    STORAGE_MAX_BYTES: z.coerce.number().int().positive().default(16 * 1024 * 1024),
+    S3_ENDPOINT: z.string().url().optional(),
+    S3_REGION: z.string().min(1).default('us-east-1'),
+    S3_BUCKET: z.string().min(3).optional(),
+    S3_ACCESS_KEY: z.string().min(1).optional(),
+    S3_SECRET_KEY: z.string().min(1).optional(),
+    S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+    S3_SSE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
     THROTTLE_TTL_MS: z.coerce.number().int().positive().default(60_000),
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(100),
   })
   .superRefine((env, ctx) => {
+    if (env.STORAGE_MASTER_KEYS) {
+      try {
+        parseKeyring(env.STORAGE_MASTER_KEYS);
+      } catch (e) {
+        ctx.addIssue({ code: 'custom', path: ['STORAGE_MASTER_KEYS'], message: e instanceof KeyringError ? e.message : 'invalid' });
+      }
+    }
+    if (env.STORAGE_DRIVER === 's3') {
+      for (const name of ['S3_BUCKET', 'S3_ACCESS_KEY', 'S3_SECRET_KEY', 'STORAGE_MASTER_KEYS'] as const) {
+        if (!env[name]) ctx.addIssue({ code: 'custom', path: [name], message: 'required with the s3 storage driver' });
+      }
+    }
+    if (env.NODE_ENV === 'production') {
+      if (env.STORAGE_DRIVER !== 's3') ctx.addIssue({ code: 'custom', path: ['STORAGE_DRIVER'], message: 'must be s3 in production (private, encrypted object storage)' });
+      if (!env.STORAGE_MASTER_KEYS) ctx.addIssue({ code: 'custom', path: ['STORAGE_MASTER_KEYS'], message: 'required in production' });
+      if (!env.S3_SSE) ctx.addIssue({ code: 'custom', path: ['S3_SSE'], message: 'server-side encryption must be enabled in production' });
+      if (env.S3_ENDPOINT && !env.S3_ENDPOINT.startsWith('https://')) ctx.addIssue({ code: 'custom', path: ['S3_ENDPOINT'], message: 'must be https in production' });
+    }
     if ((env.MAIL_DRIVER === 'brevo' || env.MAIL_DRIVER === 'resend') && !env.MAIL_API_KEY) {
       ctx.addIssue({ code: 'custom', path: ['MAIL_API_KEY'], message: `required with the ${env.MAIL_DRIVER} mail driver` });
     }

@@ -43,11 +43,27 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 | `REDIS_URL` | Managed Redis, private network, `rediss://` or password |
 | `MAIL_DRIVER` | `brevo` (EU) or `resend`. `console` and `file` are refused in production. The provider choice is still open (hosting region and counsel) |
 | `MAIL_API_KEY` | Provider API key, from the secret store. Required with `brevo` / `resend`; never logged |
+| `STORAGE_DRIVER` | `s3`. `memory` is refused in production |
+| `STORAGE_MASTER_KEYS` | `id:base64,...`, newest first (`echo "k1:$(openssl rand -base64 32)"`), from the secret store, **never** in the repository or the database. Backed up separately from the data: without a key its objects cannot be read |
+| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | The private bucket. `S3_ENDPOINT` must be https (leave it unset for AWS). Credentials limited to that bucket: get, put, delete, no list of other buckets |
+| `S3_SSE` | `true`: provider-side encryption on top of the application encryption |
 | `MAIL_FROM` | A sender address verified with the provider (SPF and DKIM set up on the domain) |
 
 ## Logs
 
 The API logs through `RedactingLogger` (emails, phone numbers, MRZ lines, document numbers and long tokens are replaced; values under keys such as `name`, `email`, `documentNumber` are masked) and never logs request bodies. In production an unexpected error is logged as its type, code and stack frames, without its message. Ship these logs only to a processor covered by the CNDP position; they are not a place for personal data even so.
+
+## Object storage (ID scans, Fiche PDFs)
+
+Every object is encrypted by the API (AES-256-GCM, one data key per object, wrapped by a master key) before it reaches the bucket, so the provider and any backup only hold ciphertext. Requirements for the bucket:
+
+- **Private**: block all public access, no bucket policy or ACL granting anyone read, no public listing. The API never creates a presigned or public URL (a test scans the code for it); objects leave only through audited API routes.
+- Server-side encryption enabled (`S3_SSE=true`) and TLS only.
+- Reachable from the API on the private network only.
+- Versioning **off**, or a lifecycle rule that expires old versions within the retention window: a deleted image must not survive as a previous version. (The application also blanks the wrapped key on deletion, so a surviving copy is unreadable, but do not rely on that alone.)
+- Backups of the bucket are not needed for the images (they are purged after 30 days by default); if the Fiche PDFs are backed up, the backup is ciphertext and expires with them.
+- Master key rotation: prepend a new key to `STORAGE_MASTER_KEYS`, deploy, run the rewrap (`StorageService.rewrapOutdatedKeys`) until it returns 0, then drop the old key. Losing every key that wraps an object makes that object permanently unreadable.
+- Deleting an object first blanks its wrapped key in the database, then removes it from the bucket.
 
 ## Redis
 

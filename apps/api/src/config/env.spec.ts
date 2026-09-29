@@ -32,8 +32,43 @@ describe('parseEnv', () => {
       expect(() => parseEnv({ ...base, MAIL_DRIVER })).toThrow(/MAIL_API_KEY/);
       expect(parseEnv({ ...base, MAIL_DRIVER, MAIL_API_KEY: 'k'.repeat(20) }).MAIL_DRIVER).toBe(MAIL_DRIVER);
     }
-    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379' };
+    const storage = { STORAGE_DRIVER: 's3', S3_BUCKET: 'dari-private', S3_ACCESS_KEY: 'a', S3_SECRET_KEY: 'b', S3_SSE: 'true', STORAGE_MASTER_KEYS: `k1:${Buffer.alloc(32, 7).toString('base64')}` };
+    const prod = { ...base, ...storage, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379' };
     expect(parseEnv({ ...prod, MAIL_DRIVER: 'brevo', MAIL_API_KEY: 'k'.repeat(20) }).MAIL_DRIVER).toBe('brevo');
+  });
+
+  describe('object storage', () => {
+    const key = () => `k1:${Buffer.alloc(32, 7).toString('base64')}`;
+    const s3 = { STORAGE_DRIVER: 's3', S3_BUCKET: 'dari-private', S3_ACCESS_KEY: 'a', S3_SECRET_KEY: 'b', STORAGE_MASTER_KEYS: key() };
+    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'brevo', MAIL_API_KEY: 'k'.repeat(20) };
+
+    it('runs in development with the memory driver and no key', () => {
+      expect(parseEnv(base)).toMatchObject({ STORAGE_DRIVER: 'memory', STORAGE_MAX_BYTES: 16 * 1024 * 1024, S3_FORCE_PATH_STYLE: true, S3_SSE: false });
+    });
+
+    it('requires bucket, credentials and master keys with the s3 driver', () => {
+      expect(() => parseEnv({ ...base, STORAGE_DRIVER: 's3' })).toThrow(/S3_BUCKET[\s\S]*STORAGE_MASTER_KEYS/);
+      expect(parseEnv({ ...base, ...s3 }).STORAGE_DRIVER).toBe('s3');
+    });
+
+    it('validates the master keys without echoing them', () => {
+      const bad = 'k1:' + 'A'.repeat(20);
+      let message = '';
+      try {
+        parseEnv({ ...base, STORAGE_MASTER_KEYS: bad });
+      } catch (e) {
+        message = (e as Error).message;
+      }
+      expect(message).toMatch(/STORAGE_MASTER_KEYS/);
+      expect(message).not.toContain('AAAAAAAAAA');
+    });
+
+    it('in production requires s3, master keys, server-side encryption and https', () => {
+      expect(() => parseEnv(prod)).toThrow(/STORAGE_DRIVER/);
+      expect(() => parseEnv({ ...prod, ...s3 })).toThrow(/S3_SSE/);
+      expect(() => parseEnv({ ...prod, ...s3, S3_SSE: 'true', S3_ENDPOINT: 'http://storage.internal:9000' })).toThrow(/S3_ENDPOINT/);
+      expect(parseEnv({ ...prod, ...s3, S3_SSE: 'true', S3_ENDPOINT: 'https://storage.internal' }).STORAGE_DRIVER).toBe('s3');
+    });
   });
 
   it('requires a long JWT secret', () => {

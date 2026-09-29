@@ -42,6 +42,13 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - `SafeFetchError` messages never contain the URL or host; they are safe to store and show.
 - Calendar events: `parseIcs()` (dates in `Africa/Casablanca`), `classify()` (BOOKING / OWNER_BLOCK / UNCERTAIN per platform; Booking.com "CLOSED - Not available" is UNCERTAIN by design), `storableSummary()` (only Airbnb/Booking summaries are stored).
 
+## Storage (apps/api/src/storage)
+- ID scans and Fiche PDFs go through `StorageService` only, never an S3 client directly. `put()` encrypts with a per-object data key (AES-256-GCM, `envelope.ts`) before anything reaches the store; the master keys (`STORAGE_MASTER_KEYS`) wrap the data keys and live in the secret store. The `StoredObject` row holds the wrapped key, kind, size, sha256, `expiresAt`, `deletedAt`.
+- `read()` and `delete()` **require** a `StorageAudit` (actor, action, business record id); a read returns bytes only after its audit row is written. Serve bytes from an API route with `Cache-Control: no-store` and the right capability; never return a URL (no presigning anywhere; `storage/object-store.spec.ts` scans for it).
+- Object keys are random (`<accountId>/<kind>/<uuid>`), never derived from names or document numbers. Errors from the store and from decryption are fixed messages.
+- Deleting shreds the wrapped key first, then removes the object: an object without its wrapped key is unreadable even if a copy survives. Rotation: `rewrapOutdatedKeys()`.
+- Tests: `envelope.spec.ts`, `storage.int-spec.ts`, and `object-store.spec.ts` (runs the contract on real S3/MinIO when `TEST_S3_ENDPOINT` is set; CI starts MinIO).
+
 ## Alerts (apps/api/src/alerts)
 - Threshold alerts are `Notification` rows of type `day_counter.amber|red`, unique per (account, type, property, year), so evaluation is idempotent. Thresholds come from `RuleConfig` via `RulesService`; the email says when they are not yet validated.
 - Anything that can change the nights of a property calls `PropertyEvents.nightsChanged(accountId, propertyId)` (sync, import, reclassification); `AlertsService` listens. Do the same for new sources of stays. An hourly job re-checks everything (Redis only).

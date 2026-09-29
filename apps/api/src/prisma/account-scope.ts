@@ -13,6 +13,7 @@ export const TENANT_MODELS = new Set<string>([
   'ShareLink',
   'Notification',
   'Vendor',
+  'StoredObject',
 ]);
 
 const WHERE_OPS = new Set([

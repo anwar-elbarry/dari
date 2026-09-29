@@ -25,7 +25,11 @@ export type AuditAction =
   | 'ical_feed.deleted'
   | 'booking.classified'
   | 'import.committed'
-  | 'alert.resolved';
+  | 'alert.resolved'
+  // Phase 3: reads of stored personal documents are always audited (rule 3 in CLAUDE.md).
+  | 'guest.document.read'
+  | 'guest.fiche.read'
+  | 'storage.object.deleted';
 
 export interface AuditEntry {
   accountId: string;
