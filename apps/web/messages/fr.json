@@ -1,0 +1,172 @@
+{
+  "common": {
+    "appName": "Dari",
+    "tagline": "Conformité et fiscalité de la location courte durée",
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "next": "Suivant",
+    "retry": "Réessayer",
+    "language": "Langue",
+    "logout": "Se déconnecter",
+    "optional": "facultatif"
+  },
+  "errors": {
+    "INVALID_CREDENTIALS": "E-mail ou mot de passe incorrect.",
+    "EMAIL_IN_USE": "Un compte utilise déjà cet e-mail.",
+    "TOO_MANY_ATTEMPTS": "Trop de tentatives. Réessayez dans 15 minutes.",
+    "TOO_MANY_REQUESTS": "Trop de requêtes. Patientez une minute.",
+    "INVALID_TOKEN": "Ce lien est invalide ou a expiré.",
+    "MAIL_FAILED": "L'e-mail n'a pas pu être envoyé. Réessayez.",
+    "FORBIDDEN": "Vous n'avez pas accès à cette action.",
+    "NOT_FOUND": "Élément introuvable.",
+    "VALIDATION_FAILED": "Vérifiez les champs indiqués.",
+    "generic": "Une erreur est survenue. Réessayez.",
+    "field": "Valeur invalide."
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "forgot": "Mot de passe oublié ?",
+      "noAccount": "Pas encore de compte ?",
+      "signupLink": "Créer un compte"
+    },
+    "signup": {
+      "title": "Créer votre compte",
+      "companyName": "Nom de la société ou conciergerie",
+      "name": "Votre nom",
+      "email": "E-mail professionnel",
+      "password": "Mot de passe",
+      "passwordHint": "10 caractères minimum.",
+      "submit": "Créer le compte",
+      "haveAccount": "Déjà un compte ?",
+      "loginLink": "Se connecter"
+    },
+    "forgot": {
+      "title": "Mot de passe oublié",
+      "intro": "Indiquez votre e-mail. Si un compte existe, vous recevrez un lien valable 1 heure.",
+      "submit": "Envoyer le lien",
+      "sent": "Si un compte existe pour cet e-mail, un lien vient d'être envoyé.",
+      "backToLogin": "Retour à la connexion"
+    },
+    "reset": {
+      "title": "Nouveau mot de passe",
+      "password": "Nouveau mot de passe",
+      "submit": "Enregistrer le mot de passe",
+      "done": "Mot de passe modifié. Toutes vos sessions ont été fermées.",
+      "backToLogin": "Se connecter",
+      "missingToken": "Lien incomplet. Utilisez le lien reçu par e-mail."
+    },
+    "accept": {
+      "title": "Rejoindre l'équipe",
+      "intro": "{company} vous invite en tant que {role}.",
+      "email": "E-mail",
+      "name": "Votre nom",
+      "password": "Choisissez un mot de passe",
+      "submit": "Accepter l'invitation",
+      "invalid": "Cette invitation est invalide ou a expiré. Demandez-en une nouvelle."
+    }
+  },
+  "roles": {
+    "OWNER_MANAGER": "Propriétaire / gérant",
+    "STAFF": "Équipe (check-in, ménage)",
+    "ACCOUNTANT": "Comptable (lecture seule)"
+  },
+  "nav": {
+    "properties": "Biens",
+    "team": "Équipe",
+    "reports": "Rapports",
+    "menu": "Menu"
+  },
+  "properties": {
+    "title": "Biens",
+    "add": "Ajouter un bien",
+    "empty": "Aucun bien pour l'instant. Ajoutez votre premier bien pour commencer.",
+    "emptyStaff": "Aucun bien pour l'instant.",
+    "owner": "Propriétaire",
+    "licenseStatus": {
+      "LICENSED": "Autorisé",
+      "UNLICENSED": "Sans autorisation",
+      "PENDING": "Autorisation en cours"
+    },
+    "licenseType": {
+      "FURNISHED_APARTMENT": "Appartement meublé",
+      "RIAD": "Riad",
+      "MAISON_DHOTE": "Maison d'hôte",
+      "AUBERGE": "Auberge"
+    },
+    "taxRegime": {
+      "PROPERTY_INCOME": "Revenus fonciers (particulier)",
+      "PROFESSIONAL": "Professionnel",
+      "COMPANY": "Société (IS)"
+    },
+    "taxeSejourMode": {
+      "INCLUDED": "Incluse dans le prix de la plateforme",
+      "COLLECTED": "Encaissée auprès du voyageur"
+    },
+    "residency": {
+      "RESIDENT": "Résident",
+      "NON_RESIDENT": "Non-résident",
+      "MRE": "MRE"
+    },
+    "bankAccountType": {
+      "STANDARD": "Compte standard",
+      "CONVERTIBLE_DIRHAM": "Compte en dirhams convertibles",
+      "FOREIGN_CURRENCY": "Compte en devises"
+    }
+  },
+  "wizard": {
+    "title": "Ajouter un bien",
+    "step": "Étape {current} sur {total}",
+    "steps": {
+      "place": "Le bien",
+      "status": "Autorisation et fiscalité",
+      "owner": "Propriétaire"
+    },
+    "name": "Nom du bien",
+    "namePlaceholder": "Ex. Riad Yasmine",
+    "address": "Adresse",
+    "commune": "Commune",
+    "licenseStatus": "Statut d'autorisation",
+    "licenseStatusHelp": "Un bien sans autorisation est suivi par le compteur des 120 nuits (étape suivante du produit).",
+    "licenseType": "Type d'hébergement",
+    "licenseTypeHelp": "Détermine la liste de conformité et les taxes locales applicables.",
+    "taxRegime": "Régime fiscal",
+    "taxRegimeHelp": "Choisissez le régime confirmé par votre comptable. Il ne sert qu'aux estimations.",
+    "taxeSejourMode": "Taxe de séjour",
+    "taxeSejourModeHelp": "Incluse : la taxe fait partie du prix affiché sur la plateforme. Encaissée : vous la percevez à part auprès du voyageur. Faites confirmer le cas par votre comptable.",
+    "ownerChoice": "Propriétaire du bien",
+    "ownerExisting": "Choisir un propriétaire existant",
+    "ownerNew": "Nouveau propriétaire",
+    "ownerSelect": "Propriétaire",
+    "ownerName": "Nom complet",
+    "ownerTaxId": "CIN, IF ou n° fiscal",
+    "ownerResidency": "Résidence fiscale",
+    "ownerBank": "Type de compte bancaire",
+    "ownerBankHelp": "Utile pour les propriétaires non-résidents ou MRE.",
+    "icalLater": "Le lien de calendrier (iCal) pourra être ajouté plus tard.",
+    "create": "Créer le bien",
+    "created": "Bien créé."
+  },
+  "team": {
+    "title": "Équipe",
+    "intro": "Invitez un membre de l'équipe ou votre comptable. Le lien reçu par e-mail est valable 7 jours.",
+    "email": "E-mail",
+    "role": "Rôle",
+    "invite": "Envoyer l'invitation",
+    "sent": "Invitation envoyée à {email}.",
+    "pending": "Invitations en attente",
+    "none": "Aucune invitation en attente.",
+    "expires": "expire le {date}",
+    "revoke": "Annuler",
+    "revoked": "Invitation annulée."
+  },
+  "reports": {
+    "title": "Rapports",
+    "comingSoon": "Les rapports mensuels destinés au comptable arrivent dans une prochaine version."
+  }
+}
