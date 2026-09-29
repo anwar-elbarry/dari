@@ -7,9 +7,10 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - `apps/web` — Next.js (SSR for public token pages `/checkin/*`, `/s/*`; SPA dashboard). FR/EN/AR with RTL.
 - `services/ocr` — Python FastAPI worker for passport MRZ (ICAO) and CIN structured OCR. Self-hosted only.
 - Infra for dev: `docker-compose.yml` (Postgres, Redis, MinIO). Copy `.env.example` to `.env`.
+- Deployment requirements (client IP, production env, single instance): `docs/deployment.md`.
 
 ## Commands
-- `npm install` (root, workspaces) · `npm run lint` · `npm run typecheck` · `npm test`
+- `npm install` (root, workspaces) · `npm run lint` · `npm run typecheck` · `npm test` (unit) · `npm run test:int` (API + Postgres) · `npm run test:e2e` (Playwright, needs `npm run build` for api and web and `E2E_DATABASE_URL`)
 - `npm run db:generate` / `db:validate` / `db:migrate` (API workspace)
 - OCR: `cd services/ocr && pip install -r requirements.txt && pytest`
 
@@ -41,6 +42,14 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Capabilities per role live in `rbac/capabilities.ts`. To add a permission: add the capability, map it to roles, use `@Requires()`, add a row to `rbac/permission-matrix.int-spec.ts` (the test fails if a route has no row).
 - **Tenant data goes through `prisma.forAccount(user.accountId)`**. It adds `accountId` to every query and refuses models without a rule (`prisma/account-scope.ts`). Foreign keys to other tenant rows (e.g. `ownerId`) must be loaded through the scoped client before use. Resources of another account return 404.
 - Tests: `npm test` (unit, no DB) and `npm run test:int` (needs `DATABASE_URL` to a disposable DB whose name contains `test`; it truncates all tables). Helpers in `src/test/test-app.ts` (`createTestApp`, `seedAccount`, `client`).
+
+## Web (apps/web)
+- All API calls go through `lib/api.ts` (`api(method, path, body)`): same-origin `/api`, CSRF header, one refresh + retry on expiry.
+- Text lives in `messages/fr.json` and `messages/en.json` (same keys in both; French is the default). No hard-coded UI strings.
+- Hiding links or pages by capability (`useSession().can`, `<Require>`) is convenience only; the API is the enforcement point.
+- Token pages strip `?token=` from the address bar on load; the site sends `Referrer-Policy: no-referrer`.
+- Help text about tax or legal choices must stay neutral ("confirm with your accountant"), never state the law.
+- In Claude web sessions, run Playwright with `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium`.
 
 ## Conventions
 - TypeScript strict. Pure business logic (day counter, tax pipeline) lives in plain functions with unit tests next to them (`*.spec.ts`).
