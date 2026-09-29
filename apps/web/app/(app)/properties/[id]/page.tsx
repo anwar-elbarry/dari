@@ -28,6 +28,7 @@ function Detail() {
   const td = useTranslations('dashboard');
   const tp = useTranslations('properties');
   const te = useTranslations('errors');
+  const tci = useTranslations('checkin');
   const format = useFormatter();
   const { can } = useSession();
   const [property, setProperty] = useState<PropertyReduced | PropertyFull | null>(null);
@@ -122,11 +123,18 @@ function Detail() {
       <Card className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-xl font-semibold tracking-[-0.02em]">{t('stays')}</h2>
-          {canImport && (
-            <LinkButton href={`/properties/${id}/import`} variant="ghost">
-              {t('importTitle')}
-            </LinkButton>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {can('checkin:manage') && (
+              <LinkButton href={`/properties/${id}/arrivals`} variant="ghost">
+                {tci('openArrivals')}
+              </LinkButton>
+            )}
+            {canImport && (
+              <LinkButton href={`/properties/${id}/import`} variant="ghost">
+                {t('importTitle')}
+              </LinkButton>
+            )}
+          </div>
         </div>
         {shown.length === 0 ? <p className="text-sm text-slate">{t('noStays')}</p> : <ul className="divide-y divide-bone">{shown.map((s) => <StayRow key={s.id} stay={s} />)}</ul>}
       </Card>

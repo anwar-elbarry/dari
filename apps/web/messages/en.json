@@ -23,7 +23,11 @@
     "NOT_FOUND": "Not found.",
     "VALIDATION_FAILED": "Check the highlighted fields.",
     "generic": "Something went wrong. Try again.",
-    "field": "Invalid value."
+    "field": "Invalid value.",
+    "LINK_WINDOW_CLOSED": "This stay is too far in the past for a check-in link.",
+    "BOOKING_NOT_ELIGIBLE": "Check-in links are only for confirmed stays.",
+    "PARTY_COMPLETE": "Every expected guest has already checked in.",
+    "PDF_UNAVAILABLE": "The Fiche could not be generated. Try again later."
   },
   "auth": {
     "login": {
@@ -302,6 +306,116 @@
     "errors": {
       "MAPPING_INCOMPLETE": "Map the check-in and check-out columns first.",
       "PAYLOAD_TOO_LARGE": "The file is larger than 1 MB."
+    }
+  },
+  "checkin": {
+    "title": "Arrivals and check-in",
+    "intro": "Send guests a link to check in on their phone. Their status appears here.",
+    "back": "Back to the property",
+    "openArrivals": "Arrivals and check-in",
+    "staffNote": "You can see check-in status and send links. Guest details are visible to the manager only.",
+    "window": "Show the next {days} days",
+    "empty": "No upcoming stays for this property.",
+    "loadFailed": "The arrivals could not be loaded.",
+    "nights": "{count, plural, one {# night} other {# nights}}",
+    "party": "{count, plural, one {# guest expected} other {# guests expected}}",
+    "state": {
+      "NONE": "No link sent",
+      "LINK_SENT": "Link sent",
+      "PARTIAL": "{done} of {total} guests",
+      "COMPLETE": "Complete"
+    },
+    "linkStatus": {
+      "ACTIVE": "Link active until {date}",
+      "EXPIRED": "Link expired",
+      "REVOKED": "Link revoked",
+      "COMPLETED": "Link used by every guest"
+    },
+    "guestLabel": "Guest {n}",
+    "guestStatus": {
+      "SUBMITTED": "Submitted",
+      "VERIFIED": "Verified"
+    },
+    "ficheReady": "Fiche ready",
+    "sendLink": "Send link",
+    "sendNewLink": "Send a new link",
+    "resend": "Send a fresh link",
+    "revoke": "Revoke link",
+    "open": "Open",
+    "revokeTitle": "Revoke this link?",
+    "revokeBody": "The guest will no longer be able to use it. You can send a new one at any time.",
+    "revokeConfirm": "Revoke the link",
+    "revoked": "Link revoked.",
+    "linkDialog": {
+      "title": "Send the check-in link",
+      "party": "Number of guests in the party",
+      "partyHint": "Each adult fills in their own form, one after the other.",
+      "create": "Create the link",
+      "once": "Copy this link now: for security it is shown only once. You can send a new one at any time.",
+      "linkLabel": "Guest link",
+      "copy": "Copy the link",
+      "copied": "Copied",
+      "whatsapp": "Send by WhatsApp",
+      "messageLanguage": "Language of the message",
+      "expires": "Valid until {date}.",
+      "done": "Done"
+    },
+    "share": {
+      "message": {
+        "fr": "Bonjour, avant votre arrivée à {property} ({checkIn} → {checkOut}), merci de remplir votre fiche d'enregistrement depuis votre téléphone : {url}",
+        "en": "Hello, before you arrive at {property} ({checkIn} → {checkOut}), please fill in your check-in form from your phone: {url}"
+      }
+    },
+    "lang": {
+      "fr": "Français",
+      "en": "English"
+    },
+    "guest": {
+      "title": "Guest {n}",
+      "status": "Status",
+      "consent": "Consent recorded on {date}.",
+      "detailsTitle": "Details declared by the guest",
+      "notProvided": "Not provided",
+      "yes": "Yes",
+      "no": "No",
+      "fields": {
+        "docType": "Document type",
+        "fullName": "Full name",
+        "nationality": "Nationality",
+        "docNumber": "Document number",
+        "dob": "Date of birth",
+        "docExpiryDate": "Document expiry date",
+        "declaredMoroccanNationality": "Moroccan nationality declared",
+        "entryStampNumber": "Entry stamp number",
+        "cityOfOrigin": "City of origin",
+        "nextDestination": "Next destination",
+        "profession": "Profession"
+      },
+      "docType": {
+        "PASSPORT": "Passport",
+        "CIN": "National ID card"
+      },
+      "edited": "Corrected by the guest after reading the document: {fields}.",
+      "flagged": "Read with less certainty: {fields}. Compare with the document.",
+      "viewId": "View the ID image",
+      "idNotice": "Every view of an ID image is recorded.",
+      "idLoading": "Loading the image…",
+      "idMissing": "The image is no longer stored: it is deleted automatically after the retention period.",
+      "idAlt": "Identity document of the guest",
+      "closeImage": "Close the image",
+      "openFiche": "Open the Fiche",
+      "downloadFiche": "Download the Fiche",
+      "regenerate": "Regenerate the Fiche",
+      "regenerated": "The Fiche was regenerated.",
+      "noFiche": "The Fiche is not ready yet. It is prepared after the guest submits; you can regenerate it now.",
+      "ficheNote": "Laid out like the official form and prepared from the guest's declaration. Check it before use.",
+      "edit": "Correct the details",
+      "cancelEdit": "Cancel",
+      "save": "Save the corrections",
+      "saved": "Saved. Regenerate the Fiche so that it includes your corrections.",
+      "verify": "Mark as verified",
+      "verified": "Marked as verified.",
+      "loadFailed": "The guest could not be loaded."
     }
   }
 }

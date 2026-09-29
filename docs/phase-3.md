@@ -152,7 +152,7 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 | 3.4 | Check-in links API (create, list, resend, revoke) and the public API (view, upload with sanitising, submit with server-side rules and consent) — **done** (see the API changes below) | strong |
 | 3.5 | Fiche de Police PDF generator (template version, checksum, stored encrypted) — **done** (layout is a draft until the official form is obtained; generated in the background after submit; Arabic needs a system font, see `deployment.md`) | fast |
 | 3.6 | Retention job (Redis queue): purge images and artefacts after the window, keep structured records, audit — **done** (see below) | strong |
-| 3.7 | Web: arrivals, link dialog, guest list, Fiche and ID viewers | fast |
+| 3.7 | Web: arrivals, link dialog, guest list, Fiche and ID viewers — **done** (`/properties/[id]/arrivals`; PDFs open in a new tab or download because the site's CSP has no `frame-src`) | fast |
 | 3.8 | Web: guest form (mobile-first, camera guidance, review screen, consent) | fast |
 | 3.9 | Hardening: abuse tests, log-redaction test, security review, E2E on a phone with a synthetic passport, docs, Phase 4 plan | strong |
 

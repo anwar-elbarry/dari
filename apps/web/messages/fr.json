@@ -23,7 +23,11 @@
     "NOT_FOUND": "Élément introuvable.",
     "VALIDATION_FAILED": "Vérifiez les champs indiqués.",
     "generic": "Une erreur est survenue. Réessayez.",
-    "field": "Valeur invalide."
+    "field": "Valeur invalide.",
+    "LINK_WINDOW_CLOSED": "Ce séjour est trop ancien pour un lien d'enregistrement.",
+    "BOOKING_NOT_ELIGIBLE": "Les liens d'enregistrement ne concernent que les séjours confirmés.",
+    "PARTY_COMPLETE": "Tous les voyageurs attendus se sont déjà enregistrés.",
+    "PDF_UNAVAILABLE": "La fiche n'a pas pu être générée. Réessayez plus tard."
   },
   "auth": {
     "login": {
@@ -302,6 +306,116 @@
     "errors": {
       "MAPPING_INCOMPLETE": "Associez d'abord les colonnes arrivée et départ.",
       "PAYLOAD_TOO_LARGE": "Le fichier dépasse 1 Mo."
+    }
+  },
+  "checkin": {
+    "title": "Arrivées et enregistrement",
+    "intro": "Envoyez aux voyageurs un lien pour s'enregistrer depuis leur téléphone. Leur statut apparaît ici.",
+    "back": "Retour au bien",
+    "openArrivals": "Arrivées et enregistrement",
+    "staffNote": "Vous voyez le statut d'enregistrement et vous pouvez envoyer les liens. Les informations des voyageurs sont visibles par le gestionnaire uniquement.",
+    "window": "Afficher les {days} prochains jours",
+    "empty": "Aucun séjour à venir pour ce bien.",
+    "loadFailed": "Les arrivées n'ont pas pu être chargées.",
+    "nights": "{count, plural, one {# nuit} other {# nuits}}",
+    "party": "{count, plural, one {# voyageur attendu} other {# voyageurs attendus}}",
+    "state": {
+      "NONE": "Aucun lien envoyé",
+      "LINK_SENT": "Lien envoyé",
+      "PARTIAL": "{done} voyageur(s) sur {total}",
+      "COMPLETE": "Complet"
+    },
+    "linkStatus": {
+      "ACTIVE": "Lien actif jusqu'au {date}",
+      "EXPIRED": "Lien expiré",
+      "REVOKED": "Lien révoqué",
+      "COMPLETED": "Lien utilisé par tous les voyageurs"
+    },
+    "guestLabel": "Voyageur {n}",
+    "guestStatus": {
+      "SUBMITTED": "Envoyé",
+      "VERIFIED": "Vérifié"
+    },
+    "ficheReady": "Fiche prête",
+    "sendLink": "Envoyer le lien",
+    "sendNewLink": "Envoyer un nouveau lien",
+    "resend": "Envoyer un lien neuf",
+    "revoke": "Révoquer le lien",
+    "open": "Ouvrir",
+    "revokeTitle": "Révoquer ce lien ?",
+    "revokeBody": "Le voyageur ne pourra plus l'utiliser. Vous pouvez en envoyer un nouveau à tout moment.",
+    "revokeConfirm": "Révoquer le lien",
+    "revoked": "Lien révoqué.",
+    "linkDialog": {
+      "title": "Envoyer le lien d'enregistrement",
+      "party": "Nombre de voyageurs du groupe",
+      "partyHint": "Chaque adulte remplit sa propre fiche, l'un après l'autre.",
+      "create": "Créer le lien",
+      "once": "Copiez ce lien maintenant : par sécurité, il n'est affiché qu'une seule fois. Vous pouvez en envoyer un nouveau à tout moment.",
+      "linkLabel": "Lien du voyageur",
+      "copy": "Copier le lien",
+      "copied": "Copié",
+      "whatsapp": "Envoyer par WhatsApp",
+      "messageLanguage": "Langue du message",
+      "expires": "Valable jusqu'au {date}.",
+      "done": "Terminé"
+    },
+    "share": {
+      "message": {
+        "fr": "Bonjour, avant votre arrivée à {property} ({checkIn} → {checkOut}), merci de remplir votre fiche d'enregistrement depuis votre téléphone : {url}",
+        "en": "Hello, before you arrive at {property} ({checkIn} → {checkOut}), please fill in your check-in form from your phone: {url}"
+      }
+    },
+    "lang": {
+      "fr": "Français",
+      "en": "English"
+    },
+    "guest": {
+      "title": "Voyageur {n}",
+      "status": "Statut",
+      "consent": "Consentement enregistré le {date}.",
+      "detailsTitle": "Informations déclarées par le voyageur",
+      "notProvided": "Non renseigné",
+      "yes": "Oui",
+      "no": "Non",
+      "fields": {
+        "docType": "Type de pièce",
+        "fullName": "Nom et prénoms",
+        "nationality": "Nationalité",
+        "docNumber": "Numéro de la pièce",
+        "dob": "Date de naissance",
+        "docExpiryDate": "Date d'expiration de la pièce",
+        "declaredMoroccanNationality": "Nationalité marocaine déclarée",
+        "entryStampNumber": "Numéro du cachet d'entrée",
+        "cityOfOrigin": "Ville de provenance",
+        "nextDestination": "Prochaine destination",
+        "profession": "Profession"
+      },
+      "docType": {
+        "PASSPORT": "Passeport",
+        "CIN": "Carte nationale d'identité"
+      },
+      "edited": "Corrigé par le voyageur après la lecture du document : {fields}.",
+      "flagged": "Lu avec moins de certitude : {fields}. À comparer avec la pièce.",
+      "viewId": "Voir l'image de la pièce",
+      "idNotice": "Chaque consultation d'une image de pièce d'identité est enregistrée.",
+      "idLoading": "Chargement de l'image…",
+      "idMissing": "L'image n'est plus conservée : elle est supprimée automatiquement après la durée de conservation.",
+      "idAlt": "Pièce d'identité du voyageur",
+      "closeImage": "Fermer l'image",
+      "openFiche": "Ouvrir la fiche",
+      "downloadFiche": "Télécharger la fiche",
+      "regenerate": "Régénérer la fiche",
+      "regenerated": "La fiche a été régénérée.",
+      "noFiche": "La fiche n'est pas encore prête. Elle est préparée après l'envoi du voyageur ; vous pouvez la régénérer maintenant.",
+      "ficheNote": "Mise en forme calquée sur le formulaire officiel, établie à partir de la déclaration du voyageur. À vérifier avant usage.",
+      "edit": "Corriger les informations",
+      "cancelEdit": "Annuler",
+      "save": "Enregistrer les corrections",
+      "saved": "Enregistré. Régénérez la fiche pour qu'elle intègre vos corrections.",
+      "verify": "Marquer comme vérifié",
+      "verified": "Marqué comme vérifié.",
+      "loadFailed": "Le voyageur n'a pas pu être chargé."
     }
   }
 }

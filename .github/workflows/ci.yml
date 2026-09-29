@@ -101,6 +101,8 @@ jobs:
       - run: npm ci
       - run: npm run db:generate
       - run: npm run db:deploy --workspace apps/api
+      # The Phase 3 e2e uses the demo account (one user per role) and the development consent text from the seed.
+      - run: npm run db:seed --workspace apps/api
       - name: Build API and web
         run: |
           npm run build --workspace apps/api

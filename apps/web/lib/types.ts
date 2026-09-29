@@ -152,3 +152,79 @@ export interface ImportResult {
   skippedExisting: number;
   skippedWithErrors: number;
 }
+
+export type CheckinState = 'NONE' | 'LINK_SENT' | 'PARTIAL' | 'COMPLETE';
+export type LinkStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'COMPLETED';
+export type GuestStatus = 'SUBMITTED' | 'VERIFIED';
+export type DocType = 'PASSPORT' | 'CIN';
+
+export interface ArrivalGuest {
+  id: string;
+  guestIndex: number | null;
+  status: GuestStatus;
+  submittedAt: string | null;
+  hasFiche: boolean;
+  /** Only for Owner/Manager; Staff see status only. */
+  fullName?: string | null;
+}
+
+export interface ArrivalLink {
+  id: string;
+  status: LinkStatus;
+  expiresAt: string;
+  guestsSubmitted: number;
+  maxGuests: number;
+}
+
+export interface Arrival {
+  bookingId: string;
+  checkIn: string;
+  checkOut: string;
+  partySize: number | null;
+  source: Platform;
+  checkinStatus: CheckinState;
+  guests: ArrivalGuest[];
+  link: ArrivalLink | null;
+}
+
+/** Returned once, when a link is created or resent. The token is never available again. */
+export interface CreatedLink {
+  id: string;
+  bookingId: string;
+  status: LinkStatus;
+  createdAt: string;
+  expiresAt: string;
+  maxGuests: number;
+  guestsSubmitted: number;
+  token: string;
+  url: string;
+}
+
+export interface GuestFields {
+  docType: DocType | null;
+  fullName: string | null;
+  nationality: string | null;
+  docNumber: string | null;
+  dob: string | null;
+  docExpiryDate: string | null;
+  declaredMoroccanNationality: boolean;
+  entryStampNumber: string | null;
+  cityOfOrigin: string | null;
+  nextDestination: string | null;
+  profession: string | null;
+}
+
+export interface GuestDetail {
+  id: string;
+  bookingId: string;
+  propertyId: string;
+  guestIndex: number | null;
+  status: GuestStatus;
+  submittedAt: string | null;
+  hasDocument: boolean;
+  hasFiche: boolean;
+  /** Owner/Manager only. */
+  fields?: GuestFields;
+  consent?: { at: string | null; textId: string | null };
+  ocr?: { confidence: number | null; flagged: string[]; edited: string[] };
+}

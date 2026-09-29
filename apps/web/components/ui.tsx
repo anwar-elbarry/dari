@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useId, useRef } from 'react';
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
 
 /* Components follow the RiadTax design system: pill buttons and tags, 44px controls, bone borders,
@@ -23,6 +24,9 @@ const buttonVariant: Record<Variant, string> = {
 export function Button({ variant = 'primary', className, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return <button type={type} {...props} className={cx(buttonBase, buttonVariant[variant], className)} />;
 }
+
+/** Class names of a button, for elements that are not <button> or a Next link (an external <a>). */
+export const buttonClass = (variant: Variant = 'primary', className?: string) => cx(buttonBase, buttonVariant[variant], className);
 
 /** A link that looks like a button (navigation, not an action). */
 export function LinkButton({ variant = 'primary', className, ...props }: React.ComponentProps<typeof Link> & { variant?: Variant } & AnchorHTMLAttributes<HTMLAnchorElement>) {
@@ -142,4 +146,47 @@ export function Tag({ active, children, ...props }: ButtonHTMLAttributes<HTMLBut
 /** Kept for existing screens; new code uses StatusPill. */
 export function Badge({ tone, children }: { tone: 'green' | 'amber' | 'red' | 'stone'; children: ReactNode }) {
   return <StatusPill tone={{ green: 'success', amber: 'warning', red: 'danger', stone: 'neutral' }[tone] as 'success'}>{children}</StatusPill>;
+}
+
+/**
+ * Modal dialog on the native <dialog> element: focus is trapped and Escape closes it by the browser, the page
+ * behind is inert, and it is labelled by its title. Clicking the backdrop closes it. `closeLabel` is the
+ * accessible name of the close button (translated by the caller).
+ */
+export function Dialog({ open, onClose, title, closeLabel, children }: { open: boolean; onClose: () => void; title: string; closeLabel: string; children: ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby={titleId}
+      onClose={onClose}
+      onClick={(e) => e.target === ref.current && onClose()}
+      className="m-auto w-[calc(100%-2rem)] max-w-xl rounded-card border border-bone bg-card p-0 text-ink shadow-lg backdrop:bg-ink/40"
+    >
+      {open && (
+        <div className="max-h-[85dvh] overflow-y-auto p-5 sm:p-7">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h2 id={titleId} className="font-display text-xl leading-[1.3] font-semibold tracking-[-0.02em]">
+              {title}
+            </h2>
+            <button type="button" onClick={onClose} aria-label={closeLabel} className="-me-2 -mt-1 inline-flex size-11 flex-none items-center justify-center rounded-pill text-slate hover:bg-mercury">
+              <svg {...ICON} width={20} height={20}>
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+          {children}
+        </div>
+      )}
+    </dialog>
+  );
 }

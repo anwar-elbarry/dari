@@ -76,6 +76,20 @@ export async function api<T = unknown>(method: Method, path: string, body?: unkn
 }
 
 /**
+ * Fetches a protected file (an ID image or a Fiche PDF) as a Blob. Same session handling as `api`. The caller
+ * turns it into an object URL and must revoke it when done: the decrypted bytes then live only in this tab.
+ */
+export async function apiBlob(path: string): Promise<Blob> {
+  let res = await raw('GET', path);
+  if (res.status === 401) {
+    const err = await toError(res.clone());
+    if (err.code === 'UNAUTHENTICATED' && (await refreshSession())) res = await raw('GET', path);
+  }
+  if (!res.ok) throw await toError(res);
+  return res.blob();
+}
+
+/**
  * Only same-origin paths, to avoid open redirects through ?next=.
  * Browsers drop tabs/newlines while parsing URLs ("/\t/evil.com" becomes "//evil.com"), so the value is
  * resolved the way the browser would and its origin compared, and control characters or backslashes are refused.
