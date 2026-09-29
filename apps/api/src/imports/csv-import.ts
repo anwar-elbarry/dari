@@ -113,7 +113,7 @@ export function parseDate(raw: string): string | null {
 
 /** "1 234,50 MAD" → "1234.50"; null when empty; undefined when invalid. Negative amounts are refused. */
 export function parseAmount(raw: string): string | null | undefined {
-  const s = raw.replace(/\s| | |mad|dh|dhs|€|\$/gi, '').trim();
+  const s = raw.replace(/\s|\u00a0|\u202f|mad|dh|dhs|€|\$/gi, '').trim();
   if (s === '') return null;
   const normalised = s.includes(',') && !s.includes('.') ? s.replace(',', '.') : s.replace(/,/g, '');
   if (!/^\d+(\.\d{1,2})?$/.test(normalised)) return undefined;
@@ -134,7 +134,7 @@ const nights = (a: string, b: string) => (Date.parse(`${b}T00:00:00Z`) - Date.pa
 
 /** Parses the CSV text with the given mapping (or a suggested one). Never throws on bad rows: they are reported. */
 export function parseImport(text: string, mapping?: Mapping, maxRows = 5000): ParsedImport {
-  const body = text.replace(/^﻿/, '');
+  const body = text.replace(/^\uFEFF/, '');
   const firstLine = body.split(/\r?\n/, 1)[0] ?? '';
   const delimiter = detectDelimiter(firstLine);
   let records: Record<string, string>[];

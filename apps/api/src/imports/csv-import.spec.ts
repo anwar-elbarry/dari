@@ -10,7 +10,7 @@ describe('csv import parsing', () => {
   });
 
   it('maps French headers, semicolons, DD/MM/YYYY dates and comma decimals', () => {
-    const text = '﻿Arrivée;Départ;Plateforme;Référence;Voyageurs;Revenu;Ménage;Taxe de séjour\n15/03/2026;18/03/2026;Booking.com;ABC-1;3;"1 250,50";150;"45,00"\n';
+    const text = '\uFEFFArrivée;Départ;Plateforme;Référence;Voyageurs;Revenu;Ménage;Taxe de séjour\n15/03/2026;18/03/2026;Booking.com;ABC-1;3;"1 250,50";150;"45,00"\n';
     const r = parseImport(text);
     expect(r.delimiter).toBe(';');
     expect(r.suggestedMapping).toEqual({ Arrivée: 'check_in', Départ: 'check_out', Plateforme: 'platform', Référence: 'confirmation_code', Voyageurs: 'party_size', Revenu: 'nightly_revenue', Ménage: 'cleaning_fee', 'Taxe de séjour': 'taxe_sejour_amount' });
