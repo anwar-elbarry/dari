@@ -33,6 +33,15 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - `MailService.send()`; the console driver is dev-only (refused in production by env validation).
 - Rate limiting: global default from env; stricter per-route limits with `@Throttle()`.
 
+## Auth, roles and tenancy (apps/api/src)
+- Sessions: access JWT in `dari_at` (path `/api`, 15 min) + rotating refresh token in `dari_rt` (path `/api/auth`). Both httpOnly, SameSite=Lax. Only token hashes are stored.
+- Every state-changing request needs the header `X-Requested-With: dari` (CSRF). The web client adds it.
+- Guards run in order: rate limit → CSRF → session (`AuthGuard`, re-reads the user each request) → capabilities.
+- **Every route must be `@Public()` or declare `@Requires('capability')` / `@AnyRole()`.** Undeclared routes are refused, and `rbac/route-declarations.spec.ts` fails.
+- Capabilities per role live in `rbac/capabilities.ts`. To add a permission: add the capability, map it to roles, use `@Requires()`, add a row to `rbac/permission-matrix.int-spec.ts` (the test fails if a route has no row).
+- **Tenant data goes through `prisma.forAccount(user.accountId)`**. It adds `accountId` to every query and refuses models without a rule (`prisma/account-scope.ts`). Foreign keys to other tenant rows (e.g. `ownerId`) must be loaded through the scoped client before use. Resources of another account return 404.
+- Tests: `npm test` (unit, no DB) and `npm run test:int` (needs `DATABASE_URL` to a disposable DB whose name contains `test`; it truncates all tables). Helpers in `src/test/test-app.ts` (`createTestApp`, `seedAccount`, `client`).
+
 ## Conventions
 - TypeScript strict. Pure business logic (day counter, tax pipeline) lives in plain functions with unit tests next to them (`*.spec.ts`).
 - Small commits; one feature per branch/session.

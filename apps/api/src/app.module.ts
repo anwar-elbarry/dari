@@ -9,6 +9,7 @@ import { ConfigModule } from './config/config.module';
 import { APP_CONFIG, AppConfig } from './config/env';
 import { HealthController } from './health/health.controller';
 import { MailModule } from './mail/mail.module';
+import { CapabilitiesGuard } from './rbac/capabilities.guard';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({})
@@ -33,11 +34,12 @@ export class AppModule {
         AuthModule,
       ],
       controllers: [HealthController],
-      // Order matters: rate limit, then CSRF header, then session.
+      // Order matters: rate limit, then CSRF header, then session, then capabilities.
       providers: [
         { provide: APP_GUARD, useClass: ThrottlerGuard },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_GUARD, useExisting: AuthGuard },
+        { provide: APP_GUARD, useClass: CapabilitiesGuard },
       ],
     };
   }

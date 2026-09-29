@@ -8,6 +8,7 @@ import { CSRF_HEADER, CSRF_HEADER_VALUE } from '../common/csrf.guard';
 import { AppConfig, parseEnv } from '../config/env';
 import { MAIL_DRIVER, MailDriver, MailMessage } from '../mail/mail.types';
 import { PrismaService } from '../prisma/prisma.service';
+import { hashPassword } from '../auth/auth.service';
 
 export class CapturingMailDriver implements MailDriver {
   readonly sent: (MailMessage & { from: string })[] = [];
@@ -91,4 +92,29 @@ export async function signup(app: INestApplication, email: string, companyName =
   const c = client(app);
   await c.post('/api/auth/signup', { companyName, name: 'Manager', email, password: PASSWORD }).expect(201);
   return c;
+}
+
+export type RoleName = 'OWNER_MANAGER' | 'STAFF' | 'ACCOUNTANT';
+
+export interface SeededAccount {
+  accountId: string;
+  users: Record<RoleName, { id: string; email: string }>;
+  as: Record<RoleName | 'ANON', Client>;
+}
+
+/** An account with one logged-in user per role. `label` keeps emails unique across accounts. */
+export async function seedAccount(t: TestApp, label: string): Promise<SeededAccount> {
+  const passwordHash = await hashPassword(PASSWORD);
+  const account = await t.prisma.account.create({ data: { companyName: `${label} Conciergerie` } });
+  const roles: RoleName[] = ['OWNER_MANAGER', 'STAFF', 'ACCOUNTANT'];
+  const users = {} as SeededAccount['users'];
+  const as = { ANON: client(t.app) } as SeededAccount['as'];
+  for (const role of roles) {
+    const email = `${role.toLowerCase()}@${label.toLowerCase()}.test`;
+    const user = await t.prisma.user.create({ data: { accountId: account.id, name: `${label} ${role}`, email, role, passwordHash } });
+    users[role] = { id: user.id, email };
+    as[role] = client(t.app);
+    await as[role].post('/api/auth/login', { email, password: PASSWORD }).expect(200);
+  }
+  return { accountId: account.id, users, as };
 }

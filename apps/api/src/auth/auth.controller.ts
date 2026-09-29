@@ -2,6 +2,8 @@ import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { APP_CONFIG, AppConfig } from '../config/env';
+import { ROLE_CAPABILITIES } from '../rbac/capabilities';
+import { AnyRole } from '../rbac/requires.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { AuthUser, clientMeta } from './auth.types';
@@ -72,6 +74,7 @@ export class AuthController {
     clearSessionCookies(res, this.config);
   }
 
+  @AnyRole()
   @Get('me')
   async me(@CurrentUser() current: AuthUser) {
     const user = await this.prisma.user.findUniqueOrThrow({
@@ -79,6 +82,6 @@ export class AuthController {
       select: { id: true, name: true, email: true, role: true, account: { select: { id: true, companyName: true, subscriptionTier: true } } },
     });
     const { account, ...rest } = user;
-    return { user: rest, account };
+    return { user: rest, account, capabilities: ROLE_CAPABILITIES[rest.role] };
   }
 }
