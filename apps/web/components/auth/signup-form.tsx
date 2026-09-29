@@ -21,7 +21,7 @@ export function SignupForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <h1 className="text-lg font-semibold">{t('title')}</h1>
+      <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
       {error && <Alert>{error}</Alert>}
       <Field id="companyName" label={t('companyName')} error={fieldErrors.companyName}>
         <Input {...fieldAria('companyName', fieldErrors.companyName)} autoComplete="organization" required minLength={2} maxLength={120} />
@@ -38,9 +38,9 @@ export function SignupForm() {
       <Button type="submit" disabled={pending} className="w-full">
         {t('submit')}
       </Button>
-      <p className="text-sm text-stone-600">
+      <p className="text-sm text-slate">
         {t('haveAccount')}{' '}
-        <Link href="/login" className="font-medium text-brand-700 hover:underline">
+        <Link href="/login" className="font-medium text-link hover:underline">
           {t('loginLink')}
         </Link>
       </p>

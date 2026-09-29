@@ -23,7 +23,7 @@ export function ResetForm() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">{t('title')}</h1>
+      <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
       {token === undefined ? null : !token ? (
         <Alert>{t('missingToken')}</Alert>
       ) : done ? (
@@ -40,7 +40,7 @@ export function ResetForm() {
         </form>
       )}
       {(done || token === null) && (
-        <Link href="/login" className="block text-sm font-medium text-brand-700 hover:underline">
+        <Link href="/login" className="block text-sm font-medium text-link hover:underline">
           {t('backToLogin')}
         </Link>
       )}

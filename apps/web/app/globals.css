@@ -1,19 +1,77 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
-@theme {
-  --color-brand-50: #eef7f6;
-  --color-brand-100: #d5ecea;
-  --color-brand-600: #1f6f6a;
-  --color-brand-700: #185955;
-  --color-brand-800: #134541;
-  --color-clay-500: #c2663d;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+/* Design-system tokens (styles/tokens.css) exposed as Tailwind utilities: bg-mist, text-ink, rounded-pill… */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-mist: var(--mist);
+  --color-card: var(--card);
+  --color-plaster: var(--plaster);
+  --color-ink: var(--ink);
+  --color-night: var(--night);
+  --color-carbon: var(--carbon);
+  --color-slate: var(--slate);
+  --color-ash: var(--ash);
+  --color-line-strong: var(--line-strong);
+  --color-fog: var(--fog);
+  --color-cloud: var(--cloud);
+  --color-bone: var(--bone);
+  --color-mercury: var(--mercury);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-deep: var(--brand-deep);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-link: var(--link);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --radius-pill: var(--radius-pill);
+  --radius-input: var(--radius-input);
+  --radius-card: var(--radius-card);
+  --radius-image: var(--radius-image);
+  --radius-card-lg: var(--radius-card-lg);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
-:root {
-  color-scheme: light;
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  @apply bg-stone-50 text-stone-900 antialiased;
+  background: var(--mist);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One focus style for everything: 2px ring, 2px away from the control (ink on light, lime on dark). */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

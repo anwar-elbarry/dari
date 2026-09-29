@@ -55,8 +55,8 @@ function Team() {
   return (
     <section className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">{t('title')}</h1>
-        <p className="mt-1 text-sm text-stone-600">{t('intro')}</p>
+        <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
+        <p className="mt-1 text-sm text-slate">{t('intro')}</p>
       </div>
       {notice && <Alert tone="success">{notice}</Alert>}
       <Card>
@@ -81,17 +81,17 @@ function Team() {
         )}
       </Card>
       <div className="space-y-3">
-        <h2 className="text-base font-semibold">{t('pending')}</h2>
+        <h2 className="font-display text-xl font-semibold tracking-[-0.02em]">{t('pending')}</h2>
         {revoke.error && <Alert>{revoke.error}</Alert>}
         {pending.length === 0 ? (
-          <p className="text-sm text-stone-500">{t('none')}</p>
+          <p className="text-sm text-slate">{t('none')}</p>
         ) : (
-          <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+          <ul className="divide-y divide-bone rounded-card border border-bone bg-card">
             {pending.map((inv) => (
               <li key={inv.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{inv.email}</p>
-                  <p className="text-xs text-stone-500">
+                  <p className="text-xs text-slate">
                     {tr(inv.role)} · {t('expires', { date: format.dateTime(new Date(inv.expiresAt), { dateStyle: 'medium' }) })}
                   </p>
                 </div>

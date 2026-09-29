@@ -1,3 +1,5 @@
+> **Superseded.** The official RiadTax logo ("Badge R") lives in the RiadTax design system artifact and is implemented in `apps/web/components/logo.tsx`. The files below are an earlier concept and are kept for reference only.
+
 # RiadTax — logo
 
 Concept: a Moroccan horseshoe arch (the riad door) holding a check mark, meaning "the property is in order". The colours match the web app's theme.

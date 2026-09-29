@@ -39,11 +39,11 @@ export function AcceptForm() {
     if (await run(() => api('POST', '/invitations/accept', { token, name: f.get('name'), password: f.get('password') }))) router.replace('/');
   }
 
-  if (preview === null) return <p className="text-sm text-stone-500">{tc('loading')}</p>;
+  if (preview === null) return <p className="text-sm text-slate">{tc('loading')}</p>;
   if (preview === 'invalid') {
     return (
       <div className="space-y-4">
-        <h1 className="text-lg font-semibold">{t('title')}</h1>
+        <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
         <Alert>{t('invalid')}</Alert>
       </div>
     );
@@ -51,8 +51,8 @@ export function AcceptForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <h1 className="text-lg font-semibold">{t('title')}</h1>
-      <p className="text-sm text-stone-600">{t('intro', { company: preview.companyName, role: tr(preview.role) })}</p>
+      <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
+      <p className="text-sm text-slate">{t('intro', { company: preview.companyName, role: tr(preview.role) })}</p>
       {error && <Alert>{error}</Alert>}
       <Field id="email" label={t('email')}>
         <Input {...fieldAria('email')} value={preview.email} readOnly disabled />

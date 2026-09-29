@@ -1,15 +1,14 @@
 'use client';
 
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Require } from '../../../components/require';
-import { Alert, Badge, Card } from '../../../components/ui';
+import { Alert, Card, LinkButton, StatusPill } from '../../../components/ui';
 import { api } from '../../../lib/api';
 import { useSession } from '../../../lib/session';
 import type { LicenseStatus, PropertyFull, PropertyReduced } from '../../../lib/types';
 
-const LICENSE_TONE: Record<LicenseStatus, 'green' | 'amber' | 'stone'> = { LICENSED: 'green', PENDING: 'stone', UNLICENSED: 'amber' };
+const LICENSE_TONE: Record<LicenseStatus, 'success' | 'warning' | 'neutral'> = { LICENSED: 'success', PENDING: 'neutral', UNLICENSED: 'warning' };
 
 export default function PropertiesPage() {
   return (
@@ -36,11 +35,9 @@ function Properties() {
   return (
     <section className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t('title')}</h1>
+        <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
         {canWrite && (
-          <Link href="/properties/new" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700">
-            {t('add')}
-          </Link>
+          <LinkButton href="/properties/new">{t('add')}</LinkButton>
         )}
       </div>
       {error && <Alert>{te('generic')}</Alert>}
@@ -50,15 +47,15 @@ function Properties() {
           <li key={p.id}>
             <Card className="h-full space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <h2 className="font-semibold">{p.name}</h2>
-                <Badge tone={LICENSE_TONE[p.licenseStatus]}>{t(`licenseStatus.${p.licenseStatus}`)}</Badge>
+                <h2 className="font-display text-lg font-semibold tracking-[-0.02em]">{p.name}</h2>
+                <StatusPill tone={LICENSE_TONE[p.licenseStatus]}>{t(`licenseStatus.${p.licenseStatus}`)}</StatusPill>
               </div>
-              <p className="text-sm text-stone-600">{t(`licenseType.${p.licenseType}`)}</p>
-              <p className="text-sm text-stone-500">
+              <p className="text-sm text-slate">{t(`licenseType.${p.licenseType}`)}</p>
+              <p className="text-sm text-slate">
                 {p.address}, {p.commune}
               </p>
               {'owner' in p && (
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-slate">
                   {t('owner')} : {p.owner.name}
                 </p>
               )}

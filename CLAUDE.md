@@ -60,6 +60,7 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Tests: `npm test` (unit, no DB) and `npm run test:int` (needs `DATABASE_URL` to a disposable DB whose name contains `test`; it truncates all tables; set `TEST_REDIS_URL` to a disposable Redis db, flushed on every reset, to run the Redis-backed paths). Helpers in `src/test/test-app.ts` (`createTestApp`, `seedAccount`, `client`).
 
 ## Web (apps/web)
+- **Design system: RiadTax** (Claude design-system artifact "RiadTax", https://claude.ai/artifact/4W2bALa7jFPCsDx4EhTmyL). Tokens are snapshotted in `apps/web/design/tokens.json` and turned into `styles/tokens.css` by `npm run tokens -w apps/web`; Tailwind utilities (`bg-mist`, `text-ink`, `rounded-pill`, `font-display`…) map to them in `app/globals.css`. Shared components are in `components/ui.tsx` and `components/logo.tsx`. Do not use raw Tailwind palette colours (`stone-*`, `red-*`); do not hard-code hex values. Lime (`primary`) is a fill only, always with `on-primary` text. Statuses use `StatusPill` (dot + word). Pill buttons, 44px controls, sentence case, no emoji. Read the artifact README before adding a new kind of screen.
 - All API calls go through `lib/api.ts` (`api(method, path, body)`): same-origin `/api`, CSRF header, one refresh + retry on expiry.
 - Text lives in `messages/fr.json` and `messages/en.json` (same keys in both; French is the default). No hard-coded UI strings.
 - Hiding links or pages by capability (`useSession().can`, `<Require>`) is convenience only; the API is the enforcement point.
