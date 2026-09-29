@@ -158,19 +158,22 @@ model Account {
   auditLogs     AuditLog[]
   vendors       Vendor[]
   storedObjects StoredObject[]
+  checkInLinks  CheckInLink[]
+  guestCheckIns GuestCheckIn[]
+  fiches        FicheDePolice[]
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   accountId    String
   name         String
-  email        String   @unique
+  email        String    @unique
   phone        String?
   role         Role
   passwordHash String
   lastLoginAt  DateTime?
   disabledAt   DateTime?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   account             Account              @relation(fields: [accountId], references: [id])
   refreshTokens       RefreshToken[]
@@ -260,16 +263,16 @@ model Property {
   icalUrl        String?
   createdAt      DateTime       @default(now())
 
-  account        Account         @relation(fields: [accountId], references: [id])
-  owner          PropertyOwner   @relation(fields: [ownerId, accountId], references: [id, accountId])
-  bookings       Booking[]
-  icalFeeds      IcalFeed[]
-  importBatches  ImportBatch[]
-  checklistItems ChecklistItem[]
+  account         Account          @relation(fields: [accountId], references: [id])
+  owner           PropertyOwner    @relation(fields: [ownerId, accountId], references: [id, accountId])
+  bookings        Booking[]
+  icalFeeds       IcalFeed[]
+  importBatches   ImportBatch[]
+  checklistItems  ChecklistItem[]
   policeRegisters PoliceRegister[]
-  taxReports     TaxReport[]
-  notifications  Notification[]
-  addOns         AddOnService[]
+  taxReports      TaxReport[]
+  notifications   Notification[]
+  addOns          AddOnService[]
 
   @@unique([id, accountId])
   @@index([accountId])
@@ -305,15 +308,19 @@ model Booking {
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
-  account     Account        @relation(fields: [accountId], references: [id])
-  property    Property       @relation(fields: [propertyId, accountId], references: [id, accountId])
-  feed        IcalFeed?      @relation(fields: [feedId], references: [id], onDelete: SetNull)
-  importBatch ImportBatch?   @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
-  checkIns    GuestCheckIn[]
-  orders      AddOnOrder[]
+  account      Account        @relation(fields: [accountId], references: [id])
+  property     Property       @relation(fields: [propertyId, accountId], references: [id, accountId])
+  feed         IcalFeed?      @relation(fields: [feedId], references: [id], onDelete: SetNull)
+  importBatch  ImportBatch?   @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  checkIns     GuestCheckIn[]
+  checkInLinks CheckInLink[]
+  orders       AddOnOrder[]
 
   @@unique([feedId, externalUid])
   @@unique([propertyId, source, confirmationCode])
+  // Targets of composite tenant foreign keys (check-in links, guests).
+  @@unique([id, accountId])
+  @@unique([id, propertyId, accountId])
   @@index([accountId])
   @@index([propertyId, checkIn])
 }
@@ -358,34 +365,94 @@ model ImportBatch {
   @@index([propertyId])
 }
 
-// Highest-risk data: ID scans are purged after the retention window (expiresAt); structured fields may be kept.
-model GuestCheckIn {
-  id                         String    @id @default(uuid())
-  bookingId                  String
-  tokenHash                  String    @unique // single-use check-in link
-  fullName                   String?
-  nationality                String?
-  declaredMoroccanNationality Boolean  @default(false)
-  docType                    DocType?
-  docNumber                  String?
-  dob                        DateTime? @db.Date
-  docFileUrl                 String? // object-storage key, never a public URL
-  ocrConfidence              Float?
-  entryStampNumber           String?
-  cityOfOrigin               String?
-  nextDestination            String?
-  profession                 String?
-  consentAt                  DateTime?
-  consentVersion             String?
-  submittedAt                DateTime?
-  expiresAt                  DateTime? // purge date for raw images
+enum GuestCheckInStatus {
+  PENDING // draft: a document was uploaded, the form is not submitted yet
+  SUBMITTED
+  VERIFIED // reviewed by the manager
+}
 
-  booking         Booking          @relation(fields: [bookingId], references: [id])
+// A link the manager sends for one booking. Only the SHA-256 of the token is stored; the token itself is shown once.
+// Valid until `expiresAt` (checkout + RuleConfig checkin.link_grace_hours), revocable, limited to maxGuests submissions.
+model CheckInLink {
+  id              String    @id @default(uuid())
+  accountId       String
+  bookingId       String
+  tokenHash       String    @unique
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  createdBy       String // user id
+  guestsSubmitted Int       @default(0)
+  maxGuests       Int
+  createdAt       DateTime  @default(now())
+
+  account Account        @relation(fields: [accountId], references: [id])
+  booking Booking        @relation(fields: [bookingId, accountId], references: [id, accountId])
+  guests  GuestCheckIn[]
+
+  @@unique([id, accountId])
+  @@index([accountId])
+  @@index([bookingId])
+}
+
+// Highest-risk data: one row per adult guest. The ID image is an encrypted StoredObject that the retention job
+// deletes after the window; the structured fields are kept. propertyId always matches the booking's property
+// (one composite key covers booking, property and account).
+model GuestCheckIn {
+  id                          String             @id @default(uuid())
+  accountId                   String
+  bookingId                   String
+  propertyId                  String
+  linkId                      String
+  guestIndex                  Int // 1-based position in the party
+  status                      GuestCheckInStatus @default(PENDING)
+  fullName                    String?
+  nationality                 String?
+  declaredMoroccanNationality Boolean            @default(false)
+  docType                     DocType?
+  docNumber                   String?
+  dob                         DateTime?          @db.Date
+  docExpiryDate               DateTime?          @db.Date
+  docImageId                  String? // StoredObject id, never a URL
+  ocrConfidence               Float?
+  ocrFieldsFlagged            Json? // which fields the guest edited or the check digits flagged
+  entryStampNumber            String?
+  cityOfOrigin                String?
+  nextDestination             String?
+  profession                  String?
+  consentTextId               String? // the exact wording (version and language) the guest agreed to
+  consentAt                   DateTime?
+  createdAt                   DateTime           @default(now())
+  submittedAt                 DateTime?
+
+  account         Account          @relation(fields: [accountId], references: [id])
+  booking         Booking          @relation(fields: [bookingId, propertyId, accountId], references: [id, propertyId, accountId])
+  link            CheckInLink      @relation(fields: [linkId, accountId], references: [id, accountId])
+  docImage        StoredObject?    @relation(fields: [docImageId, accountId], references: [id, accountId], onDelete: Restrict)
+  consentText     ConsentText?     @relation(fields: [consentTextId], references: [id])
   maritalDocument MaritalDocument?
   fiche           FicheDePolice?
 
+  @@unique([id, accountId])
+  @@unique([bookingId, guestIndex])
+  @@index([accountId])
   @@index([bookingId])
-  @@index([expiresAt])
+  @@index([linkId])
+}
+
+// Wording shown above the submit button, one row per (version, language). Only rows with approvedAt set are ever
+// served: the text comes from counsel and is inserted by a migration or SQL, never written by the app.
+model ConsentText {
+  id         String    @id @default(uuid())
+  version    String
+  locale     String // fr | en
+  body       String
+  approvedBy String?
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  guests GuestCheckIn[]
+
+  @@unique([version, locale])
 }
 
 model MaritalDocument {
@@ -401,13 +468,22 @@ model MaritalDocument {
   guestCheckIn GuestCheckIn @relation(fields: [guestCheckInId], references: [id])
 }
 
+// One per guest; regenerating replaces the PDF (the previous StoredObject is deleted). The PDF is an encrypted StoredObject.
 model FicheDePolice {
-  id             String   @id @default(uuid())
-  guestCheckInId String   @unique
-  pdfUrl         String
-  generatedAt    DateTime @default(now())
+  id              String   @id @default(uuid())
+  accountId       String
+  guestCheckInId  String   @unique
+  pdfObjectId     String
+  templateVersion String
+  sha256          String // of the PDF
+  generatedAt     DateTime @default(now())
 
-  guestCheckIn GuestCheckIn @relation(fields: [guestCheckInId], references: [id])
+  account      Account      @relation(fields: [accountId], references: [id])
+  guestCheckIn GuestCheckIn @relation(fields: [guestCheckInId, accountId], references: [id, accountId])
+  pdf          StoredObject @relation(fields: [pdfObjectId, accountId], references: [id, accountId])
+
+  @@unique([guestCheckInId, accountId]) // required by Prisma for the composite one-to-one key
+  @@index([accountId])
 }
 
 model PoliceRegister {
@@ -467,23 +543,23 @@ model RuleConfig {
 }
 
 model TaxReport {
-  id                  String    @id @default(uuid())
-  propertyId          String
-  month               String // YYYY-MM
-  regime              TaxRegime
-  nightsRevenue       Decimal   @db.Decimal(12, 2)
-  addonRevenue        Decimal   @db.Decimal(12, 2)
-  grossBase           Decimal   @db.Decimal(12, 2)
-  taxeSejourDeducted  Decimal   @db.Decimal(12, 2)
-  vatTotal            Decimal   @db.Decimal(12, 2)
-  incomeTaxTotal      Decimal   @db.Decimal(12, 2)
-  localTaxTotal       Decimal   @db.Decimal(12, 2)
-  bankAccountType     BankAccountType?
+  id                   String           @id @default(uuid())
+  propertyId           String
+  month                String // YYYY-MM
+  regime               TaxRegime
+  nightsRevenue        Decimal          @db.Decimal(12, 2)
+  addonRevenue         Decimal          @db.Decimal(12, 2)
+  grossBase            Decimal          @db.Decimal(12, 2)
+  taxeSejourDeducted   Decimal          @db.Decimal(12, 2)
+  vatTotal             Decimal          @db.Decimal(12, 2)
+  incomeTaxTotal       Decimal          @db.Decimal(12, 2)
+  localTaxTotal        Decimal          @db.Decimal(12, 2)
+  bankAccountType      BankAccountType?
   localTaxStatementUrl String?
-  pdfUrl              String?
-  excelUrl            String?
-  disclaimerVersion   String
-  createdAt           DateTime  @default(now())
+  pdfUrl               String?
+  excelUrl             String?
+  disclaimerVersion    String
+  createdAt            DateTime         @default(now())
 
   property Property @relation(fields: [propertyId], references: [id])
 
@@ -561,8 +637,11 @@ model StoredObject {
   expiresAt  DateTime? // retention purge date
   deletedAt  DateTime?
 
-  account Account @relation(fields: [accountId], references: [id])
+  account   Account         @relation(fields: [accountId], references: [id])
+  guestDocs GuestCheckIn[]
+  fiches    FicheDePolice[]
 
+  @@unique([id, accountId])
   @@index([accountId])
   @@index([deletedAt, expiresAt]) // the retention job scans by this
 }
@@ -586,13 +665,13 @@ model Vendor {
 }
 
 model AddOnService {
-  id           String    @id @default(uuid())
-  propertyId   String
-  type         AddOnType
-  price        Decimal   @db.Decimal(12, 2)
-  vendorId     String?
+  id            String    @id @default(uuid())
+  propertyId    String
+  type          AddOnType
+  price         Decimal   @db.Decimal(12, 2)
+  vendorId      String?
   licenseDocUrl String?
-  enabled      Boolean   @default(false)
+  enabled       Boolean   @default(false)
 
   property Property     @relation(fields: [propertyId], references: [id])
   vendor   Vendor?      @relation(fields: [vendorId], references: [id])

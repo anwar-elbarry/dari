@@ -29,7 +29,11 @@ export type AuditAction =
   // Phase 3: reads of stored personal documents are always audited (rule 3 in CLAUDE.md).
   | 'guest.document.read'
   | 'guest.fiche.read'
-  | 'storage.object.deleted';
+  | 'storage.object.deleted'
+  | 'checkin.link.created'
+  | 'checkin.link.revoked'
+  | 'checkin.submitted'
+  | 'retention.purged';
 
 export interface AuditEntry {
   accountId: string;

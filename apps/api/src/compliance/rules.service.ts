@@ -10,6 +10,28 @@ export interface DayCounterRule extends DayCounterThresholds {
 }
 
 export const DAY_COUNTER_RULE_KEY = 'day_counter.thresholds';
+export const ID_RETENTION_RULE_KEY = 'retention.id_images_days';
+export const CHECKIN_GRACE_RULE_KEY = 'checkin.link_grace_hours';
+
+export interface IdRetentionRule {
+  /** Days after checkout before ID images and extraction artefacts are deleted. */
+  days: number;
+  validated: boolean;
+}
+export interface CheckinGraceRule {
+  /** Hours after the booked checkout during which a check-in link still works. */
+  hours: number;
+  validated: boolean;
+}
+
+/** Fallbacks when the row is missing or malformed: the plan's defaults, reported as not validated. */
+export const DEFAULT_ID_RETENTION_DAYS = 30;
+export const DEFAULT_CHECKIN_GRACE_HOURS = 48;
+
+/** Accepts a whole number in [min, max] and nothing else. Exported for tests. */
+export function boundedInt(value: unknown, min: number, max: number): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max ? value : null;
+}
 
 /** Reads legal parameters from RuleConfig (rule 1 in CLAUDE.md). Values are never hard-coded in features. */
 @Injectable()
@@ -27,5 +49,25 @@ export class RulesService {
       return { ...DEFAULT_THRESHOLDS, cap: 120, period: 'CALENDAR_YEAR', validated: false };
     }
     return { amber: v.amber!, red: v.red!, cap: v.cap!, period: 'CALENDAR_YEAR', validated: !!row.validatedBy };
+  }
+
+  async idRetention(): Promise<IdRetentionRule> {
+    const row = await this.prisma.ruleConfig.findUnique({ where: { key: ID_RETENTION_RULE_KEY } });
+    const days = boundedInt((row?.value as { days?: unknown } | null)?.days, 1, 365);
+    if (!row || days === null) {
+      this.logger.error(`RuleConfig "${ID_RETENTION_RULE_KEY}" missing or invalid; using ${DEFAULT_ID_RETENTION_DAYS} days`);
+      return { days: DEFAULT_ID_RETENTION_DAYS, validated: false };
+    }
+    return { days, validated: !!row.validatedBy };
+  }
+
+  async checkinGrace(): Promise<CheckinGraceRule> {
+    const row = await this.prisma.ruleConfig.findUnique({ where: { key: CHECKIN_GRACE_RULE_KEY } });
+    const hours = boundedInt((row?.value as { hours?: unknown } | null)?.hours, 0, 720);
+    if (!row || hours === null) {
+      this.logger.error(`RuleConfig "${CHECKIN_GRACE_RULE_KEY}" missing or invalid; using ${DEFAULT_CHECKIN_GRACE_HOURS} hours`);
+      return { hours: DEFAULT_CHECKIN_GRACE_HOURS, validated: false };
+    }
+    return { hours, validated: !!row.validatedBy };
   }
 }

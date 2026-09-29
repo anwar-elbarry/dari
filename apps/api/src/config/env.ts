@@ -47,6 +47,11 @@ const envSchema = z
     ICAL_MAX_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
     ICAL_ALLOW_INSECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
     /**
+     * Guest check-in and Fiche de Police (Phase 3). Off by default in production: it stays off until the legal
+     * gates are closed (CNDP, hosting, consent wording). On by default elsewhere so development and tests work.
+     */
+    GUEST_CHECKIN_ENABLED: z.enum(['true', 'false']).optional(),
+    /**
      * Private object storage for ID scans and Fiche PDFs (Phase 3). `memory` is dev/test only (refused in
      * production). Everything is encrypted by the application before it reaches the store, so the provider
      * only ever holds ciphertext; S3_SSE adds provider-side encryption on top.
@@ -82,7 +87,8 @@ const envSchema = z
         if (!env[name]) ctx.addIssue({ code: 'custom', path: [name], message: 'required with the s3 storage driver' });
       }
     }
-    if (env.NODE_ENV === 'production') {
+    // The guest feature is the only user of storage: production requires it only when the feature is on.
+    if (env.NODE_ENV === 'production' && env.GUEST_CHECKIN_ENABLED === 'true') {
       if (env.STORAGE_DRIVER !== 's3') ctx.addIssue({ code: 'custom', path: ['STORAGE_DRIVER'], message: 'must be s3 in production (private, encrypted object storage)' });
       if (!env.STORAGE_MASTER_KEYS) ctx.addIssue({ code: 'custom', path: ['STORAGE_MASTER_KEYS'], message: 'required in production' });
       if (!env.S3_SSE) ctx.addIssue({ code: 'custom', path: ['S3_SSE'], message: 'server-side encryption must be enabled in production' });
@@ -115,9 +121,10 @@ const envSchema = z
       ctx.addIssue({ code: 'custom', path: ['COOKIE_SECURE'], message: 'cookies must be secure in production' });
     }
   })
-  .transform(({ COOKIE_SECURE, ...env }) => ({
+  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, ...env }) => ({
     ...env,
     COOKIE_SECURE: COOKIE_SECURE === undefined ? env.NODE_ENV === 'production' : COOKIE_SECURE === 'true',
+    GUEST_CHECKIN_ENABLED: GUEST_CHECKIN_ENABLED === undefined ? env.NODE_ENV !== 'production' : GUEST_CHECKIN_ENABLED === 'true',
   }));
 
 export type AppConfig = z.infer<typeof envSchema>;

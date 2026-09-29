@@ -49,6 +49,13 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Deleting shreds the wrapped key first, then removes the object: an object without its wrapped key is unreadable even if a copy survives. Rotation: `rewrapOutdatedKeys()`.
 - Tests: `envelope.spec.ts`, `storage.int-spec.ts`, and `object-store.spec.ts` (runs the contract on real S3/MinIO when `TEST_S3_ENDPOINT` is set; CI starts MinIO).
 
+## Guest check-in (apps/api/src/checkin, Phase 3)
+- Data: `CheckInLink` (token hash only, expiry, revocable, `maxGuests`) → one `GuestCheckIn` per adult guest (PENDING draft → SUBMITTED → VERIFIED) → `FicheDePolice`. Images and PDFs are `StoredObject`s referenced by id. All keys between these tables are composite with `accountId`; the guest's property is tied to its booking's property in the database.
+- Feature flag `GUEST_CHECKIN_ENABLED` (off by default in production). Every guest controller uses `@UseGuards(CheckInEnabledGuard)`, which answers 404 when off. Never branch on the flag anywhere else.
+- Consent: `ConsentService.current(locale)` serves only counsel-approved rows; no approved row means the flow refuses to start. A submission stores `consentTextId` and `consentAt`. Do not write consent text from the app or hard-code it.
+- Capabilities: `checkin:manage` (Owner/Manager, Staff), `guest:read_meta` (both; status only for Staff), `id:read` and `police:read` (Owner/Manager only). Staff never receive guest fields or files.
+- Retention length and link grace period are `RuleConfig` rows (`retention.id_images_days`, `checkin.link_grace_hours`), read through `RulesService.idRetention()` / `checkinGrace()`. Do not hard-code 30 or 48.
+
 ## Alerts (apps/api/src/alerts)
 - Threshold alerts are `Notification` rows of type `day_counter.amber|red`, unique per (account, type, property, year), so evaluation is idempotent. Thresholds come from `RuleConfig` via `RulesService`; the email says when they are not yet validated.
 - Anything that can change the nights of a property calls `PropertyEvents.nightsChanged(accountId, propertyId)` (sync, import, reclassification); `AlertsService` listens. Do the same for new sources of stays. An hourly job re-checks everything (Redis only).

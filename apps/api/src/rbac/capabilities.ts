@@ -17,13 +17,17 @@ export const CAPABILITIES = [
   'ical:manage', // feeds and their URLs
   'revenue:read', // revenue fields on bookings
   'alert:resolve', // close an alert with a reason
+  'checkin:manage', // create, list, resend and revoke guest check-in links (Staff too: they send the link)
+  'guest:read_meta', // check-in status per guest (Staff see status only, never the fields)
+  'id:read', // read an ID image (Owner/Manager only; every read is audited)
+  'police:read', // guest fields on the Fiche and its PDF (Owner/Manager only until counsel confirms Staff access)
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
 
 export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   OWNER_MANAGER: CAPABILITIES,
-  STAFF: ['property:read', 'booking:read'],
+  STAFF: ['property:read', 'booking:read', 'checkin:manage', 'guest:read_meta'],
   // Reports only, from Phase 5. No property, owner or guest data.
   ACCOUNTANT: [],
 };

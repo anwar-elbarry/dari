@@ -50,6 +50,20 @@ async function main() {
     if (!exists) await prisma.property.create({ data: { ...p, accountId: account.id, ownerId: owner.id } });
   }
 
+  // Synthetic consent wording so the guest flow can be tried locally. It is NOT counsel's text: never use it
+  // with real guests. Production wording is inserted by counsel-approved SQL (see docs/phase-3.md).
+  const dev = [
+    { locale: 'fr', body: '[TEXTE DE DÉVELOPPEMENT, non approuvé] Je consens au traitement de mes données pour la fiche de police.' },
+    { locale: 'en', body: '[DEVELOPMENT TEXT, not approved] I consent to my data being processed for the police form.' },
+  ];
+  for (const c of dev) {
+    await prisma.consentText.upsert({
+      where: { version_locale: { version: 'dev-1', locale: c.locale } },
+      update: {},
+      create: { version: 'dev-1', locale: c.locale, body: c.body, approvedBy: 'dev-seed', approvedAt: new Date('2026-01-01T00:00:00Z') },
+    });
+  }
+
   console.log('Seeded demo account. Users: manager@ / staff@ / accountant@demo.dari.test');
 }
 

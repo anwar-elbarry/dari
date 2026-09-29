@@ -84,13 +84,19 @@ These are not code. Until they are done, the feature stays behind `GUEST_CHECKIN
 
 | Model | Change |
 |---|---|
-| `GuestCheckIn` | Add `accountId` (tenant scope), `propertyId`, `status` (PENDING / SUBMITTED / VERIFIED), `docImageKey` (object key), `docImageSha256`, `tokenExpiresAt`, `usedAt`, `docExpiryDate`, `ocrFieldsFlagged` (JSON: which fields were edited), `guestIndex`; remove nothing. Existing columns stay |
-| `CheckInLink` (new) | `id`, `accountId`, `bookingId`, `tokenHash` (unique), `expiresAt`, `revokedAt`, `createdBy`, `guestsSubmitted`, `maxGuests`, `createdAt` |
-| `ConsentText` (new) | `id`, `version` (unique), `locale`, `body`, `approvedBy`, `approvedAt` |
-| `FicheDePolice` | Add `accountId`, `pdfKey` (replaces `pdfUrl`), `templateVersion`, `sha256` |
-| `StoredObject` (new) | `id`, `accountId`, `key`, `kind` (ID_IMAGE / FICHE_PDF), `sizeBytes`, `sha256`, `wrappedKey`, `createdAt`, `expiresAt`, `deletedAt` — the retention job works from this table |
-| `RuleConfig` | `retention.id_images_days` (default 30), `checkin.link_grace_hours` (48) |
-| `AuditAction` | `guest.document.read`, `checkin.link.created`, `checkin.link.revoked`, `checkin.submitted`, `retention.purged` |
+| `GuestCheckIn` | Reworked (nothing wrote to it yet). Added `accountId`, `propertyId`, `linkId`, `guestIndex`, `status` (PENDING draft / SUBMITTED / VERIFIED), `docImageId` (a `StoredObject` id), `docExpiryDate`, `ocrFieldsFlagged`, `consentTextId`, `createdAt`. Removed `tokenHash`, `docFileUrl`, `expiresAt`, `consentVersion` (the token lives on `CheckInLink`; images and their purge date live on `StoredObject`; the consent row id says which wording). One composite key `(bookingId, propertyId, accountId)` ties guest, booking and property together; `(bookingId, guestIndex)` is unique |
+| `CheckInLink` (new) | `id`, `accountId`, `bookingId`, `tokenHash` (unique), `expiresAt`, `revokedAt`, `createdBy`, `guestsSubmitted`, `maxGuests`, `createdAt`. Composite key to the booking |
+| `ConsentText` (new) | `id`, `version`, `locale`, `body`, `approvedBy`, `approvedAt`; unique per **(version, locale)** (FR and EN are separate rows of one version). Only approved rows are served |
+| `FicheDePolice` | Added `accountId`, `pdfObjectId` (a `StoredObject` id, replaces `pdfUrl`), `templateVersion`, `sha256` |
+| `StoredObject` (new, built in 3.1) | `id`, `accountId`, `key`, `kind` (ID_IMAGE / FICHE_PDF), `sizeBytes`, `sha256`, `wrappedKey`, `createdAt`, `expiresAt`, `deletedAt` |
+| `RuleConfig` | Rows `retention.id_images_days` (`{"days": 30}`) and `checkin.link_grace_hours` (`{"hours": 48}`), unvalidated, read by `RulesService` with bounds checks and plan defaults as fallback |
+| `AuditAction` | `guest.document.read`, `guest.fiche.read`, `storage.object.deleted` (3.1), `checkin.link.created`, `checkin.link.revoked`, `checkin.submitted`, `retention.purged` |
+
+**Changes from the first draft of this table, and why:** `docImageKey` + `docImageSha256` became `docImageId` (the storage service works on `StoredObject` rows, which already hold the key and hash); `tokenExpiresAt` / `usedAt` were dropped from the guest (the link carries the expiry and `submittedAt` says it was used); `ConsentText.version` alone was not unique across languages, so the key is `(version, locale)`; every new tenant table has composite `(x, accountId)` keys, as `CLAUDE.md` requires.
+
+**Feature flag.** `GUEST_CHECKIN_ENABLED`: true in development and test, **false by default in production**. `CheckInEnabledGuard` makes every guest route answer 404 when it is off. Production needs the storage settings (s3, master keys, SSE) only when the flag is on.
+
+**Consent wording.** Counsel's FR/EN text is inserted with SQL (or a migration) with `approvedBy` and `approvedAt` set, e.g. `INSERT INTO "ConsentText" (id, version, locale, body, "approvedBy", "approvedAt") VALUES (gen_random_uuid(), 'v1', 'fr', '…', 'Me X', now());`. With no approved row the guest flow refuses to start. The dev seed inserts clearly marked development text; never use it with real guests.
 
 `MaritalDocument` is left unused.
 
@@ -133,7 +139,7 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 |---|---|---|
 | 3.0 | Carry-overs: mail driver, `__Host-` cookies, composite FKs, log-redaction layer and test — **done** | fast |
 | 3.1 | **Storage service**: S3 client, envelope encryption, private access, streaming, `StoredObject`, audit hooks; MinIO in dev and CI — **done** (objects are buffered in memory, capped at 16 MB, which is enough for images ≤ 8 MB and PDFs; GCM needs the whole object to authenticate) | strong |
-| 3.2 | Data model, migration, capabilities, consent texts, feature flag, retention settings | fast |
+| 3.2 | Data model, migration, capabilities, consent texts, feature flag, retention settings — **done** (see the changes from the table above, below it) | fast |
 | 3.3 | **OCR worker**: MRZ parsing with check digits, image pre-checks, CIN approach after the card test, confidence scores; synthetic ICAO specimen fixtures only | strong |
 | 3.4 | Check-in links API (create, list, resend, revoke) and the public API (view, upload with sanitising, submit with server-side rules and consent) | strong |
 | 3.5 | Fiche de Police PDF generator (template version, checksum, stored encrypted) | fast |

@@ -13,6 +13,17 @@ describe('role capabilities', () => {
     expect(can('STAFF', 'booking:read')).toBe(true);
   });
 
+  it('lets Staff send links and see check-in status, never ID images or guest fields', () => {
+    expect(can('STAFF', 'checkin:manage')).toBe(true);
+    expect(can('STAFF', 'guest:read_meta')).toBe(true);
+    expect(can('STAFF', 'id:read')).toBe(false);
+    expect(can('STAFF', 'police:read')).toBe(false);
+  });
+
+  it('keeps every guest capability away from the Accountant', () => {
+    for (const c of ['checkin:manage', 'guest:read_meta', 'id:read', 'police:read'] as const) expect(can('ACCOUNTANT', c)).toBe(false);
+  });
+
   it('gives Accountant nothing in Phase 1 (reports arrive in Phase 5)', () => {
     expect(ROLE_CAPABILITIES.ACCOUNTANT).toEqual([]);
   });

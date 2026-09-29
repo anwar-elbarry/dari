@@ -6,6 +6,7 @@ import { RedisThrottlerStorage } from './common/redis-throttler.storage';
 import { JobsModule } from './jobs/jobs.module';
 import { REDIS, RedisClient, RedisModule } from './redis/redis.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { CheckInModule } from './checkin/checkin.module';
 import { StorageModule } from './storage/storage.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthGuard } from './auth/auth.guard';
@@ -48,6 +49,7 @@ export class AppModule {
         MailModule,
         AuditModule,
         StorageModule,
+        CheckInModule,
         AuthModule,
         InvitationsModule,
         PropertiesModule,

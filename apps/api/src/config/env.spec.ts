@@ -63,11 +63,30 @@ describe('parseEnv', () => {
       expect(message).not.toContain('AAAAAAAAAA');
     });
 
-    it('in production requires s3, master keys, server-side encryption and https', () => {
-      expect(() => parseEnv(prod)).toThrow(/STORAGE_DRIVER/);
-      expect(() => parseEnv({ ...prod, ...s3 })).toThrow(/S3_SSE/);
-      expect(() => parseEnv({ ...prod, ...s3, S3_SSE: 'true', S3_ENDPOINT: 'http://storage.internal:9000' })).toThrow(/S3_ENDPOINT/);
-      expect(parseEnv({ ...prod, ...s3, S3_SSE: 'true', S3_ENDPOINT: 'https://storage.internal' }).STORAGE_DRIVER).toBe('s3');
+    it('in production requires s3, master keys, server-side encryption and https once the feature is on', () => {
+      const on = { ...prod, GUEST_CHECKIN_ENABLED: 'true' };
+      expect(() => parseEnv(on)).toThrow(/STORAGE_DRIVER/);
+      expect(() => parseEnv({ ...on, ...s3 })).toThrow(/S3_SSE/);
+      expect(() => parseEnv({ ...on, ...s3, S3_SSE: 'true', S3_ENDPOINT: 'http://storage.internal:9000' })).toThrow(/S3_ENDPOINT/);
+      expect(parseEnv({ ...on, ...s3, S3_SSE: 'true', S3_ENDPOINT: 'https://storage.internal' }).STORAGE_DRIVER).toBe('s3');
+    });
+
+    it('in production does not need storage while the feature is off', () => {
+      expect(parseEnv(prod).GUEST_CHECKIN_ENABLED).toBe(false);
+    });
+  });
+
+  describe('GUEST_CHECKIN_ENABLED', () => {
+    it('is on in development and test, off by default in production', () => {
+      expect(parseEnv(base).GUEST_CHECKIN_ENABLED).toBe(true);
+      expect(parseEnv({ ...base, NODE_ENV: 'test' }).GUEST_CHECKIN_ENABLED).toBe(true);
+      const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'brevo', MAIL_API_KEY: 'k'.repeat(20) };
+      expect(parseEnv(prod).GUEST_CHECKIN_ENABLED).toBe(false);
+    });
+
+    it('can be switched explicitly', () => {
+      expect(parseEnv({ ...base, GUEST_CHECKIN_ENABLED: 'false' }).GUEST_CHECKIN_ENABLED).toBe(false);
+      expect(() => parseEnv({ ...base, GUEST_CHECKIN_ENABLED: 'yes' })).toThrow(/GUEST_CHECKIN_ENABLED/);
     });
   });
 
