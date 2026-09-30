@@ -36,4 +36,13 @@ describe('role capabilities', () => {
     expect(can('ACCOUNTANT', 'report:generate')).toBe(false);
     expect(can('OWNER_MANAGER', 'report:generate')).toBe(true);
   });
+
+  it('lets Staff read the checklist (status only) but never write it or open a licence document; the Accountant gets none', () => {
+    expect(can('STAFF', 'checklist:read')).toBe(true);
+    for (const c of ['checklist:write', 'license_document:read'] as const) expect(can('STAFF', c)).toBe(false);
+    for (const c of ['checklist:read', 'checklist:write', 'license_document:read'] as const) {
+      expect(can('ACCOUNTANT', c)).toBe(false);
+      expect(can('OWNER_MANAGER', c)).toBe(true);
+    }
+  });
 });

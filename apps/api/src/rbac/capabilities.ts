@@ -11,7 +11,7 @@ export const CAPABILITIES = [
   'property:write',
   'owner:read',
   'owner:write',
-  'team:manage', // invitations now; roles and removal in Phase 6
+  'team:manage', // invitations, member list, role change, disable / enable, resend (Owner/Manager only)
   'booking:read', // stays, day counter, alerts (Staff: dates and classification only)
   'booking:write', // classification overrides, CSV imports
   'ical:manage', // feeds and their URLs
@@ -26,13 +26,16 @@ export const CAPABILITIES = [
   'share:manage', // create, list and revoke Secure Share links, read their access log (Owner/Manager only)
   'report:read', // monthly tax estimates and their exports: Owner/Manager and Accountant. Never guest data.
   'report:generate', // generate a tax estimate and see its missing inputs (Owner/Manager only)
+  'checklist:read', // the licensing checklist of a property (Staff: step status only, no notes or documents)
+  'checklist:write', // change a step's status, due date, note; attach or remove its document (Owner/Manager only)
+  'license_document:read', // open an attached licence document (Owner/Manager only; every read is audited)
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
 
 export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   OWNER_MANAGER: CAPABILITIES,
-  STAFF: ['property:read', 'booking:read', 'checkin:manage', 'guest:read_meta'],
+  STAFF: ['property:read', 'booking:read', 'checkin:manage', 'guest:read_meta', 'checklist:read'],
   // Reports only (Phase 5). No property, owner or guest data.
   ACCOUNTANT: ['report:read'],
 };

@@ -1,5 +1,5 @@
 import { createTestApp, requireDatabase, resetDatabase, TestApp } from '../test/test-app';
-import { CHECKIN_GRACE_RULE_KEY, FICHE_RETENTION_RULE_KEY, ID_RETENTION_RULE_KEY, REGISTER_RETENTION_RULE_KEY, RulesService, SHARE_MAX_HOURS_RULE_KEY, SHARE_MIN_HOURS_RULE_KEY } from './rules.service';
+import { CHECKIN_GRACE_RULE_KEY, DAILY_CAP_RULE_KEY, LICENSE_DOCUMENT_RETENTION_RULE_KEY, QUIET_HOURS_RULE_KEY, WHATSAPP_TEMPLATES_RULE_KEY, FICHE_RETENTION_RULE_KEY, ID_RETENTION_RULE_KEY, REGISTER_RETENTION_RULE_KEY, RulesService, SHARE_MAX_HOURS_RULE_KEY, SHARE_MIN_HOURS_RULE_KEY } from './rules.service';
 
 requireDatabase();
 
@@ -86,6 +86,56 @@ describe('retention and link-lifetime rules (integration)', () => {
       await set(SHARE_MIN_HOURS_RULE_KEY, min, 'Counsel');
       await set(SHARE_MAX_HOURS_RULE_KEY, max, 'Counsel');
       expect(await rules.shareLifetime()).toEqual({ minHours: 24, maxHours: 72, validated: false });
+    });
+  });
+
+  describe('Phase 6 rules', () => {
+    it('applies a licence-document retention only when it is a valid, validated number (no default exists)', async () => {
+      expect(await rules.licenseDocumentRetention()).toEqual({ days: null, validated: false, enforceable: null });
+      await set(LICENSE_DOCUMENT_RETENTION_RULE_KEY, { days: 1825 });
+      expect(await rules.licenseDocumentRetention()).toEqual({ days: 1825, validated: false, enforceable: null });
+      await set(LICENSE_DOCUMENT_RETENTION_RULE_KEY, { days: 1825 }, 'Counsel');
+      expect(await rules.licenseDocumentRetention()).toEqual({ days: 1825, validated: true, enforceable: 1825 });
+      await set(LICENSE_DOCUMENT_RETENTION_RULE_KEY, { days: 0 }, 'Counsel');
+      expect(await rules.licenseDocumentRetention()).toEqual({ days: null, validated: true, enforceable: null });
+    });
+
+    it('keeps only the WhatsApp templates that are approved and well formed; the rest go by e-mail', async () => {
+      expect(await rules.whatsappTemplates()).toEqual({ templates: {}, validated: false });
+      await set(
+        WHATSAPP_TEMPLATES_RULE_KEY,
+        {
+          checkin_link: { name: 'checkin_link_v1', language: 'fr' },
+          day_counter_alert: { name: 'Alert With Spaces', language: 'fr' },
+          share_link: { name: 'share_link_v1', language: 'french' },
+          unknown_kind: { name: 'x', language: 'fr' },
+        },
+        'Founder',
+      );
+      expect(await rules.whatsappTemplates()).toEqual({ templates: { checkin_link: { name: 'checkin_link_v1', language: 'fr' } }, validated: true });
+    });
+
+    it('reads the quiet hours; a missing or malformed window falls back to 22:00-07:00 Africa/Casablanca, unvalidated', async () => {
+      const fallback = { startMinute: 1320, endMinute: 420, timezone: 'Africa/Casablanca', validated: false };
+      await t.prisma.ruleConfig.deleteMany({ where: { key: QUIET_HOURS_RULE_KEY } });
+      expect(await rules.quietHours()).toEqual(fallback);
+      await set(QUIET_HOURS_RULE_KEY, { start: '23:30', end: '06:15', timezone: 'Europe/Paris' }, 'Founder');
+      expect(await rules.quietHours()).toEqual({ startMinute: 1410, endMinute: 375, timezone: 'Europe/Paris', validated: true });
+      for (const bad of [{ start: '24:00', end: '07:00', timezone: 'Africa/Casablanca' }, { start: '22:00', end: '7', timezone: 'Africa/Casablanca' }, { start: '22:00', end: '07:00', timezone: 'Nowhere/City' }, {}]) {
+        await set(QUIET_HOURS_RULE_KEY, bad, 'Founder');
+        expect(await rules.quietHours()).toEqual(fallback);
+      }
+    });
+
+    it('reads the daily cap; a missing or malformed value falls back to 200, unvalidated', async () => {
+      await t.prisma.ruleConfig.deleteMany({ where: { key: DAILY_CAP_RULE_KEY } });
+      expect(await rules.dailyCap()).toEqual({ messages: 200, validated: false });
+      await set(DAILY_CAP_RULE_KEY, { messages: 50 }, 'Founder');
+      expect(await rules.dailyCap()).toEqual({ messages: 50, validated: true });
+      for (const bad of [{ messages: 0 }, { messages: '50' }, { messages: 1.5 }, {}]) {
+        await set(DAILY_CAP_RULE_KEY, bad, 'Founder');
+        expect(await rules.dailyCap()).toEqual({ messages: 200, validated: false });
+      }
     });
   });
 });

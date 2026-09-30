@@ -44,7 +44,14 @@ export type AuditAction =
   // Phase 5: tax estimates. Identifiers only.
   | 'tax.report.generated'
   | 'tax.export.read'
-  | 'booking.amounts.updated';
+  | 'booking.amounts.updated'
+  // Phase 6: team, licensing checklist, messaging. Identifiers only: never a number, a token or a message body.
+  | 'user.role_changed'
+  | 'user.disabled'
+  | 'user.enabled'
+  | 'checklist.updated'
+  | 'license_document.read'
+  | 'message.sent';
 
 export interface AuditEntry {
   accountId: string;

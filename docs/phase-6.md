@@ -106,8 +106,8 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 
 | Step | Work | Model |
 |---|---|---|
-| 6.0 | Carry-overs that need code (none blocking) and the gate tracker for this phase; start the Meta verification | fast |
-| 6.1 | Data model, migration, capabilities, RuleConfig rows, feature flag `WHATSAPP_ENABLED` | fast |
+| 6.0 ✅ | Carry-overs that need code (none blocking) and the gate tracker for this phase; start the Meta verification | fast |
+| 6.1 ✅ | Data model, migration, capabilities, RuleConfig rows, feature flag `WHATSAPP_ENABLED` | fast |
 | 6.2 | **Team management API**: list, role change, disable/enable, seat limit, last-manager protection, resend; tests on session termination | strong |
 | 6.3 | Checklist API and template loading; document upload, audited read, shred, retention | fast |
 | 6.4 | **Messaging service**: provider interface, WhatsApp Cloud driver, e-mail fallback, templates from RuleConfig, quiet hours, caps, delivery log, signed webhook | strong |
@@ -115,6 +115,32 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 6.6 | Hardening: webhook abuse and logging suites, security review, e2e, docs, Phase 7 plan | strong |
 
 Steps 6.2 and 6.4 carry the risk.
+
+### Steps 6.0 and 6.1 as built
+
+**6.0 — carry-overs and gates.** No carried-over item needs code before the checklist, team and messaging work: the Phase 5 items are fiduciaire input and Phase 8 screens, and the Phase 3/4 gates are legal. The gates for this phase are in the tracker below. Starting the Meta verification is the founder's action (weeks of waiting); nothing in 6.2 to 6.3 depends on it.
+
+**6.1 — data model and switches** (migration `20260930130000_phase6_checklist_team_messaging_model`):
+- `ChecklistTemplateStep` (global, `validatedBy`) and a reworked `ChecklistItem` (tenant table, composite keys to `Property` and to the document `StoredObject`, unique per property and step, `dueDate`, `note`, statuses `IN_PROGRESS` and `NOT_APPLICABLE`). The table had never been written, so it was cleared before the new NOT NULL columns. **No template step is seeded:** the list of steps is a legal statement that only counsel's list may fill (gate below); until it exists a property's checklist is empty and the screen says so.
+- `MessageDelivery` (channel, template name, subject, status, provider message id, a fixed `failureCode`; no body, link, token or number; unique per channel and provider message id so a replayed delivery report is idempotent) and `NotificationPreference` (per user and alert type, composite key to `User`, which gained `@@unique([id, accountId])`). `Invitation` gained `resentAt` and `resendCount`.
+- `StoredObjectKind.LICENSE_DOCUMENT`. Capabilities `checklist:read` (Owner/Manager and Staff, who will get status only), `checklist:write` and `license_document:read` (Owner/Manager). `team:manage` is unchanged for now. Audit actions `user.role_changed`, `user.disabled`, `user.enabled`, `checklist.updated`, `license_document.read`, `message.sent`.
+- `RuleConfig` rows, all unvalidated: `retention.license_documents_days` (no default: nothing is deleted until counsel sets a period), `whatsapp.templates` (names empty until Meta approves them; a kind without a template goes by e-mail), `messaging.quiet_hours` (22:00 to 07:00 Africa/Casablanca) and `messaging.daily_cap` (200 a day per account). The daily cap row is an addition to the plan's list: the plan asks for a cap and rule 1 makes it data. Read through `RulesService.licenseDocumentRetention()`, `whatsappTemplates()`, `quietHours()`, `dailyCap()`.
+- Flag `WHATSAPP_ENABLED` (on outside production, off in production) with `WhatsAppEnabledGuard` in `messaging/`. It needs no storage settings; the provider settings arrive with the driver in 6.4.
+- Tests: env, capabilities, guard, rules, and the composite tenant keys of the new tables.
+
+### Hard gates: tracker
+
+**Dates are proposals (set 2026-09-30): confirm or change them.**
+
+| Gate | Owner | Proposed date | Status |
+|---|---|---|---|
+| Meta WhatsApp Business verification started (business account, phone number, display name) | Founder | 2026-10-07 | Open |
+| WhatsApp message templates written and submitted for approval (check-in link, day-counter alert, share link; FR first); approved names entered in `whatsapp.templates` | Founder | 2026-10-31 | Open |
+| CNDP position on Meta as a recipient of guest phone numbers and check-in links (mentioned in the Phase 3 tracker) | Founder + counsel | before 6.4 goes live | Open |
+| Marrakech licensing checklist: the steps per licence type, in French and English, with the conditions (such as meals) | Counsel or local advisor | 2026-10-31 | Open |
+| Retention of uploaded licence documents (`retention.license_documents_days`) | Counsel | 2026-10-31 | Open |
+| Seat limits per plan (`plan` values for `Account.seatLimit`; who changes one before billing exists) | Founder | before 6.2 | Open |
+| Staff access to the checklist and documents (status only is built in) | Founder | before 6.3 | Open |
 
 ---
 

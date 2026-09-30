@@ -20,6 +20,9 @@ export const TENANT_MODELS = new Set<string>([
   'PoliceRegister',
   'ShareAccess',
   'TaxReport',
+  'ChecklistItem',
+  'MessageDelivery',
+  'NotificationPreference',
 ]);
 
 const WHERE_OPS = new Set([

@@ -114,7 +114,37 @@ enum Severity {
 
 enum ChecklistStatus {
   TODO
+  IN_PROGRESS
   DONE
+  NOT_APPLICABLE
+}
+
+enum MessageChannel {
+  WHATSAPP
+  EMAIL
+}
+
+enum MessageSubject {
+  CHECKIN_LINK
+  ALERT
+  SHARE_LINK
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  FELL_BACK // the WhatsApp send failed and the e-mail went instead
+}
+
+// Which channel a user wants for an alert type. NONE keeps the alert on screen only.
+enum PreferredChannel {
+  WHATSAPP
+  EMAIL
+  BOTH
+  NONE
 }
 
 enum VendorType {
@@ -164,6 +194,9 @@ model Account {
   checkInLinks    CheckInLink[]
   guestCheckIns   GuestCheckIn[]
   fiches          FicheDePolice[]
+  checklistItems  ChecklistItem[]
+  deliveries      MessageDelivery[]
+  preferences     NotificationPreference[]
 }
 
 model User {
@@ -178,10 +211,12 @@ model User {
   disabledAt   DateTime?
   createdAt    DateTime  @default(now())
 
-  account             Account              @relation(fields: [accountId], references: [id])
+  account             Account                  @relation(fields: [accountId], references: [id])
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  preferences         NotificationPreference[]
 
+  @@unique([id, accountId])
   @@index([accountId])
 }
 
@@ -219,16 +254,18 @@ model PasswordResetToken {
 
 // Staff / Accountant onboarding (7-day expiry). The role comes from here, never from the request body.
 model Invitation {
-  id         String    @id @default(uuid())
-  accountId  String
-  email      String
-  role       Role
-  tokenHash  String    @unique
-  invitedBy  String
-  expiresAt  DateTime
-  acceptedAt DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
+  id          String    @id @default(uuid())
+  accountId   String
+  email       String
+  role        Role
+  tokenHash   String    @unique
+  invitedBy   String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  resentAt    DateTime? // last re-send; the counter caps how often a link can be mailed again
+  resendCount Int       @default(0)
+  createdAt   DateTime  @default(now())
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
@@ -621,19 +658,89 @@ model TaxReport {
   @@index([xlsxObjectId])
 }
 
+// The licensing steps for a city and licence type. Global reference data like TaxRule: not tenant data.
+// The list of steps is a legal statement, so it is seeded only from counsel's list and carries `validatedBy`;
+// while it is NULL the app labels the checklist "not validated" and never presents it as the legal list.
+model ChecklistTemplateStep {
+  id               String       @id @default(uuid())
+  code             String // stable identifier of the step within its city, e.g. used when the template is revised
+  cityScope        String       @default("Marrakech")
+  licenseTypeScope LicenseType? // null = every licence type
+  condition        String? // e.g. "meals": the step applies only when the property meets it
+  position         Int
+  nameFr           String
+  nameEn           String
+  validatedBy      String?
+  validatedAt      DateTime?
+  createdAt        DateTime     @default(now())
+
+  items ChecklistItem[]
+
+  @@unique([cityScope, code])
+  @@index([cityScope, licenseTypeScope, position])
+}
+
+// A step copied to a property when its licence type is set, so it can be ticked and annotated per property
+// while the template evolves. The supporting document is an encrypted StoredObject, never a URL.
 model ChecklistItem {
   id               String          @id @default(uuid())
+  accountId        String
   propertyId       String
-  stepName         String
+  templateStepId   String
   status           ChecklistStatus @default(TODO)
-  documentUrl      String?
-  cityScope        String          @default("Marrakech")
-  licenseTypeScope LicenseType?
-  condition        String? // e.g. "meals"
+  dueDate          DateTime?       @db.Date
+  note             String?
+  documentObjectId String?
+  updatedBy        String? // user id
+  updatedAt        DateTime        @default(now()) @updatedAt
+  createdAt        DateTime        @default(now())
 
-  property Property @relation(fields: [propertyId], references: [id])
+  account      Account               @relation(fields: [accountId], references: [id])
+  property     Property              @relation(fields: [propertyId, accountId], references: [id, accountId])
+  templateStep ChecklistTemplateStep @relation(fields: [templateStepId], references: [id])
+  document     StoredObject?         @relation(fields: [documentObjectId, accountId], references: [id, accountId])
 
-  @@index([propertyId])
+  @@unique([propertyId, templateStepId])
+  @@unique([id, accountId])
+  @@index([accountId])
+  @@index([documentObjectId])
+}
+
+// One row per message attempt on a channel. Never the body, the link, the token or the recipient's number:
+// only what is needed to show a status and to make a delivery report idempotent.
+model MessageDelivery {
+  id                String         @id @default(uuid())
+  accountId         String
+  channel           MessageChannel
+  template          String // name of the approved template (WhatsApp) or of the e-mail
+  subjectType       MessageSubject
+  subjectId         String // polymorphic: checked against the account by the service, so no foreign key
+  status            MessageStatus  @default(QUEUED)
+  providerMessageId String? // the provider's id, used to match delivery reports
+  failureCode       String? // a fixed code from our own list, never a provider message
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @default(now()) @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@unique([id, accountId])
+  @@unique([channel, providerMessageId])
+  @@index([accountId, subjectType, subjectId])
+}
+
+model NotificationPreference {
+  id        String           @id @default(uuid())
+  accountId String
+  userId    String
+  alertType String // e.g. day_counter.amber
+  channel   PreferredChannel
+  updatedAt DateTime         @default(now()) @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id])
+  user    User    @relation(fields: [userId, accountId], references: [id, accountId], onDelete: Cascade)
+
+  @@unique([userId, alertType])
+  @@index([accountId])
 }
 
 model Notification {
@@ -681,6 +788,7 @@ enum StoredObjectKind {
   POLICE_REGISTER_PDF
   TAX_REPORT_PDF
   TAX_REPORT_XLSX
+  LICENSE_DOCUMENT
 }
 
 model StoredObject {
@@ -695,12 +803,13 @@ model StoredObject {
   expiresAt  DateTime? // retention purge date
   deletedAt  DateTime?
 
-  account   Account          @relation(fields: [accountId], references: [id])
-  guestDocs GuestCheckIn[]
-  fiches    FicheDePolice[]
-  registers PoliceRegister[]
-  taxPdfs   TaxReport[]      @relation("TaxReportPdf")
-  taxXlsxs  TaxReport[]      @relation("TaxReportXlsx")
+  account     Account          @relation(fields: [accountId], references: [id])
+  guestDocs   GuestCheckIn[]
+  fiches      FicheDePolice[]
+  registers   PoliceRegister[]
+  taxPdfs     TaxReport[]      @relation("TaxReportPdf")
+  taxXlsxs    TaxReport[]      @relation("TaxReportXlsx")
+  licenseDocs ChecklistItem[]
 
   @@unique([id, accountId])
   @@index([accountId])

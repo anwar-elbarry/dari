@@ -64,6 +64,12 @@ const envSchema = z
      */
     TAX_REPORTS_ENABLED: z.enum(['true', 'false']).optional(),
     /**
+     * Phase 6: WhatsApp Cloud API delivery of check-in links, alerts and share links (with e-mail as the fallback).
+     * Same rule: on outside production, off in production until Meta's verification, the approved templates and
+     * the CNDP position on Meta as a recipient are in place. The provider settings arrive with the driver (6.4).
+     */
+    WHATSAPP_ENABLED: z.enum(['true', 'false']).optional(),
+    /**
      * Private object storage for ID scans and Fiche PDFs (Phase 3). `memory` is dev/test only (refused in
      * production). Everything is encrypted by the application before it reaches the store, so the provider
      * only ever holds ciphertext; S3_SSE adds provider-side encryption on top.
@@ -151,13 +157,14 @@ const envSchema = z
       ctx.addIssue({ code: 'custom', path: ['COOKIE_SECURE'], message: 'cookies must be secure in production' });
     }
   })
-  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, POLICE_REGISTER_ENABLED, SECURE_SHARE_ENABLED, TAX_REPORTS_ENABLED, ...env }) => ({
+  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, POLICE_REGISTER_ENABLED, SECURE_SHARE_ENABLED, TAX_REPORTS_ENABLED, WHATSAPP_ENABLED, ...env }) => ({
     ...env,
     COOKIE_SECURE: COOKIE_SECURE === undefined ? env.NODE_ENV === 'production' : COOKIE_SECURE === 'true',
     GUEST_CHECKIN_ENABLED: GUEST_CHECKIN_ENABLED === undefined ? env.NODE_ENV !== 'production' : GUEST_CHECKIN_ENABLED === 'true',
     POLICE_REGISTER_ENABLED: POLICE_REGISTER_ENABLED === undefined ? env.NODE_ENV !== 'production' : POLICE_REGISTER_ENABLED === 'true',
     SECURE_SHARE_ENABLED: SECURE_SHARE_ENABLED === undefined ? env.NODE_ENV !== 'production' : SECURE_SHARE_ENABLED === 'true',
     TAX_REPORTS_ENABLED: TAX_REPORTS_ENABLED === undefined ? env.NODE_ENV !== 'production' : TAX_REPORTS_ENABLED === 'true',
+    WHATSAPP_ENABLED: WHATSAPP_ENABLED === undefined ? env.NODE_ENV !== 'production' : WHATSAPP_ENABLED === 'true',
   }));
 
 export type AppConfig = z.infer<typeof envSchema>;

@@ -117,4 +117,46 @@ describe('composite tenant foreign keys (integration)', () => {
       await expect(report(a, propertyA, (await stored(a, 'TAX_REPORT_PDF')).id, (await stored(a, 'TAX_REPORT_XLSX')).id)).rejects.toMatchObject({ code: 'P2002' });
     });
   });
+
+  describe('licensing checklist, preferences and deliveries (Phase 6)', () => {
+    const step = (code: string) => t.prisma.checklistTemplateStep.create({ data: { code, position: 1, nameFr: 'Étape', nameEn: 'Step' } });
+    const stored = (accountId: string) => t.prisma.storedObject.create({ data: { accountId, key: `k-${Math.random()}`, kind: 'LICENSE_DOCUMENT', sizeBytes: 1, sha256: 'a'.repeat(64), wrappedKey: 'w' } });
+    const item = (accountId: string, propertyId: string, templateStepId: string, documentObjectId?: string) =>
+      t.prisma.checklistItem.create({ data: { accountId, propertyId, templateStepId, documentObjectId } });
+    const user = (accountId: string, email: string) => t.prisma.user.create({ data: { accountId, name: 'U', email, role: 'STAFF', passwordHash: 'x' } });
+
+    it('refuses a checklist item on a property, or with a document, of another account; accepts its own', async () => {
+      const propertyA = (await property(a, ownerA)).id;
+      const s1 = await step('s1');
+      const [docA, docB] = [(await stored(a)).id, (await stored(b)).id];
+      await expect(item(a, propertyB, s1.id)).rejects.toMatchObject({ code: 'P2003' });
+      await expect(item(a, propertyA, s1.id, docB)).rejects.toMatchObject({ code: 'P2003' });
+      await expect(item(a, propertyA, s1.id, docA)).resolves.toBeDefined();
+    });
+
+    it('allows one item per property and template step', async () => {
+      const propertyA = (await property(a, ownerA)).id;
+      const s1 = await step('s1');
+      await item(a, propertyA, s1.id);
+      await expect(item(a, propertyA, s1.id)).rejects.toMatchObject({ code: 'P2002' });
+      await expect(item(a, propertyA, (await step('s2')).id)).resolves.toBeDefined();
+    });
+
+    it('refuses a notification preference for a user of another account, and a second one for the same alert type', async () => {
+      const userA = await user(a, 'a@fk.test');
+      const userB = await user(b, 'b@fk.test');
+      await expect(t.prisma.notificationPreference.create({ data: { accountId: a, userId: userB.id, alertType: 'day_counter.red', channel: 'EMAIL' } })).rejects.toMatchObject({ code: 'P2003' });
+      await expect(t.prisma.notificationPreference.create({ data: { accountId: a, userId: userA.id, alertType: 'day_counter.red', channel: 'BOTH' } })).resolves.toBeDefined();
+      await expect(t.prisma.notificationPreference.create({ data: { accountId: a, userId: userA.id, alertType: 'day_counter.red', channel: 'NONE' } })).rejects.toMatchObject({ code: 'P2002' });
+    });
+
+    it('records one delivery per provider message id and channel; rows without a provider id can repeat', async () => {
+      const delivery = (providerMessageId?: string) =>
+        t.prisma.messageDelivery.create({ data: { accountId: a, channel: 'WHATSAPP', template: 'checkin_link', subjectType: 'CHECKIN_LINK', subjectId: 'l', providerMessageId } });
+      await delivery('wamid.1');
+      await expect(delivery('wamid.1')).rejects.toMatchObject({ code: 'P2002' });
+      await expect(delivery()).resolves.toBeDefined();
+      await expect(delivery()).resolves.toBeDefined();
+    });
+  });
 });

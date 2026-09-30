@@ -16,6 +16,41 @@ export const SHARE_MIN_HOURS_RULE_KEY = 'share.min_hours';
 export const SHARE_MAX_HOURS_RULE_KEY = 'share.max_hours';
 export const FICHE_RETENTION_RULE_KEY = 'retention.fiche_days';
 export const REGISTER_RETENTION_RULE_KEY = 'retention.police_register_days';
+export const LICENSE_DOCUMENT_RETENTION_RULE_KEY = 'retention.license_documents_days';
+export const WHATSAPP_TEMPLATES_RULE_KEY = 'whatsapp.templates';
+export const QUIET_HOURS_RULE_KEY = 'messaging.quiet_hours';
+export const DAILY_CAP_RULE_KEY = 'messaging.daily_cap';
+
+/** The messages the app can send by WhatsApp. Each maps to a template approved by Meta. */
+export const WHATSAPP_TEMPLATE_KINDS = ['checkin_link', 'day_counter_alert', 'share_link'] as const;
+export type WhatsAppTemplateKind = (typeof WHATSAPP_TEMPLATE_KINDS)[number];
+export interface WhatsAppTemplate {
+  name: string;
+  language: string;
+}
+export interface WhatsAppTemplatesRule {
+  /** Only kinds with an approved template appear here; a missing kind means "send by e-mail". */
+  templates: Partial<Record<WhatsAppTemplateKind, WhatsAppTemplate>>;
+  validated: boolean;
+}
+export interface QuietHoursRule {
+  /** Minutes after midnight, in `timezone`. The window may cross midnight (start > end). */
+  startMinute: number;
+  endMinute: number;
+  timezone: string;
+  validated: boolean;
+}
+export interface DailyCapRule {
+  /** Messages per account per day, all channels. */
+  messages: number;
+  validated: boolean;
+}
+export const DEFAULT_QUIET_HOURS = { startMinute: 22 * 60, endMinute: 7 * 60, timezone: 'Africa/Casablanca' } as const;
+export const DEFAULT_DAILY_CAP = 200;
+/** Meta template names: lower-case letters, digits and underscores. Languages: `fr`, `en`, `ar`, `fr_FR`... */
+const TEMPLATE_NAME = /^[a-z0-9_]{1,512}$/;
+const TEMPLATE_LANGUAGE = /^[a-z]{2}(_[A-Z]{2})?$/;
+const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export interface IdRetentionRule {
   /** Days after checkout before ID images and extraction artefacts are deleted. */
@@ -124,5 +159,54 @@ export class RulesService {
     const days = boundedInt((row?.value as { days?: unknown } | null)?.days, 1, MAX_RECORD_RETENTION_DAYS);
     const validated = !!row?.validatedBy;
     return { days, validated, enforceable: days !== null && validated ? days : null };
+  }
+
+  async licenseDocumentRetention(): Promise<RecordRetentionRule> {
+    return this.recordRetention(LICENSE_DOCUMENT_RETENTION_RULE_KEY);
+  }
+
+  /** Templates whose name and language are both well formed. An empty or malformed entry is dropped, so that kind goes by e-mail. */
+  async whatsappTemplates(): Promise<WhatsAppTemplatesRule> {
+    const row = await this.prisma.ruleConfig.findUnique({ where: { key: WHATSAPP_TEMPLATES_RULE_KEY } });
+    const value = (row?.value ?? {}) as Record<string, { name?: unknown; language?: unknown } | null>;
+    const templates: WhatsAppTemplatesRule['templates'] = {};
+    for (const kind of WHATSAPP_TEMPLATE_KINDS) {
+      const { name, language } = value[kind] ?? {};
+      if (typeof name === 'string' && TEMPLATE_NAME.test(name) && typeof language === 'string' && TEMPLATE_LANGUAGE.test(language)) templates[kind] = { name, language };
+    }
+    return { templates, validated: !!row?.validatedBy };
+  }
+
+  /** A missing or malformed window falls back to the plan's 22:00 to 07:00 Africa/Casablanca, reported as not validated. */
+  async quietHours(): Promise<QuietHoursRule> {
+    const row = await this.prisma.ruleConfig.findUnique({ where: { key: QUIET_HOURS_RULE_KEY } });
+    const v = (row?.value ?? {}) as { start?: unknown; end?: unknown; timezone?: unknown };
+    const start = typeof v.start === 'string' ? CLOCK.exec(v.start) : null;
+    const end = typeof v.end === 'string' ? CLOCK.exec(v.end) : null;
+    const zone = typeof v.timezone === 'string' && isTimeZone(v.timezone) ? v.timezone : null;
+    if (!row || !start || !end || !zone) {
+      this.logger.error(`RuleConfig "${QUIET_HOURS_RULE_KEY}" missing or invalid; using 22:00 to 07:00 ${DEFAULT_QUIET_HOURS.timezone}`);
+      return { ...DEFAULT_QUIET_HOURS, validated: false };
+    }
+    return { startMinute: Number(start[1]) * 60 + Number(start[2]), endMinute: Number(end[1]) * 60 + Number(end[2]), timezone: zone, validated: !!row.validatedBy };
+  }
+
+  async dailyCap(): Promise<DailyCapRule> {
+    const row = await this.prisma.ruleConfig.findUnique({ where: { key: DAILY_CAP_RULE_KEY } });
+    const messages = boundedInt((row?.value as { messages?: unknown } | null)?.messages, 1, 100_000);
+    if (!row || messages === null) {
+      this.logger.error(`RuleConfig "${DAILY_CAP_RULE_KEY}" missing or invalid; using ${DEFAULT_DAILY_CAP} messages a day`);
+      return { messages: DEFAULT_DAILY_CAP, validated: false };
+    }
+    return { messages, validated: !!row.validatedBy };
+  }
+}
+
+function isTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: zone });
+    return true;
+  } catch {
+    return false;
   }
 }

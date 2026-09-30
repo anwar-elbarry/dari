@@ -99,6 +99,24 @@ describe('parseEnv', () => {
     });
   });
 
+  describe('WHATSAPP_ENABLED', () => {
+    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
+    it('is on in development and test, off by default in production, independent of the other flags', () => {
+      expect(parseEnv(base).WHATSAPP_ENABLED).toBe(true);
+      expect(parseEnv({ ...base, NODE_ENV: 'test' }).WHATSAPP_ENABLED).toBe(true);
+      expect(parseEnv(prod).WHATSAPP_ENABLED).toBe(false);
+      expect(parseEnv({ ...prod, WHATSAPP_ENABLED: 'false' }).WHATSAPP_ENABLED).toBe(false);
+      expect(parseEnv({ ...prod, GUEST_CHECKIN_ENABLED: 'false' }).WHATSAPP_ENABLED).toBe(false);
+    });
+    it('can be switched explicitly and refuses other values', () => {
+      expect(parseEnv({ ...base, WHATSAPP_ENABLED: 'false' }).WHATSAPP_ENABLED).toBe(false);
+      expect(() => parseEnv({ ...base, WHATSAPP_ENABLED: 'yes' })).toThrow(/WHATSAPP_ENABLED/);
+    });
+    it('does not make the storage settings mandatory: it stores no file', () => {
+      expect(parseEnv({ ...prod, WHATSAPP_ENABLED: 'true' }).WHATSAPP_ENABLED).toBe(true);
+    });
+  });
+
   describe.each(['POLICE_REGISTER_ENABLED', 'SECURE_SHARE_ENABLED', 'TAX_REPORTS_ENABLED'] as const)('%s', (flag) => {
     const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
     it('is on in development and test, off by default in production, and independent of the check-in flag', () => {

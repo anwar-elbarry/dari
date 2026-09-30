@@ -37,7 +37,7 @@ describe('scopeArgs', () => {
   });
 
   it('refuses models without a scope rule', () => {
-    expect(() => scopeArgs('ChecklistItem', 'findMany', {}, A)).toThrow(/no account scope rule/);
+    expect(() => scopeArgs('ChecklistTemplateStep', 'findMany', {}, A)).toThrow(/no account scope rule/);
     expect(() => scopeArgs('Account', 'findMany', {}, A)).toThrow(/no account scope rule/);
   });
 });

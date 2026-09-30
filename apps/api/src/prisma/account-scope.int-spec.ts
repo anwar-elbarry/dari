@@ -52,7 +52,7 @@ describe('forAccount (integration)', () => {
   it('refuses writes aimed at another account and models without a rule', async () => {
     const scoped = t.prisma.forAccount(a);
     await expect(scoped.propertyOwner.create({ data: { accountId: b, name: 'x', residency: 'RESIDENT' } })).rejects.toThrow(AccountScopeError);
-    await expect(scoped.checklistItem.findMany()).rejects.toThrow(/no account scope rule/);
+    await expect(scoped.checklistTemplateStep.findMany()).rejects.toThrow(/no account scope rule/);
   });
 
   it('scopes bookings, feeds and import batches', async () => {
