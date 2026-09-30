@@ -121,13 +121,42 @@ describe('retention (integration)', () => {
     expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: imageId! } })).deletedAt).not.toBeNull();
   });
 
-  it('never touches Fiche PDFs, which carry no purge date', async () => {
-    const { guest: g } = await guest(a);
-    const pdf = await storage.put(a.accountId, 'FICHE_PDF', Buffer.from('%PDF-1.4 stub'));
-    await t.prisma.ficheDePolice.create({ data: { accountId: a.accountId, guestCheckInId: g.id, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64) } });
-    await retention.purge(new Date(Date.now() + 365 * DAY));
-    expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: pdf.id } })).deletedAt).toBeNull();
-    expect(await t.prisma.ficheDePolice.count()).toBe(1);
+  describe('Fiche PDFs', () => {
+    async function fiche(checkoutDaysAgo: number) {
+      const { guest: g } = await guest(a, { checkoutDaysAgo });
+      const pdf = await storage.put(a.accountId, 'FICHE_PDF', Buffer.from(`%PDF-1.4 stub ${Math.random()}`));
+      await t.prisma.ficheDePolice.create({ data: { accountId: a.accountId, guestCheckInId: g.id, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64) } });
+      return pdf.id;
+    }
+    const setRule = (value: object, validatedBy: string | null) =>
+      t.prisma.ruleConfig.upsert({ where: { key: 'retention.fiche_days' }, update: { value, validatedBy }, create: { key: 'retention.fiche_days', value, validatedBy } });
+    const deleted = async (id: string) => (await t.prisma.storedObject.findUniqueOrThrow({ where: { id } })).deletedAt !== null;
+
+    it.each([
+      ['no rule row', null, null],
+      ['a null period (the seeded row)', { days: null }, null],
+      ['a period counsel has not validated', { days: 30 }, null],
+      ['a malformed period, even validated', { days: '30' }, 'Counsel'],
+    ])('keeps them with %s', async (_label, value, validatedBy) => {
+      const id = await fiche(400);
+      if (value) await setRule(value, validatedBy);
+      await retention.purge(new Date(Date.now() + 3650 * DAY));
+      expect(await deleted(id)).toBe(false);
+      expect(await t.prisma.ficheDePolice.count()).toBe(1);
+    });
+
+    it('deletes them once a validated period has passed since checkout, and only then', async () => {
+      const old = await fiche(400);
+      const recent = await fiche(10);
+      await setRule({ days: 365 }, 'Counsel');
+      expect(await retention.purge()).toMatchObject({ purged: expect.any(Number), failed: 0 });
+      expect(await deleted(old)).toBe(true);
+      expect(await deleted(recent)).toBe(false);
+      const row = await t.prisma.storedObject.findUniqueOrThrow({ where: { id: old } });
+      expect(row.wrappedKey).toBe('');
+      const audit = await t.prisma.auditLog.findMany({ where: { action: 'retention.purged', resourceId: old } });
+      expect(audit).toHaveLength(1);
+    });
   });
 
   describe('abandoned drafts', () => {

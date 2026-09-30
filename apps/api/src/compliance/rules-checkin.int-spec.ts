@@ -1,5 +1,5 @@
 import { createTestApp, requireDatabase, resetDatabase, TestApp } from '../test/test-app';
-import { CHECKIN_GRACE_RULE_KEY, ID_RETENTION_RULE_KEY, RulesService } from './rules.service';
+import { CHECKIN_GRACE_RULE_KEY, FICHE_RETENTION_RULE_KEY, ID_RETENTION_RULE_KEY, REGISTER_RETENTION_RULE_KEY, RulesService } from './rules.service';
 
 requireDatabase();
 
@@ -44,5 +44,27 @@ describe('retention and link-lifetime rules (integration)', () => {
     await set(CHECKIN_GRACE_RULE_KEY, { hours: 48 });
     expect(await rules.idRetention()).toEqual({ days: 30, validated: false });
     expect(await rules.checkinGrace()).toEqual({ hours: 48, validated: false });
+  });
+
+  describe('Fiche and register retention (no default: counsel decides)', () => {
+    it('reports "not set" when the row is missing or seeded with null', async () => {
+      expect(await rules.ficheRetention()).toEqual({ days: null, validated: false, enforceable: null });
+      await set(FICHE_RETENTION_RULE_KEY, { days: null });
+      await set(REGISTER_RETENTION_RULE_KEY, { days: null });
+      expect(await rules.ficheRetention()).toEqual({ days: null, validated: false, enforceable: null });
+      expect(await rules.policeRegisterRetention()).toEqual({ days: null, validated: false, enforceable: null });
+    });
+
+    it('enforces a period only when it is valid and validated', async () => {
+      await set(FICHE_RETENTION_RULE_KEY, { days: 730 });
+      await set(REGISTER_RETENTION_RULE_KEY, { days: 1825 }, 'Counsel');
+      expect(await rules.ficheRetention()).toEqual({ days: 730, validated: false, enforceable: null });
+      expect(await rules.policeRegisterRetention()).toEqual({ days: 1825, validated: true, enforceable: 1825 });
+    });
+
+    it.each([[{ days: 0 }], [{ days: 3651 }], [{ days: '30' }], [{ days: 2.5 }], [{}]])('refuses a malformed value %j', async (value) => {
+      await set(FICHE_RETENTION_RULE_KEY, value, 'Counsel');
+      expect(await rules.ficheRetention()).toEqual({ days: null, validated: true, enforceable: null });
+    });
   });
 });

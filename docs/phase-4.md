@@ -109,7 +109,7 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 
 | Step | Work | Model |
 |---|---|---|
-| 4.0 | Carry-overs that need code: retention rows for the Fiche and register, the production enablement check, the pilot manual-test list | fast |
+| 4.0 | Carry-overs that need code: retention rows for the Fiche and register, the production enablement check, the pilot manual-test list — **done** (see below) | fast |
 | 4.1 | Data model, migration, capabilities, RuleConfig rows, feature flags | fast |
 | 4.2 | **Register generator**: month query, validation report, versioned template, PDF, encrypted storage, regenerate, audit | strong |
 | 4.3 | **Secure Share API**: create, list, revoke, access log, the public route with fail-closed access recording | strong |
@@ -118,6 +118,13 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 4.6 | Hardening: abuse and logging tests for the public route, security review, phone e2e, docs, Phase 5 plan | strong |
 
 Steps 4.2 and 4.3 carry the risk.
+
+### Step 4.0 outcome
+- `retention.fiche_days` and `retention.police_register_days` seeded with `{"days": null}` (migration `20260930090000`), read by `RulesService.ficheRetention()` / `policeRegisterRetention()`. **No default and no guess:** a period is applied only when it is a whole number of 1 to 3650 days *and* `validatedBy` is set. Otherwise nothing is deleted.
+- The retention job now deletes Fiche PDFs past `retention.fiche_days` after checkout (shred, then delete, audited `retention.purged`), including files already stored. The register PDF joins the same job in step 4.2 (there is no register file yet); `RulesService.policeRegisterRetention()` is ready for it.
+- `npm run check:enablement -w apps/api` (`src/ops`): pure decisions in `enablement.ts` (unit-tested), probes in `check-enablement.ts` (environment validated as if the guest feature were on, consent texts, retention rows, a storage round trip with a random test object, Chromium). Prints `MANUAL` lines for what only a person can confirm; exit code 1 blocks.
+- [`pilot-checklist.md`](pilot-checklist.md): the phone tests (PDF viewer, WhatsApp link), the Phase 2 and 3 accepted limits to re-check, and the enablement steps.
+- Not done here, on purpose: regenerating a Fiche after its PDF was purged rebuilds it from the structured guest record, which is kept. Whether that record follows the Fiche retention is a question for counsel (listed in the pilot checklist).
 
 ---
 

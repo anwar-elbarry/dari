@@ -258,7 +258,7 @@ Steps 3.0 to 3.9 are done. CI runs lint, typecheck, unit tests (including the OC
 - CIN / CNIE: no structured OCR until real cards are tested; such guests type their details.
 - The Fiche layout is a draft; whether a Moroccan national needs an entry stamp is an open question for counsel and the prefecture (all four fields are required for everyone today).
 - A headless browser cannot render the PDF viewer, so "Open the Fiche" in a new tab is verified by hand; download is covered by the e2e.
-- Fiche PDFs have no purge date until counsel sets their retention.
+- Fiche PDFs are kept until counsel sets and validates `retention.fiche_days` (Phase 4.0 added the row and the purge; the seeded value is null).
 
 ### Hard gates: tracker
 
@@ -275,5 +275,5 @@ Nothing here is code. Until each is closed the feature stays behind `GUEST_CHECK
 | Mail provider: **Resend chosen**; sender domain verified (SPF/DKIM); cross-border position covers a US processor | Founder + counsel | 2026-10-10 | Provider chosen, domain open |
 | Incident runbook for a personal-data leak written | Founder | 2026-10-31 | Open |
 | Staff access to the Fiche PDF: status only (today) or download | Founder + counsel | with the consent wording | Open |
-| Production enablement checklist run (deployment tasks above, `GUEST_CHECKIN_ENABLED=true`, an approved consent text present) | Founder | after all of the above | Open |
+| Production enablement checklist run (`npm run check:enablement`, then [`pilot-checklist.md`](pilot-checklist.md); `GUEST_CHECKIN_ENABLED=true`, an approved consent text present) | Founder | after all of the above | Open |
 

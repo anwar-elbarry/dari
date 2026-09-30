@@ -12,11 +12,21 @@ export interface DayCounterRule extends DayCounterThresholds {
 export const DAY_COUNTER_RULE_KEY = 'day_counter.thresholds';
 export const ID_RETENTION_RULE_KEY = 'retention.id_images_days';
 export const CHECKIN_GRACE_RULE_KEY = 'checkin.link_grace_hours';
+export const FICHE_RETENTION_RULE_KEY = 'retention.fiche_days';
+export const REGISTER_RETENTION_RULE_KEY = 'retention.police_register_days';
 
 export interface IdRetentionRule {
   /** Days after checkout before ID images and extraction artefacts are deleted. */
   days: number;
   validated: boolean;
+}
+/** No default exists for these: until counsel sets a period, `days` is null and nothing is deleted. */
+export interface RecordRetentionRule {
+  /** Days after the end of the stay (Fiche) or of the month (register) before the PDF is deleted; null = not set. */
+  days: number | null;
+  validated: boolean;
+  /** The period to apply: only a valid number that counsel has validated. Deleting is irreversible, so a guess is never applied. */
+  enforceable: number | null;
 }
 export interface CheckinGraceRule {
   /** Hours after the booked checkout during which a check-in link still works. */
@@ -27,6 +37,9 @@ export interface CheckinGraceRule {
 /** Fallbacks when the row is missing or malformed: the plan's defaults, reported as not validated. */
 export const DEFAULT_ID_RETENTION_DAYS = 30;
 export const DEFAULT_CHECKIN_GRACE_HOURS = 48;
+
+/** Ten years: an upper bound that catches a typo, not a legal position. */
+export const MAX_RECORD_RETENTION_DAYS = 3650;
 
 /** Accepts a whole number in [min, max] and nothing else. Exported for tests. */
 export function boundedInt(value: unknown, min: number, max: number): number | null {
@@ -69,5 +82,20 @@ export class RulesService {
       return { hours: DEFAULT_CHECKIN_GRACE_HOURS, validated: false };
     }
     return { hours, validated: !!row.validatedBy };
+  }
+
+  async ficheRetention(): Promise<RecordRetentionRule> {
+    return this.recordRetention(FICHE_RETENTION_RULE_KEY);
+  }
+
+  async policeRegisterRetention(): Promise<RecordRetentionRule> {
+    return this.recordRetention(REGISTER_RETENTION_RULE_KEY);
+  }
+
+  private async recordRetention(key: string): Promise<RecordRetentionRule> {
+    const row = await this.prisma.ruleConfig.findUnique({ where: { key } });
+    const days = boundedInt((row?.value as { days?: unknown } | null)?.days, 1, MAX_RECORD_RETENTION_DAYS);
+    const validated = !!row?.validatedBy;
+    return { days, validated, enforceable: days !== null && validated ? days : null };
   }
 }

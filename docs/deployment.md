@@ -88,6 +88,20 @@ The layout is a working draft (`TEMPLATE_VERSION` in `checkin/fiche-template.ts`
 
 `npm run db:seed` creates users with a known password. It refuses non-local databases unless `ALLOW_DEMO_SEED=true`; never set that on staging or production.
 
+## Retention rules (`RuleConfig`)
+
+| Key | Seeded value | Effect |
+|---|---|---|
+| `retention.id_images_days` | `{"days": 30}` | ID images deleted this many days after checkout |
+| `retention.fiche_days` | `{"days": null}` | Fiche PDFs deleted this many days after checkout. **No period, or a period not validated, keeps every Fiche** |
+| `retention.police_register_days` | `{"days": null}` | Same for the monthly register (applied once registers exist, Phase 4.2) |
+
+Counsel sets the number and fills `validatedBy` and `validatedAt`; a number without `validatedBy` is never applied to Fiches or registers, because deleting is irreversible. Accepted range: 1 to 3650 days. The change applies to files already stored on the next hourly run.
+
+## Before enabling the guest feature
+
+`npm run check:enablement -w apps/api`, with the production environment loaded, checks the environment, consent texts, retention rows, a storage round trip and Chromium, and lists what only a person can confirm. The full list is in [`pilot-checklist.md`](pilot-checklist.md).
+
 ## Before real customer data
 
 - Daily database backups with one tested restore.

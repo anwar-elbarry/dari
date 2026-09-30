@@ -29,7 +29,7 @@ const purgeAudit = (resourceType: string, resourceId: string): StorageAudit => (
 
 /**
  * Deletes what must not be kept: ID images after the retention window, abandoned drafts after a day, and any
- * object past its own purge date. Structured guest records and Fiche PDFs are kept. Every deletion is audited
+ * object past its own purge date. Structured guest records are kept; Fiche PDFs are kept until counsel sets and validates a period. Every deletion is audited
  * (`retention.purged`, identifiers only). Safe to run at any time and as often as wanted: a second run finds
  * nothing to do. A failure on one object never stops the others; it is retried on the next run and reported.
  */
@@ -75,8 +75,19 @@ export class RetentionService {
       select: { docImageId: true, accountId: true },
       take: BATCH,
     });
+    // 5. Fiche PDFs past the rule, once counsel has set and validated a period (no period: kept). The register PDF joins in step 4.2.
+    const fiche = (await this.rules.ficheRetention()).enforceable;
+    const ficheDue =
+      fiche === null
+        ? []
+        : await this.prisma.ficheDePolice.findMany({
+            where: { pdf: { is: { deletedAt: null } }, guestCheckIn: { is: { booking: { checkOut: { lte: new Date(now.getTime() - fiche * DAY) } } } } },
+            select: { pdfObjectId: true, accountId: true },
+            take: BATCH,
+          });
     const targets = new Map<string, string>();
     for (const o of due) targets.set(o.id, o.accountId);
+    for (const f of ficheDue) targets.set(f.pdfObjectId, f.accountId);
     for (const g of byRule) if (g.docImageId) targets.set(g.docImageId, g.accountId);
 
     for (const [id, accountId] of targets) await this.remove(accountId, id, purgeAudit('StoredObject', id), result);
