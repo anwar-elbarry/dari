@@ -640,5 +640,19 @@
       "done": "Terminé",
       "loadFailed": "Les durées autorisées n'ont pas pu être chargées."
     }
+  },
+  "viewer": {
+    "title": "Document confidentiel",
+    "notice": "Ce document contient des données personnelles de voyageurs. Il vous est remis pour une durée limitée : ne le transférez pas et ne le conservez que si votre mission l'exige. Chaque ouverture est enregistrée.",
+    "open": "Ouvrir dans un nouvel onglet",
+    "download": "Télécharger",
+    "frameTitle": "Document partagé",
+    "phoneHint": "Si le document ne s'affiche pas ci-dessus, utilisez « Ouvrir dans un nouvel onglet ».",
+    "loading": "Chargement…",
+    "unavailableTitle": "Ce lien n'est pas disponible",
+    "unavailableBody": "Demandez un nouveau lien à l'expéditeur.",
+    "temporaryTitle": "Le document ne peut pas être affiché pour le moment",
+    "temporaryBody": "Patientez un instant, puis réessayez.",
+    "retry": "Réessayer"
   }
 }

@@ -11,6 +11,9 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
+  // The shared-document viewer shows the PDF (an object URL made by the page itself) in a frame. No plugins, no other frames.
+  "frame-src blob:",
+  "object-src 'none'",
   `connect-src 'self'${isDev ? ' ws:' : ''}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",

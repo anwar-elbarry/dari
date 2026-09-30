@@ -26,7 +26,7 @@ Run `npm run check:enablement -w apps/api` with the **production** environment l
 - [ ] Print the Fiche from the viewer; compare with the official form once the prefecture provides it
 - [ ] Owner/Manager sees the ID image and the Fiche; Staff see status only
 - [ ] A link past its expiry and a revoked link show the same neutral page
-- [ ] (Phase 4) Open a Secure Share link on a phone in a private tab; after revocation the same link shows the neutral page
+- [ ] (Phase 4) Open a Secure Share link on a phone in a private tab (iPhone Safari and Android Chrome): the notice shows, "Open in a new tab" opens the PDF in the phone's viewer, Arabic names are readable; after revocation the same link shows the neutral page
 
 ## 3. Accepted limits to re-check with real data
 

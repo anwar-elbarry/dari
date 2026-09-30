@@ -640,5 +640,19 @@
       "done": "Done",
       "loadFailed": "The allowed durations could not be loaded."
     }
+  },
+  "viewer": {
+    "title": "Confidential document",
+    "notice": "This document contains personal data of travellers. It is given to you for a limited time: do not forward it, and keep it only if your work requires it. Each opening is recorded.",
+    "open": "Open in a new tab",
+    "download": "Download",
+    "frameTitle": "Shared document",
+    "phoneHint": "If the document does not show above, use \"Open in a new tab\".",
+    "loading": "Loading…",
+    "unavailableTitle": "This link is not available",
+    "unavailableBody": "Ask the sender for a new link.",
+    "temporaryTitle": "The document cannot be shown right now",
+    "temporaryBody": "Wait a moment, then try again.",
+    "retry": "Try again"
   }
 }

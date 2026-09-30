@@ -114,10 +114,18 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 4.2 | **Register generator**: month query, validation report, versioned template, PDF, encrypted storage, regenerate, audit — **done** (see below) | strong |
 | 4.3 | **Secure Share API**: create, list, revoke, access log, the public route with fail-closed access recording — **done** (see below) | strong |
 | 4.4 | Web: registers, validation report, share dialog, shares list — **done** (see below) | fast |
-| 4.5 | Web: public viewer page | fast |
+| 4.5 | Web: public viewer page — **done** (see below) | fast |
 | 4.6 | Hardening: abuse and logging tests for the public route, security review, phone e2e, docs, Phase 5 plan | strong |
 
 Steps 4.2 and 4.3 carry the risk.
+
+### Step 4.5 outcome
+- **`/s#token=…`** (`app/(share)/s`, `components/share/shared-viewer.tsx`, `lib/share-api.ts`): the page a recipient opens from the link. Own layout: brand and language switch only, no navigation, no account; `noindex`, `no-store`, `no-referrer`.
+- The token is read from the URL **fragment**, removed from the address bar, kept in `sessionStorage` for the tab (so a reload works) and sent only in `X-Share-Token`; a token in a query string or path is ignored. No cookie is set or read (`credentials: 'omit'`).
+- The page shows a confidentiality notice ("personal data of travellers, limited time, do not forward, each opening is recorded"), then the PDF fetched once per visit and held as an object URL (revoked when the page goes away), with real links "Open in a new tab" and "Download" (a tap is a user gesture, so phones open their own viewer) and an inline frame as a convenience.
+- **One neutral page** ("This link is not available. Ask the sender for a new link.") for a missing token, an unknown, expired or revoked link and a purged file; a 429 or a server error shows "cannot be shown right now" with a retry. The recipient never learns why.
+- CSP: `frame-src blob:` and `object-src 'none'` added for the inline frame; nothing else loosened.
+- E2E (`e2e/phase4.spec.ts`, phone viewport, fresh browser context without a session): the manager shares a register; the recipient sees the notice, an iframe on a `blob:` URL, no fragment in the address bar, the token in no URL and only in the header of one `/api/share` request, no navigation, no cookie; the manager's access log shows the opening with a browser and no address; after revocation the same link, an unknown token and a missing token render the identical neutral page, and the count of openings does not move. Headless Chromium cannot render the PDF viewer itself: reading the document in a real phone viewer stays on the pilot checklist.
 
 ### Step 4.4 outcome
 - **Screens** (RiadTax components, FR and EN, phone first):

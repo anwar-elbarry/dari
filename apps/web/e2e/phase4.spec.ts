@@ -31,7 +31,7 @@ let monthLabel: string;
 let guestName: string;
 let shareUrl = '';
 
-test('the manager sees the incomplete record, fixes it, generates the register and shares it once', async ({ page, context, playwright }) => {
+test('the manager sees the incomplete record, fixes it, generates the register and shares it once', async ({ page, context, playwright, browser }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const runId = Date.now().toString(36);
   propertyName = `Riad Registre ${runId}`;
@@ -154,23 +154,73 @@ test('the manager sees the incomplete record, fixes it, generates the register a
     expect(await list.text()).not.toMatch(/"token"/);
   });
 
+  await test.step('the recipient opens the link on a phone with no account: notice, document, no navigation, nothing stored', async () => {
+    const token = shareUrl.split('#token=')[1];
+    const visitor = await browser.newContext({ ...test.info().project.use, storageState: undefined });
+    const authority = await visitor.newPage();
+    const requests: { url: string; token: string | undefined }[] = [];
+    authority.on('request', (r) => requests.push({ url: r.url(), token: r.headers()['x-share-token'] }));
+
+    await authority.goto(shareUrl);
+    await expect(authority.getByRole('heading', { name: 'Document confidentiel', level: 1 })).toBeVisible();
+    await expect(authority.getByText('Chaque ouverture est enregistrée.')).toBeVisible();
+    // The PDF is fetched with the token in a header and shown from an object URL made by the page.
+    await expect(authority.locator('iframe')).toHaveAttribute('src', /^blob:/);
+    expect(authority.url()).toBe('http://localhost:3000/s'); // the fragment is gone from the address bar
+    expect(requests.filter((r) => r.url.includes(token))).toEqual([]); // no URL ever carried it
+    expect(requests.filter((r) => r.url.endsWith('/api/share')).map((r) => r.token)).toEqual([token]);
+    expect(await authority.content()).not.toContain(token);
+    await expect(authority.getByRole('link', { name: 'Ouvrir dans un nouvel onglet' })).toHaveAttribute('rel', /noopener/);
+    await expect(authority.getByRole('navigation')).toHaveCount(0); // no way into the app
+    expect(await visitor.cookies()).toEqual([]); // no cookie, no session
+    await visitor.close();
+  });
+
+  await test.step('the manager sees the opening in the access log, without an address', async () => {
+    await page.goto('/shares');
+    const card = page.locator('li', { has: page.getByText('Pour : Préfecture de Marrakech') }).first();
+    await expect(card.getByText('Ouvert 1 fois')).toBeVisible();
+    await card.getByRole('button', { name: "Journal d'accès" }).click();
+    const log = page.getByRole('dialog', { name: 'Qui a ouvert ce lien' });
+    await expect(log.getByText(/Chrome|Mozilla/)).toBeVisible();
+    await expect(log.getByText(/\b\d{1,3}(\.\d{1,3}){3}\b/)).toHaveCount(0);
+    await log.getByRole('button', { name: 'Fermer' }).click();
+  });
+
   await test.step('the shares screen lists the link; the manager revokes it', async () => {
-    await page.getByRole('link', { name: 'Liens partagés' }).click();
+    await page.goto('/shares');
     await expect(page.getByRole('heading', { name: 'Liens partagés', level: 1 })).toBeVisible();
     const card = page.locator('li', { has: page.getByText('Pour : Préfecture de Marrakech') }).first();
     await expect(card.getByText(`Registre de police ${monthLabel}`)).toBeVisible();
     await expect(card.getByText(propertyName)).toBeVisible();
     await expect(card.getByText(/Actif jusqu'au/)).toBeVisible();
-    await expect(card.getByText('Pas encore ouvert')).toBeVisible();
-    await card.getByRole('button', { name: "Journal d'accès" }).click();
-    const log = page.getByRole('dialog', { name: 'Qui a ouvert ce lien' });
-    await expect(log.getByText("Ce lien n'a pas été ouvert.")).toBeVisible();
-    await log.getByRole('button', { name: 'Fermer' }).click();
+    await expect(card.getByText('Ouvert 1 fois')).toBeVisible();
     await card.getByRole('button', { name: 'Révoquer' }).click();
     await page.getByRole('dialog', { name: 'Révoquer ce lien ?' }).getByRole('button', { name: 'Révoquer le lien' }).click();
     await expect(page.getByText('Lien révoqué.', { exact: true })).toBeVisible();
     await expect(card.getByText('Révoqué', { exact: true })).toBeVisible();
     await expect(card.getByRole('button', { name: 'Révoquer' })).toHaveCount(0);
+  });
+
+  await test.step('the same link now shows the neutral page, identical to an unknown link', async () => {
+    const visit = async (url: string) => {
+      const ctx = await browser.newContext({ ...test.info().project.use, storageState: undefined });
+      const p = await ctx.newPage();
+      await p.goto(url);
+      await expect(p.getByRole('heading', { name: "Ce lien n'est pas disponible", level: 1 })).toBeVisible();
+      const text = await p.locator('main').innerText();
+      await expect(p.locator('iframe')).toHaveCount(0);
+      await ctx.close();
+      return text;
+    };
+    const revoked = await visit(shareUrl);
+    const unknown = await visit('http://localhost:3000/s#token=' + 'A'.repeat(43));
+    const none = await visit('http://localhost:3000/s');
+    expect(revoked).toBe(unknown);
+    expect(none).toBe(unknown);
+    // The manager's count did not move: a refused visit records nothing.
+    await page.goto('/shares');
+    await expect(page.locator('li', { has: page.getByText('Pour : Préfecture de Marrakech') }).first().getByText('Ouvert 1 fois')).toBeVisible();
   });
 });
 
