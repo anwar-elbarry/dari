@@ -24,6 +24,13 @@ const store = {
       /* ignore */
     }
   },
+  clear: () => {
+    try {
+      sessionStorage.removeItem(KEY_TOKEN);
+    } catch {
+      /* ignore */
+    }
+  },
 };
 
 /**
@@ -58,7 +65,9 @@ export function SharedViewer() {
     try {
       setState({ step: 'ready', url: URL.createObjectURL(await fetchSharedPdf(token)) });
     } catch (e) {
-      setState({ step: e instanceof ApiError && e.status === 404 ? 'unavailable' : 'temporary' });
+      if (!(e instanceof ApiError && e.status === 404)) return setState({ step: 'temporary' });
+      store.clear(); // a dead link is not kept in the tab
+      setState({ step: 'unavailable' });
     }
   }, []);
 

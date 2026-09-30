@@ -4,6 +4,8 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { AuditService } from '../audit/audit.service';
+import { PdfRenderer } from '../checkin/pdf-renderer';
+import { RetentionService } from '../retention/retention.service';
 import { MemoryObjectStore } from '../storage/memory-object-store';
 import { OBJECT_STORE } from '../storage/object-store';
 import { StorageService } from '../storage/storage.service';
@@ -225,6 +227,79 @@ suite('Police register (integration, real Chromium)', () => {
       expect(await t.prisma.policeRegister.count()).toBe(1);
       expect(store.keys()).toHaveLength(1);
       expect(await t.prisma.storedObject.count({ where: { deletedAt: null, kind: 'POLICE_REGISTER_PDF' } })).toBe(1);
+    });
+
+    it('two regenerations that overlap each release the file they replaced: no copy is left behind', async () => {
+      await stay(a.accountId, propertyId, '2025-10-04', '2025-10-06', 'Anna Eriksson');
+      await generate().expect(200);
+      // Both requests render before either swaps, so both start from the same previous file.
+      const renderer = t.app.get(PdfRenderer);
+      const render = renderer.render.bind(renderer);
+      let waiting: (() => void)[] = [];
+      jest.spyOn(renderer, 'render').mockImplementation(async (html) => {
+        const out = await render(html);
+        await new Promise<void>((go) => {
+          waiting.push(go);
+          if (waiting.length === 2) {
+            waiting.forEach((w) => w());
+            waiting = [];
+          }
+        });
+        return out;
+      });
+      expect((await Promise.all([generate(), generate()])).map((r) => r.status)).toEqual([200, 200]);
+
+      const row = await t.prisma.policeRegister.findFirstOrThrow();
+      const live = await t.prisma.storedObject.findMany({ where: { deletedAt: null, kind: 'POLICE_REGISTER_PDF' } });
+      expect(live.map((o) => [o.id, o.expiresAt])).toEqual([[row.pdfObjectId, null]]);
+      expect(store.keys()).toHaveLength(1);
+    });
+
+    it('a previous file that cannot be deleted at once is left due, and the retention job removes it', async () => {
+      await stay(a.accountId, propertyId, '2025-10-04', '2025-10-06', 'Anna Eriksson');
+      await generate().expect(200);
+      const first = (await t.prisma.policeRegister.findFirstOrThrow()).pdfObjectId;
+      jest.spyOn(t.app.get(StorageService), 'delete').mockRejectedValueOnce(new Error('store down'));
+      await generate().expect(200);
+
+      const current = (await t.prisma.policeRegister.findFirstOrThrow()).pdfObjectId;
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: current } })).expiresAt).toBeNull();
+      const old = await t.prisma.storedObject.findUniqueOrThrow({ where: { id: first } });
+      expect(old.deletedAt).toBeNull();
+      expect(old.expiresAt!.getTime()).toBeLessThanOrEqual(Date.now());
+
+      jest.restoreAllMocks();
+      await t.app.get(RetentionService).purge(new Date());
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: first } })).deletedAt).not.toBeNull();
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: current } })).deletedAt).toBeNull();
+      expect(store.keys()).toHaveLength(1);
+    });
+
+    it('a file whose row could not be written is provisional: removed at once, or by the retention job', async () => {
+      await stay(a.accountId, propertyId, '2025-10-04', '2025-10-06', 'Anna Eriksson');
+      const storage = t.app.get(StorageService);
+      const put = storage.put.bind(storage);
+      const written: string[] = [];
+      jest.spyOn(storage, 'put').mockImplementation(async (...args) => {
+        expect(args[3]?.expiresAt?.getTime()).toBeGreaterThan(Date.now()); // provisional from the start
+        const info = await put(...args);
+        written.push(info.id);
+        // The row cannot be written, and the immediate clean-up fails too.
+        await t.prisma.$executeRawUnsafe(`ALTER TABLE "PoliceRegister" ADD CONSTRAINT test_refuse CHECK (false) NOT VALID`);
+        return info;
+      });
+      jest.spyOn(storage, 'delete').mockRejectedValue(new Error('store down'));
+      try {
+        expect((await generate()).status).toBe(500);
+      } finally {
+        await t.prisma.$executeRawUnsafe(`ALTER TABLE "PoliceRegister" DROP CONSTRAINT IF EXISTS test_refuse`);
+      }
+      jest.restoreAllMocks();
+      const orphan = await t.prisma.storedObject.findUniqueOrThrow({ where: { id: written[0] } });
+      expect(orphan.deletedAt).toBeNull();
+      await t.app.get(RetentionService).purge(new Date(Date.now() + 2 * 3_600_000));
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: written[0] } })).deletedAt).not.toBeNull();
+      expect(store.keys()).toHaveLength(0);
     });
 
     it('refuses a malformed or not-yet-started month', async () => {

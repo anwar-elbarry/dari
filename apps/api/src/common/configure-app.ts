@@ -16,11 +16,11 @@ export function configureApp(app: INestApplication, config: AppConfig) {
   app.use(requestIdMiddleware);
   app.use(helmet());
   app.use(cookieParser());
-  // Nothing under /api is ever cached, and the public guest routes are never indexed. This runs before the guards, so
-  // even a 429 from the rate limiter or a 403 from the CSRF check carries the headers.
+  // Nothing under /api is ever cached, and the public token routes (guest check-in, shared documents) are never
+  // indexed. This runs before the guards, so even a 429 from the rate limiter or a 404 from a feature flag carries them.
   app.use('/api', (req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Cache-Control', 'no-store');
-    if (req.path.startsWith('/checkin')) res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    if (/^\/(checkin|share)(\/|$)/.test(req.path)) res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     next();
   });
   app.setGlobalPrefix('api');

@@ -115,9 +115,21 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 4.3 | **Secure Share API**: create, list, revoke, access log, the public route with fail-closed access recording — **done** (see below) | strong |
 | 4.4 | Web: registers, validation report, share dialog, shares list — **done** (see below) | fast |
 | 4.5 | Web: public viewer page — **done** (see below) | fast |
-| 4.6 | Hardening: abuse and logging tests for the public route, security review, phone e2e, docs, Phase 5 plan | strong |
+| 4.6 | Hardening: abuse and logging tests for the public route, security review, phone e2e, docs, Phase 5 plan — **done** (see below) | strong |
 
 Steps 4.2 and 4.3 carry the risk.
+
+### Step 4.6 outcome
+- **Abuse suite for the public route** (`share/share-abuse.int-spec.ts`): token variants (padding, case, truncation, extra characters, 8 KB, `Bearer`) all get the neutral 404 without a server error; the stored hash, a check-in token or a signed-in session never open a link; a signed-in visitor is not recorded as the actor; HEAD and other methods have no side effect; no ETag, `Last-Modified`, range or conditional answer that could confirm the file without recording an opening; `nosniff`, CORP `same-origin`, `SAMEORIGIN`, no cookie, no CORS; parallel openings never exceed the per-link cap and views, `ShareAccess` rows and audit rows agree; a hostile user agent is stored as trimmed text; the manager routes refuse mass assignment, malformed bodies and requests without the CSRF header; another account cannot revoke or read a link's log.
+- **Logging**: the redaction suite already covered every share route with the token in the query, path and cookie (4.3); unchanged.
+- **Phone e2e**: the full story (generate, validation report, share, recipient in a fresh context, revoke, neutral page) was completed in 4.4 and 4.5; unchanged.
+- **Independent security review** (read-only pass over 4.0–4.5): no high finding. Fixed, each with a regression test:
+  - **Medium:** two overlapping regenerations of a register (or a Fiche) could both replace the same previous file, leaving the other new PDF encrypted but referenced by nothing and never reached by the retention job; a failed delete of the previous file had the same effect. Now a new file is written **provisional** (`expiresAt` one hour ahead), and one transaction swaps the record with a compare-and-swap on the previous file id, makes the new file permanent and marks the replaced one due (`storage/hand-over.ts`). The immediate delete that follows is best effort; the retention job finishes it. Tests force the race, a failed delete and a failed row write.
+  - **Low:** a link pointed at the record, so after a regeneration it silently served the new version (for example a register with guests added after the link was sent). Regenerating a register or a Fiche now **revokes its live links** in the same transaction (`share/revoke-links.ts`), audited `share.revoked` under the manager; the screens say how many links were revoked and suggest sharing again.
+  - **Low:** Express answers HEAD with the GET handler, so a HEAD request counted as an opening (audit row, view, cap) without delivering the file. The public route now answers anything but GET with the neutral 404.
+  - **Info:** the viewer kept a dead token in `sessionStorage`; it is now removed once the link is unavailable.
+- Found while writing the abuse tests: the per-address `429` and the flag-off `404` on `/api/share` had no `X-Robots-Tag` (they are answered before the controller's headers); the `/api` middleware now sets it for `/share` as it did for `/checkin`.
+- **Accepted and documented:** `share.accessed` is written before the final liveness check, so a revocation landing during a read leaves an audit row without an opening (fail-safe: no byte is served); turning `POLICE_REGISTER_ENABLED` or `GUEST_CHECKIN_ENABLED` off does not stop existing share links — turn `SECURE_SHARE_ENABLED` off for that (flags are never read outside their guard, `CLAUDE.md`).
 
 ### Step 4.5 outcome
 - **`/s#token=…`** (`app/(share)/s`, `components/share/shared-viewer.tsx`, `lib/share-api.ts`): the page a recipient opens from the link. Own layout: brand and language switch only, no navigation, no account; `noindex`, `no-store`, `no-referrer`.
@@ -187,13 +199,13 @@ Steps 4.2 and 4.3 carry the risk.
 
 ## Security checklist for this phase
 
-- [ ] Tokens: 256-bit, hash only, fragment + header, never in a URL, log, audit row or response after creation
-- [ ] Public route: neutral errors, `no-store`, `noindex`, `Referrer-Policy: no-referrer`, rate limits, no third-party scripts, no cookies, no CORS
-- [ ] The PDF is decrypted in memory, served only after the access is recorded, and never linked by URL
-- [ ] Expiry and revocation enforced on every request (no cached authorisation)
-- [ ] A share cannot point at another account's Fiche or Register (service check plus test)
-- [ ] Feature flags off by default in production; the register and share routes answer 404 when off
-- [ ] Retention applied to registers and Fiches from `RuleConfig`; the purge revokes shares that point at a purged file
+- [x] Tokens: 256-bit, hash only, fragment + header, never in a URL, log, audit row or response after creation
+- [x] Public route: neutral errors, `no-store`, `noindex`, `Referrer-Policy: no-referrer`, rate limits, no third-party scripts, no cookies, no CORS
+- [x] The PDF is decrypted in memory, served only after the access is recorded, and never linked by URL
+- [x] Expiry and revocation enforced on every request (no cached authorisation)
+- [x] A share cannot point at another account's Fiche or Register (service check plus test)
+- [x] Feature flags off by default in production; the register and share routes answer 404 when off
+- [x] Retention applied to registers and Fiches from `RuleConfig`; the purge revokes shares that point at a purged file
 
 ---
 
@@ -225,3 +237,38 @@ Steps 4.2 and 4.3 carry the risk.
 4. Who may create a share link: Owner/Manager only (recommended), or Staff too?
 5. Is a 72-hour maximum right, and is 24 hours a useful minimum?
 6. Do you want a view limit or a watermark in this phase, or wait until a customer asks (the solo plan says wait)?
+
+---
+
+## Outcome (Phase 4 closed: code complete, legal gates open)
+
+Steps 4.0 to 4.6 are done. CI runs the register and Secure Share suites (integration with Postgres, Redis, an S3 server and a real Chromium; abuse, logging, permission matrix, tenant isolation, retention) and the phone-viewport e2e: a manager fixes an incomplete record, generates and regenerates a register, shares it, the recipient opens it in a fresh browser context without an account, and after revocation the same link shows the neutral page.
+
+**Definition of done**
+1. Generate, see and fix incomplete records, regenerate, share: done (e2e).
+2. Recipient opens the link on a phone viewport; neutral page after expiry or revocation: done (e2e and integration). Reading the PDF in a real phone viewer stays on the [pilot checklist](pilot-checklist.md).
+3. Generation, read, share creation, revocation and access audited; no token or personal data in logs: done (logging suite).
+4. Abuse, access, isolation and logging suites in CI: done.
+5. Security review: no open high or medium finding (4.6).
+6. [`phase-5.md`](phase-5.md) written; the gates are tracked below.
+
+**What was delivered**
+- The monthly Police Register: month query (arrival month, confirmed bookings only), validation report by id and field, versioned escaped template, encrypted PDF, regenerate with `outdated` detection, audited reads.
+- Secure Share: 256-bit token shown once (fragment + header, hash stored), expiry within `RuleConfig` bounds, instant revocation, revocation on regeneration and on purge, access log (time and trimmed browser only), per-address and per-link caps, one neutral answer.
+- The public viewer `/s` with a confidentiality notice, and the manager screens (registers, validation report, share dialog, shared links).
+- Retention of Fiche and register PDFs from `RuleConfig` once counsel validates a period, and the provisional-file pattern that keeps every stored file within reach of the retention job.
+
+### Hard gates: tracker (Phase 4 additions)
+
+The Phase 3 gates ([tracker](phase-3.md)) still apply. Until these are closed, `POLICE_REGISTER_ENABLED` and `SECURE_SHARE_ENABLED` stay off in production. **Dates are proposals (set 2026-09-30): confirm or change them.**
+
+| Gate | Owner | Proposed date | Status |
+|---|---|---|---|
+| Official register form (fields, layout) and whether the prefecture accepts a PDF or requires paper | Founder | 2026-10-13 (with the Fiche form) | Open |
+| Retention of the register and of the Fiche PDF (`retention.police_register_days`, `retention.fiche_days`), and of the structured guest record | Counsel | 2026-10-20 | Open |
+| An authority's access: attributable (store the IP) or minimised (time and browser only, today) | Counsel | 2026-10-20 | Open |
+| Share lifetime bounds (24 h minimum, 72 h maximum today, unvalidated) | Founder + counsel | 2026-10-20 | Open |
+| Who may create a share link (Owner/Manager only today) and whether Staff may read a Fiche | Founder + counsel | with the consent wording | Open |
+| Secure Share as a disclosure channel described in the CNDP file (recipients: authorities; delivery via `wa.me`) | Founder + counsel | with the CNDP declaration | Open |
+| Real-phone check of the viewer (pilot checklist section 2) | Founder | before the pilot | Open |
+

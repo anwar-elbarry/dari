@@ -133,10 +133,25 @@ describe('Secure Share (integration)', () => {
 
       await t.prisma.guestCheckIn.update({ where: { id: guestId }, data: { profession: 'Photographer' } });
       expect((await a.as.OWNER_MANAGER.post('/api/shares', body).expect(409)).body.error.code).toBe('REGISTER_OUTDATED');
-      await a.as.OWNER_MANAGER.post(`/api/properties/${propertyId}/registers/2025-10`).expect(200);
-      await a.as.OWNER_MANAGER.post('/api/shares', body).expect(201);
-      // The first link still works and now serves the regenerated register.
-      expect((await open(ok.body.token).expect(200)).body.toString()).toBe('%PDF-1.4 register stub');
+      const regenerated = await a.as.OWNER_MANAGER.post(`/api/properties/${propertyId}/registers/2025-10`).expect(200);
+      expect(regenerated.body.revokedShares).toBe(1);
+      const again = await a.as.OWNER_MANAGER.post('/api/shares', body).expect(201);
+      // A link gives the version that was shared: regenerating revoked the first one, audited under the manager.
+      await open(ok.body.token).expect(404);
+      expect((await open(again.body.token).expect(200)).body.toString()).toBe('%PDF-1.4 register stub');
+      const revoked = await t.prisma.auditLog.findMany({ where: { action: 'share.revoked' } });
+      expect(revoked.map((r) => [r.actorId, r.resourceId])).toEqual([[a.users.OWNER_MANAGER.id, ok.body.id]]);
+    });
+
+    it('regenerating a Fiche revokes its live links; a revoked or expired link is left as it is', async () => {
+      const live = (await shareFiche().expect(201)).body;
+      const old = (await shareFiche().expect(201)).body;
+      await a.as.OWNER_MANAGER.delete(`/api/shares/${old.id}`).expect(204);
+      jest.spyOn(t.app.get(PdfRenderer), 'render').mockResolvedValue(Buffer.from('%PDF-1.4 fiche v2'));
+      expect((await a.as.OWNER_MANAGER.post(`/api/guests/${guestId}/fiche/regenerate`).expect(200)).body.revokedShares).toBe(1);
+      await open(live.token).expect(404);
+      expect(await t.prisma.auditLog.count({ where: { action: 'share.revoked', actorId: a.users.OWNER_MANAGER.id } })).toBe(2);
+      expect(await t.prisma.storedObject.count({ where: { kind: 'FICHE_PDF', deletedAt: null } })).toBe(1);
     });
 
     it('is Owner/Manager only', async () => {

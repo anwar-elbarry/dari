@@ -268,6 +268,8 @@ export interface GeneratedRegister {
   generatedAt: string;
   summary: RegisterSummary;
   problems: RegisterProblem[];
+  /** Links to the previous version, revoked by this generation. */
+  revokedShares: number;
 }
 
 export type ShareStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';

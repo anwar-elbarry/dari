@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, Param, ParseUUIDPipe, Post, Req, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpCode, NotFoundException, Param, ParseUUIDPipe, Post, Req, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthUser, clientMeta } from '../auth/auth.types';
@@ -67,7 +67,9 @@ export class PublicShareController {
 
   @Get()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  async open(@Headers(TOKEN_HEADER) token: string | undefined, @Headers('user-agent') ua: string | undefined, @Res({ passthrough: true }) res: Response) {
+  async open(@Req() req: Request, @Headers(TOKEN_HEADER) token: string | undefined, @Headers('user-agent') ua: string | undefined, @Res({ passthrough: true }) res: Response) {
+    // Express routes HEAD to this handler: it would count as an opening without delivering the file.
+    if (req.method !== 'GET') throw new NotFoundException({ code: 'LINK_UNAVAILABLE', message: 'This link is not available.' });
     const { bytes } = await this.shares.open(token, ua);
     res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');

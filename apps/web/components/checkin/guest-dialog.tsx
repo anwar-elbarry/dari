@@ -145,8 +145,9 @@ export function GuestDialog({ guestId, onClose, onChanged }: { guestId: string |
 
   async function regenerate() {
     setNotice(null);
-    if (await action.run(() => api('POST', `/guests/${guestId}/fiche/regenerate`).then(() => true))) {
-      setNotice(t('regenerated'));
+    const result = await action.run(() => api<{ revokedShares: number }>('POST', `/guests/${guestId}/fiche/regenerate`));
+    if (result) {
+      setNotice(result.revokedShares > 0 ? `${t('regenerated')} ${t('sharesRevoked', { count: result.revokedShares })}` : t('regenerated'));
       await load();
       onChanged();
     }

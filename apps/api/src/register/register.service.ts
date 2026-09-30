@@ -6,6 +6,8 @@ import { AuthUser, ClientMeta } from '../auth/auth.types';
 import { PdfRenderer, PdfUnavailableError } from '../checkin/pdf-renderer';
 import { PrismaService } from '../prisma/prisma.service';
 import { can } from '../rbac/capabilities';
+import { revokeLinksTo } from '../share/revoke-links';
+import { handOver, provisionalUntil } from '../storage/hand-over';
 import { StorageService } from '../storage/storage.service';
 import { buildRegister, Problem, RegisterGuest, RegisterStay, Summary } from './register-build';
 import { lastMonths, monthOf, parseMonth } from './register-month';
@@ -18,6 +20,8 @@ export const LIST_MONTHS = 24;
 /** A register this large is refused rather than rendered: it would tie up the shared Chromium. */
 const MAX_STAYS = 500;
 const MAX_ROWS = 1500;
+/** Parallel generations of one month retry the swap this many times before giving up. */
+const SWAP_ATTEMPTS = 5;
 
 const GUEST_SELECT = {
   id: true, status: true, guestIndex: true, docType: true, fullName: true, nationality: true, docNumber: true, dob: true,
@@ -137,41 +141,50 @@ export class RegisterService {
       throw e;
     }
     const sha256 = createHash('sha256').update(pdf).digest('hex');
-    const stored = await this.storage.put(user.accountId, 'POLICE_REGISTER_PDF', pdf);
+    // Provisional until the row points at it: a crash or a lost race leaves nothing the retention job cannot reach.
+    const stored = await this.storage.put(user.accountId, 'POLICE_REGISTER_PDF', pdf, { expiresAt: provisionalUntil() });
 
     const db = this.prisma.forAccount(user.accountId);
     const fields = { templateVersion: REGISTER_TEMPLATE_VERSION, sha256, inputDigest: built.digest, guestCount: built.summary.guests, validation: built.summary as unknown as Prisma.InputJsonValue, generatedBy: user.id, generatedAt: new Date() };
     const shred = (objectId: string, registerId: string) =>
       this.storage.delete(user.accountId, objectId, { actorId: user.id, action: 'storage.object.deleted', resourceType: 'PoliceRegister', resourceId: registerId });
 
-    let registerId: string;
-    let previous: string | null = null;
-    const existing = () => db.policeRegister.findFirst({ where: { propertyId, month }, select: { id: true, pdfObjectId: true } });
+    // Compare-and-swap on the previous file, so parallel generations each release exactly the file they replaced.
+    // The same transaction adopts the new file, marks the replaced one due for deletion and revokes the links to it.
+    let swap: { registerId: string; previous: string | null; revoked: string[] } | null = null;
     try {
-      let row = await existing();
-      if (!row) {
-        try {
-          registerId = (await db.policeRegister.create({ data: { accountId: user.accountId, propertyId, month, pdfObjectId: stored.id, ...fields } })).id;
-        } catch (e) {
-          // A parallel generation created it first: replace that one.
-          if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e;
-          row = await existing();
-          if (!row) throw e;
-        }
-      }
-      if (row) {
-        registerId = row.id;
-        previous = row.pdfObjectId;
-        await db.policeRegister.update({ where: { id: row.id }, data: { pdfObjectId: stored.id, ...fields } });
+      for (let attempt = 0; !swap; attempt++) {
+        if (attempt === SWAP_ATTEMPTS) throw new ServiceUnavailableException({ code: 'REGISTER_BUSY', message: 'The register is being generated. Try again.' });
+        const row = await db.policeRegister.findFirst({ where: { propertyId, month }, select: { id: true, pdfObjectId: true } });
+        swap = await db
+          .$transaction(async (tx) => {
+            if (!row) {
+              const created = await tx.policeRegister.create({ data: { accountId: user.accountId, propertyId, month, pdfObjectId: stored.id, ...fields } });
+              await handOver(tx, stored.id, null);
+              return { registerId: created.id, previous: null, revoked: [] };
+            }
+            const swapped = await tx.policeRegister.updateMany({ where: { id: row.id, pdfObjectId: row.pdfObjectId }, data: { pdfObjectId: stored.id, ...fields } });
+            if (swapped.count === 0) return null;
+            await handOver(tx, stored.id, row.pdfObjectId);
+            return { registerId: row.id, previous: row.pdfObjectId, revoked: await revokeLinksTo(tx, 'POLICE_REGISTER', row.id) };
+          })
+          .catch((e: unknown) => {
+            // A parallel generation created the row first: go round again and replace that one.
+            if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return null;
+            throw e;
+          });
       }
     } catch (e) {
-      await shred(stored.id, `${propertyId}:${month}`).catch(() => undefined);
+      await shred(stored.id, `${propertyId}:${month}`).catch(() => undefined); // if this fails too, the file is provisional
       throw e;
     }
-    if (previous) await shred(previous, registerId!).catch(() => this.logger.warn(`could not remove the previous register of ${registerId!}`));
+    const { registerId, previous, revoked } = swap;
+    // Already due: if this delete fails, the retention job finishes it.
+    if (previous) await shred(previous, registerId).catch(() => this.logger.warn(`could not remove the previous register of ${registerId}`));
+    for (const id of revoked) await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'share.revoked', resourceType: 'ShareLink', resourceId: id, ip: meta.ip });
 
-    await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'register.generated', resourceType: 'PoliceRegister', resourceId: registerId!, ip: meta.ip });
-    return { month, templateVersion: REGISTER_TEMPLATE_VERSION, generatedAt: fields.generatedAt, summary: built.summary, problems: built.problems };
+    await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'register.generated', resourceType: 'PoliceRegister', resourceId: registerId, ip: meta.ip });
+    return { month, templateVersion: REGISTER_TEMPLATE_VERSION, generatedAt: fields.generatedAt, summary: built.summary, problems: built.problems, revokedShares: revoked.length };
   }
 
   /** The PDF, decrypted in memory. The read is on the audit trail before any byte is returned. */

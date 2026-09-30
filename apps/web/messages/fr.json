@@ -414,6 +414,7 @@
       "downloadFiche": "Télécharger la fiche",
       "regenerate": "Régénérer la fiche",
       "regenerated": "La fiche a été régénérée.",
+      "sharesRevoked": "{count, plural, one {Le lien partagé pour la version précédente a été révoqué} other {Les # liens partagés pour la version précédente ont été révoqués}} : partagez-la à nouveau si besoin.",
       "noFiche": "La fiche n'est pas encore prête. Elle est préparée après l'envoi du voyageur ; vous pouvez la régénérer maintenant.",
       "ficheNote": "Mise en forme indicative, à comparer au modèle officiel. Établie à partir de la déclaration du voyageur. À vérifier avant usage.",
       "edit": "Corriger les informations",
@@ -566,6 +567,7 @@
     "shareBlocked": "Générez à nouveau le registre avant de le partager.",
     "generated": "Le registre de {month} a été généré.",
     "generatedWithProblems": "Le registre de {month} a été généré avec {count, plural, one {# enregistrement incomplet} other {# enregistrements incomplets}}. Cela est indiqué sur la page.",
+    "sharesRevoked": "{count, plural, one {Le lien partagé pour la version précédente a été révoqué} other {Les # liens partagés pour la version précédente ont été révoqués}} : partagez-le à nouveau si besoin.",
     "outdatedHint": "Les données ont changé après la génération de ce registre.",
     "pdfNotice": "Chaque ouverture d'un registre est enregistrée.",
     "validation": {

@@ -414,6 +414,7 @@
       "downloadFiche": "Download the Fiche",
       "regenerate": "Regenerate the Fiche",
       "regenerated": "The Fiche was regenerated.",
+      "sharesRevoked": "{count, plural, one {The link shared for the previous version was revoked} other {The # links shared for the previous version were revoked}}: share it again if needed.",
       "noFiche": "The Fiche is not ready yet. It is prepared after the guest submits; you can regenerate it now.",
       "ficheNote": "Indicative layout: compare it with the official form. Prepared from the guest's declaration. Check it before use.",
       "edit": "Correct the details",
@@ -566,6 +567,7 @@
     "shareBlocked": "Generate the register again before sharing it.",
     "generated": "The register for {month} was generated.",
     "generatedWithProblems": "The register for {month} was generated with {count, plural, one {# incomplete record} other {# incomplete records}}. It says so on the page.",
+    "sharesRevoked": "{count, plural, one {The link shared for the previous version was revoked} other {The # links shared for the previous version were revoked}}: share it again if needed.",
     "outdatedHint": "The data changed after this register was generated.",
     "pdfNotice": "Every opening of a register is recorded.",
     "validation": {

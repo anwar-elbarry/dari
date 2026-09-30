@@ -64,11 +64,13 @@ export function RegistersScreen({ propertyId }: { propertyId: string }) {
     setBusy(null);
     if (!result) return;
     await load();
+    // A link gives the version that was shared: regenerating revokes the links to the previous one.
+    const revoked = result.revokedShares > 0 ? ` ${t('sharesRevoked', { count: result.revokedShares })}` : '';
     if (result.summary.problems > 0) {
-      setNotice(t('generatedWithProblems', { month: label(month), count: result.summary.problems }));
+      setNotice(t('generatedWithProblems', { month: label(month), count: result.summary.problems }) + revoked);
       await showReport(month); // the report is shown after generating as well as before
     } else {
-      setNotice(t('generated', { month: label(month) }));
+      setNotice(t('generated', { month: label(month) }) + revoked);
     }
   }
 

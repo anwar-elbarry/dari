@@ -17,8 +17,8 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | 1 | Auth, RBAC, accounts, properties, onboarding | A manager can sign up and add a property | **Done** (see outcome in `docs/phase-1.md`) |
 | 2 | iCal sync, CSV import, 120-day counter, dashboard, alerts | Day counter matches a hand-checked real calendar | **Done** (see outcome in `docs/phase-2.md`) — [`docs/phase-2.md`](docs/phase-2.md) |
 | 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-3.md`) — [`docs/phase-3.md`](docs/phase-3.md) |
-| 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | Planned — [`docs/phase-4.md`](docs/phase-4.md) |
-| 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | Blocked on fiduciaire |
+| 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-4.md`) — [`docs/phase-4.md`](docs/phase-4.md) |
+| 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | Planned, blocked on fiduciaire from step 5.2 — [`docs/phase-5.md`](docs/phase-5.md) |
 | 6 | Licensing checklist, team management, WhatsApp | Invites and seat limits work; WhatsApp message delivered | Not started |
 | 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | Not started |
 | 8 | Fast-follow | Driven by pilot feedback | Not started |
@@ -130,14 +130,16 @@ Not code, but it decides when real customer data may be processed. Start in week
 **Goal:** one printable monthly register and safe sharing with authorities.
 
 - Monthly Police Register generator with pre-export validation of incomplete records
-- Secure Share: 256-bit token (hash stored), expiry 24–72 h, view limit, instant revocation, access log, `no-store` / `noindex`, confidential notice
+- Secure Share: 256-bit token (hash stored), expiry 24–72 h, instant revocation, access log, `no-store` / `noindex`, confidential notice (view limit and watermark skipped until customers ask)
 - Public viewer page and expired / revoked state
 
 **Exit:** expired and revoked links show the neutral page; tokens never appear in logs.
 
 ## Phase 5 — Tax engine and Accountant portal
 
-**Goal:** monthly estimates the fiduciaire can rely on. **Do not start before the fiduciaire has confirmed the rules.**
+**Detailed plan:** [`docs/phase-5.md`](docs/phase-5.md)
+
+**Goal:** monthly estimates the fiduciaire can rely on. **Do not start the pipeline before the fiduciaire has confirmed the rules** (steps 5.0–5.1 can go first).
 
 - `TaxRule` and `RuleConfig` seeded from the fiduciaire's validation, with `validatedBy`
 - Pipeline: gross base → Taxe de Séjour treatment → regime (property income / professional / company) → local taxes → output
