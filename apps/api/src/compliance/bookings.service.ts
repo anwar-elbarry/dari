@@ -18,9 +18,10 @@ const BASE_FIELDS = {
   classification: true,
   classifiedBy: true,
   status: true,
-  feedId: true,
-  importBatchId: true,
 } as const;
+
+/** Where a stay came from (calendar feed or CSV import): manager information, not shown to Staff. */
+const SOURCE_FIELDS = { feedId: true, importBatchId: true } as const;
 
 const REVENUE_FIELDS = {
   partySize: true,
@@ -83,7 +84,7 @@ export class BookingsService {
   async list(user: AuthUser, propertyId: string, q: BookingsQuery) {
     const db = this.prisma.forAccount(user.accountId);
     if (!(await db.property.findUnique({ where: { id: propertyId }, select: { id: true } }))) throw notFound('Property');
-    const select = can(user.role, 'revenue:read') ? { ...BASE_FIELDS, ...REVENUE_FIELDS } : BASE_FIELDS;
+    const select = can(user.role, 'revenue:read') ? { ...BASE_FIELDS, ...SOURCE_FIELDS, ...REVENUE_FIELDS } : BASE_FIELDS;
     return db.booking.findMany({
       where: {
         propertyId,
@@ -107,7 +108,7 @@ export class BookingsService {
     const { count } = await db.booking.updateMany({ where: { id: bookingId }, data });
     if (count === 0) throw notFound('Booking');
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'booking.amounts.updated', resourceType: 'Booking', resourceId: bookingId, ip: meta.ip });
-    return db.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { ...BASE_FIELDS, ...REVENUE_FIELDS } });
+    return db.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { ...BASE_FIELDS, ...SOURCE_FIELDS, ...REVENUE_FIELDS } });
   }
 
   /** Manual decision on a stay vs block. Marked MANUAL so later syncs keep it. */
@@ -116,7 +117,7 @@ export class BookingsService {
     const { count } = await db.booking.updateMany({ where: { id: bookingId }, data: { classification: dto.classification, classifiedBy: 'MANUAL' } });
     if (count === 0) throw notFound('Booking');
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'booking.classified', resourceType: 'Booking', resourceId: bookingId, ip: meta.ip });
-    const updated = await db.booking.findUniqueOrThrow({ where: { id: bookingId }, select: BASE_FIELDS });
+    const updated = await db.booking.findUniqueOrThrow({ where: { id: bookingId }, select: can(user.role, 'revenue:read') ? { ...BASE_FIELDS, ...SOURCE_FIELDS } : BASE_FIELDS });
     await this.events.nightsChanged(user.accountId, updated.propertyId);
     return updated;
   }

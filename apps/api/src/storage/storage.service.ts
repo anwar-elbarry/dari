@@ -4,7 +4,7 @@ import { StoredObjectKind } from '@prisma/client';
 import { AuditAction, AuditService } from '../audit/audit.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
-import { Keyring, open, rewrapKey, seal, wrappedKeyId } from './envelope';
+import { DecryptionError, Keyring, KeyringError, open, rewrapKey, seal, wrappedKeyId } from './envelope';
 import { OBJECT_STORE, ObjectNotFoundError, ObjectStore } from './object-store';
 
 export const KEYRING = Symbol('KEYRING');
@@ -73,7 +73,10 @@ export class StorageService {
   }
 
   async read(accountId: string, id: string, audit: StorageAudit): Promise<{ bytes: Buffer } & StoredObjectInfo> {
-    const row = await this.prisma.forAccount(accountId).storedObject.findFirst({ where: { id, deletedAt: null, NOT: { wrappedKey: '' } } });
+    // An object past its purge date is not served even if the retention job has not reached it yet (or is down).
+    const row = await this.prisma.forAccount(accountId).storedObject.findFirst({
+      where: { id, deletedAt: null, NOT: { wrappedKey: '' }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    });
     if (!row) throw notFound();
 
     let ciphertext: Buffer;
@@ -108,19 +111,33 @@ export class StorageService {
 
   /**
    * Master-key rotation: wrap every live object's data key under the current master key. Objects are not
-   * touched. Returns how many rows were rewrapped; call until it returns 0, then retire the old key.
+   * touched. Call until `rewrapped` is 0, then retire the old key. A row that cannot be rewrapped (corrupt, or
+   * wrapped by a key that is no longer in the keyring) is skipped and counted in `failed`, so it never blocks
+   * the rows behind it; while `failed` is above 0 the old key must not be retired.
    */
-  async rewrapOutdatedKeys(limit = 200): Promise<number> {
-    const rows = await this.prisma.storedObject.findMany({
-      where: { deletedAt: null, NOT: [{ wrappedKey: '' }, { wrappedKey: { startsWith: `${this.keyring.currentId}:` } }] },
-      take: limit,
-    });
-    for (const row of rows) {
-      const wrappedKey = rewrapKey(row.wrappedKey, this.keyring, this.aad(row.accountId, row.key));
-      // Only if the row still holds the key we read: a delete() that shredded it meanwhile must not be undone.
-      await this.prisma.storedObject.updateMany({ where: { id: row.id, wrappedKey: row.wrappedKey, deletedAt: null }, data: { wrappedKey } });
+  async rewrapOutdatedKeys(limit = 200): Promise<{ rewrapped: number; failed: number }> {
+    const failedIds: string[] = [];
+    let rewrapped = 0;
+    while (rewrapped < limit) {
+      const rows = await this.prisma.storedObject.findMany({
+        where: { deletedAt: null, id: { notIn: failedIds }, NOT: [{ wrappedKey: '' }, { wrappedKey: { startsWith: `${this.keyring.currentId}:` } }] },
+        orderBy: { id: 'asc' },
+        take: Math.min(limit - rewrapped, 200),
+      });
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        try {
+          const wrappedKey = rewrapKey(row.wrappedKey, this.keyring, this.aad(row.accountId, row.key));
+          // Only if the row still holds the key we read: a delete() that shredded it meanwhile must not be undone.
+          const { count } = await this.prisma.storedObject.updateMany({ where: { id: row.id, wrappedKey: row.wrappedKey, deletedAt: null }, data: { wrappedKey } });
+          rewrapped += count;
+        } catch (e) {
+          if (!(e instanceof DecryptionError || e instanceof KeyringError)) throw e;
+          failedIds.push(row.id);
+        }
+      }
     }
-    return rows.length;
+    return { rewrapped, failed: failedIds.length };
   }
 
   /** For tests and diagnostics: which master key wraps an object. */

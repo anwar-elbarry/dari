@@ -15,7 +15,7 @@ export type RedisClient = Redis | null;
       useFactory: (config: AppConfig): RedisClient => {
         if (!config.REDIS_URL) return null;
         const client = new Redis(config.REDIS_URL, { maxRetriesPerRequest: 2, enableOfflineQueue: true, lazyConnect: false });
-        client.on('error', (e) => new Logger('Redis').error(e.message));
+        client.on('error', (e) => new Logger('Redis').error(`connection error (${e.name})`));
         return client;
       },
     },

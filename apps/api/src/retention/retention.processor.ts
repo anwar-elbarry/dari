@@ -34,12 +34,9 @@ export class RetentionProcessor extends WorkerHost implements OnModuleInit {
 
   async process(job: Job): Promise<unknown> {
     if (job.name === JOB_REWRAP) {
-      let rewrapped = 0;
-      for (let i = 0; i < REWRAP_BATCHES; i++) {
-        const n = await this.storage.rewrapOutdatedKeys(200);
-        rewrapped += n;
-        if (n === 0) break;
-      }
+      const { rewrapped, failed } = await this.storage.rewrapOutdatedKeys(REWRAP_BATCHES * 200);
+      // A row that cannot be rewrapped keeps the old master key alive: fail the job so it is visible and retried.
+      if (failed > 0) throw new Error(`Key rotation could not rewrap ${failed} object(s)`);
       return { rewrapped };
     }
     if (job.name !== JOB_PURGE) return null;

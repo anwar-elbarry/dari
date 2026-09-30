@@ -9,6 +9,7 @@ import { APP_CONFIG, AppConfig } from '../config/env';
 import { MessagingService } from '../messaging/messaging.service';
 import { nameVariable } from '../messaging/phone';
 import { PrismaService } from '../prisma/prisma.service';
+import { describeUnexpected } from '../common/http-exception.filter';
 
 export const ALERT_AMBER = 'day_counter.amber';
 export const ALERT_RED = 'day_counter.red';
@@ -66,7 +67,7 @@ export class AlertsService implements OnModuleInit {
   async evaluateAll(accountId?: string, year = currentYear()): Promise<number> {
     const properties = await this.prisma.property.findMany({ where: { licenseStatus: 'UNLICENSED', ...(accountId ? { accountId } : {}) }, select: { id: true, accountId: true } });
     let created = 0;
-    for (const p of properties) created += (await this.evaluateProperty(p.accountId, p.id, year).catch((e) => (this.logger.error(`property ${p.id}: ${e instanceof Error ? e.message : String(e)}`), []))).length;
+    for (const p of properties) created += (await this.evaluateProperty(p.accountId, p.id, year).catch((e) => (this.logger.error(`property ${p.id}: ${describeUnexpected(e, false)}`), []))).length;
     return created;
   }
 

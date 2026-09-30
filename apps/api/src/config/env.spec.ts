@@ -2,6 +2,9 @@ import { parseEnv } from './env';
 
 const base = { DATABASE_URL: 'postgresql://u:p@localhost:5432/db', JWT_ACCESS_SECRET: 'x'.repeat(32) };
 
+/** What production always needs: the private, encrypted store (licence documents use it whatever the guest flags say). */
+const prodStorage = { STORAGE_DRIVER: 's3', S3_BUCKET: 'dari-private', S3_ACCESS_KEY: 'a', S3_SECRET_KEY: 'b', S3_SSE: 'true', STORAGE_MASTER_KEYS: `k1:${Buffer.alloc(32, 7).toString('base64')}` };
+
 describe('parseEnv', () => {
   it('applies defaults', () => {
     const env = parseEnv(base);
@@ -71,8 +74,11 @@ describe('parseEnv', () => {
       expect(parseEnv({ ...on, ...s3, S3_SSE: 'true', S3_ENDPOINT: 'https://storage.internal' }).STORAGE_DRIVER).toBe('s3');
     });
 
-    it('in production does not need storage while the feature is off', () => {
-      expect(parseEnv(prod).GUEST_CHECKIN_ENABLED).toBe(false);
+    it('in production needs the private store even with every guest flag off (licence documents use it)', () => {
+      expect(() => parseEnv(prod)).toThrow(/STORAGE_DRIVER/);
+      const withStore = parseEnv({ ...prod, ...s3, S3_SSE: 'true' });
+      expect(withStore.STORAGE_DRIVER).toBe('s3');
+      expect(withStore.GUEST_CHECKIN_ENABLED).toBe(false);
     });
   });
 
@@ -86,7 +92,7 @@ describe('parseEnv', () => {
   });
 
   describe('document worker transport in production', () => {
-    const prodBase = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20), OCR_SHARED_SECRET: 's'.repeat(32) };
+    const prodBase = { ...base, ...prodStorage, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20), OCR_SHARED_SECRET: 's'.repeat(32) };
     it('refuses plain http to a public host, allows https and private hosts', () => {
       expect(() => parseEnv({ ...prodBase, OCR_SERVICE_URL: 'http://ocr.example.com' })).toThrow(/OCR_SERVICE_URL/);
       expect(() => parseEnv({ ...prodBase, OCR_SERVICE_URL: 'http://203.0.113.9:8001' })).toThrow(/OCR_SERVICE_URL/);
@@ -103,7 +109,7 @@ describe('parseEnv', () => {
     it('is on in development and test, off by default in production', () => {
       expect(parseEnv(base).GUEST_CHECKIN_ENABLED).toBe(true);
       expect(parseEnv({ ...base, NODE_ENV: 'test' }).GUEST_CHECKIN_ENABLED).toBe(true);
-      const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
+      const prod = { ...base, ...prodStorage, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
       expect(parseEnv(prod).GUEST_CHECKIN_ENABLED).toBe(false);
     });
 
@@ -114,7 +120,7 @@ describe('parseEnv', () => {
   });
 
   describe('WHATSAPP_ENABLED', () => {
-    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
+    const prod = { ...base, ...prodStorage, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
     it('is on in development and test, off by default in production, independent of the other flags', () => {
       expect(parseEnv(base).WHATSAPP_ENABLED).toBe(true);
       expect(parseEnv({ ...base, NODE_ENV: 'test' }).WHATSAPP_ENABLED).toBe(true);
@@ -149,7 +155,7 @@ describe('parseEnv', () => {
   });
 
   describe.each(['POLICE_REGISTER_ENABLED', 'SECURE_SHARE_ENABLED', 'TAX_REPORTS_ENABLED'] as const)('%s', (flag) => {
-    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
+    const prod = { ...base, ...prodStorage, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
     it('is on in development and test, off by default in production, and independent of the check-in flag', () => {
       expect(parseEnv(base)[flag]).toBe(true);
       expect(parseEnv({ ...base, NODE_ENV: 'test' })[flag]).toBe(true);
@@ -160,8 +166,10 @@ describe('parseEnv', () => {
       expect(parseEnv({ ...base, [flag]: 'false' })[flag]).toBe(false);
       expect(() => parseEnv({ ...base, [flag]: 'yes' })).toThrow(new RegExp(flag));
     });
-    it('in production needs the storage settings once on, even with the guest feature off', () => {
-      expect(() => parseEnv({ ...prod, [flag]: 'true' })).toThrow(/STORAGE_DRIVER/);
+    it('in production the storage settings are required whether or not the flag is on', () => {
+      const noStore = { ...prod, STORAGE_DRIVER: 'memory' };
+      expect(() => parseEnv({ ...noStore, [flag]: 'true' })).toThrow(/STORAGE_DRIVER/);
+      expect(() => parseEnv(noStore)).toThrow(/STORAGE_DRIVER/);
     });
   });
 

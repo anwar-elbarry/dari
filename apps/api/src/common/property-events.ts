@@ -1,4 +1,5 @@
 import { Global, Injectable, Logger, Module } from '@nestjs/common';
+import { describeUnexpected } from './http-exception.filter';
 
 type Handler = (accountId: string, propertyId: string) => Promise<unknown>;
 
@@ -20,7 +21,7 @@ export class PropertyEvents {
       try {
         await h(accountId, propertyId);
       } catch (e) {
-        this.logger.error(`listener failed: ${e instanceof Error ? e.message : String(e)}`);
+        this.logger.error(`listener failed: ${describeUnexpected(e, false)}`);
       }
     }
   }

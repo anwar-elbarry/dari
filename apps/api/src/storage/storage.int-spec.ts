@@ -49,6 +49,14 @@ describe('StorageService (integration)', () => {
     expect(row.wrappedKey).toMatch(/^ephemeral:/);
   });
 
+  it('refuses to serve an object past its purge date, even before the retention job has removed it', async () => {
+    const { id } = await storage.put(a, 'ID_IMAGE', IMAGE, { expiresAt: new Date(Date.now() + 60_000) });
+    await storage.read(a, id, readAudit('guest-1'));
+    await t.prisma.storedObject.update({ where: { id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    await expect(storage.read(a, id, readAudit('guest-1'))).rejects.toBeInstanceOf(NotFoundException);
+    expect(await t.prisma.auditLog.count()).toBe(1); // only the first read was recorded
+  });
+
   it('returns the exact bytes on read and writes an audit row with identifiers only', async () => {
     const { id } = await storage.put(a, 'ID_IMAGE', IMAGE);
 
@@ -180,12 +188,32 @@ describe('StorageService (integration)', () => {
       const deleted = await before.put(a, 'ID_IMAGE', IMAGE);
       await before.delete(a, deleted.id, deleteAudit('g'));
 
-      expect(await rotating.rewrapOutdatedKeys()).toBe(2); // shredded rows are skipped
-      expect(await rotating.rewrapOutdatedKeys()).toBe(0);
+      expect(await rotating.rewrapOutdatedKeys()).toEqual({ rewrapped: 2, failed: 0 }); // shredded rows are skipped
+      expect(await rotating.rewrapOutdatedKeys()).toEqual({ rewrapped: 0, failed: 0 });
       expect(await rotating.keyIdOf(a, objects[0].id)).toBe('k2');
 
       expect((await after.read(a, objects[0].id, readAudit('g'))).bytes.equals(IMAGE)).toBe(true);
       expect((await after.read(b, objects[1].id, readAudit('g'))).bytes.toString()).toBe('pdf');
+    });
+
+    it('a row that cannot be rewrapped is reported and never blocks the rows behind it', async () => {
+      const k1 = randomBytes(32);
+      const k2 = randomBytes(32);
+      const ring1: Keyring = { currentId: 'k1', keys: new Map([['k1', k1]]) };
+      const ring2: Keyring = { currentId: 'k2', keys: new Map([['k2', k2], ['k1', k1]]) };
+      const audit = t.app.get(AuditService);
+      const before = new StorageService(t.prisma, audit, store, ring1, t.config);
+      const rotating = new StorageService(t.prisma, audit, store, ring2, t.config);
+
+      const objects = [];
+      for (let i = 0; i < 4; i++) objects.push(await before.put(a, 'ID_IMAGE', IMAGE));
+      // The row that sorts first is corrupt: its wrapped key names a master key nobody holds any more.
+      const [bad] = [...objects].sort((x, y) => (x.id < y.id ? -1 : 1));
+      await t.prisma.storedObject.update({ where: { id: bad.id }, data: { wrappedKey: 'k0:AAAA' } });
+
+      expect(await rotating.rewrapOutdatedKeys()).toEqual({ rewrapped: 3, failed: 1 });
+      expect(await rotating.rewrapOutdatedKeys(2)).toEqual({ rewrapped: 0, failed: 1 }); // nothing else left; still reported
+      for (const o of objects.filter((o) => o.id !== bad.id)) expect(await rotating.keyIdOf(a, o.id)).toBe('k2');
     });
 
     it('never writes a key back onto an object that was shredded after the rewrap read it', async () => {

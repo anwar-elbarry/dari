@@ -78,6 +78,10 @@ describe('day counter (integration)', () => {
     const staff = await a.as.STAFF.get(`/api/properties/${propertyId}/bookings`).expect(200);
     expect(staff.body).toHaveLength(2);
     expect(Object.keys(staff.body[0])).not.toEqual(expect.arrayContaining(['nightlyRevenue', 'cleaningFee', 'confirmationCode']));
+    // Which calendar feed or CSV import a stay came from is manager information (7.2 finding).
+    expect(manager.body[0]).toHaveProperty('feedId');
+    expect(staff.body[0]).not.toHaveProperty('feedId');
+    expect(staff.body[0]).not.toHaveProperty('importBatchId');
     await a.as.STAFF.get(`/api/properties/${propertyId}/bookings?from=nope`).expect(400);
   });
 

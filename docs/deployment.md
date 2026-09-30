@@ -43,12 +43,12 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 | `REDIS_URL` | Managed Redis, private network, `rediss://` or password |
 | `MAIL_DRIVER` | `resend`. `console` and `file` are refused in production. Resend is a US provider: reset, invitation and alert e-mails carry user addresses, so it belongs in the cross-border position with counsel |
 | `MAIL_API_KEY` | Provider API key, from the secret store. Required with `resend`; never logged |
-| `GUEST_CHECKIN_ENABLED` | Leave unset (off) until the legal gates in `docs/phase-3.md` are closed; `true` turns the guest check-in routes on and makes the storage settings below mandatory |
-| `POLICE_REGISTER_ENABLED`, `SECURE_SHARE_ENABLED` | Leave unset (off) until the Phase 4 gates are closed. Each one, when `true`, makes the storage settings below mandatory, exactly as `GUEST_CHECKIN_ENABLED` does |
-| `TAX_REPORTS_ENABLED` | Leave unset (off) until you accept shipping the tax estimate as a **BETA** (default rates not validated by a fiduciaire: every report and export is watermarked) or the fiduciaire has validated the rules. `true` makes the storage settings mandatory and needs the tax `RuleConfig` rows (migration `20260930120000`) including the disclaimer wording; `npm run check:enablement` reports both |
+| `GUEST_CHECKIN_ENABLED` | Leave unset (off) until the legal gates in `docs/phase-3.md` are closed; `true` turns the guest check-in routes on. The storage settings below are mandatory in production whatever the flags say |
+| `POLICE_REGISTER_ENABLED`, `SECURE_SHARE_ENABLED` | Leave unset (off) until the Phase 4 gates are closed. The storage settings below are mandatory in production regardless |
+| `TAX_REPORTS_ENABLED` | Leave unset (off) until you accept shipping the tax estimate as a **BETA** (default rates not validated by a fiduciaire: every report and export is watermarked) or the fiduciaire has validated the rules. `true` needs the tax `RuleConfig` rows (migration `20260930120000`) including the disclaimer wording; `npm run check:enablement` reports both |
 | `WHATSAPP_ENABLED`, `WHATSAPP_DRIVER`, `WHATSAPP_*` | Leave `WHATSAPP_ENABLED` unset (off) until Meta's verification is done, the message templates are approved and entered in `whatsapp.templates`, and counsel has a position on Meta receiving check-in links and guest phone numbers. Once on in production it requires `WHATSAPP_DRIVER=cloud` with `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET` and `WHATSAPP_VERIFY_TOKEN` (secret store). Register `https://<api host>/api/webhooks/whatsapp` in Meta's console with the verify token; the edge must pass the body through unchanged (the signature covers the exact bytes). It needs no storage settings; e-mail stays the fallback whatever its value |
 | `OCR_SERVICE_URL`, `OCR_SHARED_SECRET` | The document worker (`services/ocr`) on the private network, and its shared secret (32+ characters, from the secret store). Optional: without them guests type their details. The worker must not be reachable from the internet. In production the API refuses a URL that is plain `http` to a public host: use `https`, or `http` to a private name or address (a bare service name, `localhost`, `*.internal`, a private IPv4) |
-| `STORAGE_DRIVER` | `s3` (required once the guest feature is on). `memory` is refused |
+| `STORAGE_DRIVER` | `s3` (required in production). `memory` is refused |
 | `STORAGE_MASTER_KEYS` | `id:base64,...`, newest first (`echo "k1:$(openssl rand -base64 32)"`), from the secret store, **never** in the repository or the database. Backed up separately from the data: without a key its objects cannot be read |
 | `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | The private bucket. `S3_ENDPOINT` must be https (leave it unset for AWS). Credentials limited to that bucket: get, put, delete, no list of other buckets |
 | `S3_SSE` | `true`: provider-side encryption on top of the application encryption |
@@ -60,7 +60,7 @@ The API logs through `RedactingLogger` (emails, phone numbers, MRZ lines, docume
 
 ## Object storage (ID scans, Fiche PDFs)
 
-Required only when `GUEST_CHECKIN_ENABLED=true`; with the feature off in production nothing is stored. The API also needs an approved consent text in the database before the guest form will open (see `docs/phase-3.md`).
+Required in production **always** (the API refuses to start without it): licence documents are stored whatever the guest flags say, and the `memory` driver would lose them at the next restart. The API also needs an approved consent text in the database before the guest form will open (see `docs/phase-3.md`).
 
 Every object is encrypted by the API (AES-256-GCM, one data key per object, wrapped by a master key) before it reaches the bucket, so the provider and any backup only hold ciphertext. Requirements for the bucket:
 
@@ -69,7 +69,7 @@ Every object is encrypted by the API (AES-256-GCM, one data key per object, wrap
 - Reachable from the API on the private network only.
 - Versioning **off**, or a lifecycle rule that expires old versions within the retention window: a deleted image must not survive as a previous version. (The application also blanks the wrapped key on deletion, so a surviving copy is unreadable, but do not rely on that alone.)
 - Backups of the bucket are not needed for the images (they are purged after 30 days by default); if the Fiche PDFs are backed up, the backup is ciphertext and expires with them.
-- Master key rotation: prepend a new key to `STORAGE_MASTER_KEYS` and deploy. The hourly `rewrap` job (Redis) moves every object's data key to the new master key, 200 per run (so 200 objects per hour: a large bucket takes days, plan the rotation accordingly). When `SELECT count(*) FROM "StoredObject" WHERE "deletedAt" IS NULL AND "wrappedKey" <> '' AND "wrappedKey" NOT LIKE '<new id>:%'` returns 0, drop the old key. Losing every key that wraps an object makes that object permanently unreadable.
+- Master key rotation: prepend a new key to `STORAGE_MASTER_KEYS` and deploy. The hourly `rewrap` job (Redis) moves every object's data key to the new master key, up to 2000 per run (10 batches of 200; a larger bucket takes several hours). A row that cannot be rewrapped (corrupt, or wrapped by a key no longer in the keyring) is skipped, fails the job and is retried each hour, without blocking the others: do not drop the old key while the job is failing. When `SELECT count(*) FROM "StoredObject" WHERE "deletedAt" IS NULL AND "wrappedKey" <> '' AND "wrappedKey" NOT LIKE '<new id>:%'` returns 0, drop the old key. Losing every key that wraps an object makes that object permanently unreadable.
 - Deleting an object first blanks its wrapped key in the database, then removes it from the bucket.
 
 ## Fiche de Police PDF (Chromium)

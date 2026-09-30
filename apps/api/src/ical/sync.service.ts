@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { classify, storableSummary } from './classify';
 import { CalendarEvent, MAX_EVENTS, parseIcs, toCalendarDate } from './parse';
 import { safeFetch, SafeFetchError } from './safe-fetch';
+import { describeUnexpected } from '../common/http-exception.filter';
 
 export interface SyncResult {
   ok: boolean;
@@ -53,7 +54,7 @@ export class SyncService {
       if (events.length > MAX_EVENTS) throw new SafeFetchError('TOO_LARGE', 'The calendar has too many events.');
     } catch (e) {
       const message = e instanceof SafeFetchError ? e.message : 'The calendar could not be read.';
-      if (!(e instanceof SafeFetchError)) this.logger.warn(`feed ${feed.id}: ${e instanceof Error ? e.message : String(e)}`);
+      if (!(e instanceof SafeFetchError)) this.logger.warn(`feed ${feed.id}: ${describeUnexpected(e, false)}`);
       await this.prisma.icalFeed.update({ where: { id: feed.id }, data: { lastStatus: 'ERROR', lastError: message, lastSyncedAt: new Date() } });
       return { ok: false, error: message, created: 0, updated: 0, cancelled: 0, skipped: 0 };
     }
@@ -63,7 +64,7 @@ export class SyncService {
       result = await this.reconcile(feed, events);
     } catch (e) {
       // A database problem must not leave the feed looking healthy: record it and keep the previous bookings.
-      this.logger.error(`feed ${feed.id}: reconcile failed: ${e instanceof Error ? e.message : String(e)}`);
+      this.logger.error(`feed ${feed.id}: reconcile failed: ${describeUnexpected(e, false)}`);
       const message = 'The calendar could not be saved. Try again in a few minutes.';
       await this.prisma.icalFeed.update({ where: { id: feed.id }, data: { lastStatus: 'ERROR', lastError: message, lastSyncedAt: new Date() } }).catch(() => undefined);
       return { ok: false, error: message, created: 0, updated: 0, cancelled: 0, skipped: 0 };

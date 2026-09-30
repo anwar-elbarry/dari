@@ -10,6 +10,7 @@ import { AuthUser, clientMeta } from './auth.types';
 import { clearSessionCookies, cookieScheme, setSessionCookies } from './cookies';
 import { CurrentUser, Public } from './decorators';
 import { ForgotPasswordDto, LoginDto, ResetPasswordDto, SignupDto } from './dto';
+import { describeUnexpected } from '../common/http-exception.filter';
 
 const STRICT = { default: { limit: 10, ttl: 60_000 } };
 
@@ -65,7 +66,7 @@ export class AuthController {
   @HttpCode(204)
   forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
     // Not awaited: the response time must not reveal whether the email has an account.
-    this.auth.forgotPassword(dto.email, clientMeta(req)).catch((e: unknown) => this.logger.error(`forgot-password failed: ${e instanceof Error ? e.message : String(e)}`));
+    this.auth.forgotPassword(dto.email, clientMeta(req)).catch((e: unknown) => this.logger.error(`forgot-password failed: ${describeUnexpected(e, false)}`));
   }
 
   @Public()

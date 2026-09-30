@@ -64,10 +64,10 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 |---|---|---|
 | 7.0 ✅ | Gate tracker for this phase, the consolidated list of open decisions, staging environment | fast |
 | 7.1 ✅ | `/security-review` on the diff since Phase 3; fix or accept each finding with a test | strong |
-| 7.2 | Independent read-only pass on storage, tokens, RBAC and tenancy, logging, public routes, webhook; fix or accept | strong |
-| 7.3 | Pen-test checklist on the public routes, run against staging; findings fixed with regression tests | strong |
-| 7.4 | Limits and abuse: rate limits against the real edge, upload and PDF concurrency, Redis failure behaviour | fast |
-| 7.5 | Backups, restore drill, key rotation drill, incident runbook | fast |
+| 7.2 ✅ | Independent read-only pass on storage, tokens, RBAC and tenancy, logging, public routes, webhook; fix or accept | strong |
+| 7.3 🟡 | Pen-test checklist on the public routes, run against staging; findings fixed with regression tests | strong |
+| 7.4 🟡 | Limits and abuse: rate limits against the real edge, upload and PDF concurrency, Redis failure behaviour | fast |
+| 7.5 🟡 | Backups, restore drill, key rotation drill, incident runbook | fast |
 | 7.6 | Real-device pass (pilot checklist section 2) and the fixes it finds | fast |
 | 7.7 | Legal sign-offs recorded in `RuleConfig` (`validatedBy`) and in the trackers | founder + counsel |
 | 7.8 | Pilot onboarding, weekly review, decisions on each flag; Phase 8 plan from what the pilot shows | founder |
@@ -299,3 +299,63 @@ Envelope encryption (fresh key and nonce per object, account-and-key bound AAD, 
 - Seven passes by the same kind of reader are not the independent pass planned as 7.2: that step stays, with the areas this review found least exercised (webhook through the real proxy, key backup and restore, logging under real traffic).
 - The built-in `/security-review` command was not used; run it once on the final diff before the pilot if you want its output on record.
 - Regression tests for findings 4 and 5 are partial (see the table).
+
+---
+
+## 7.2 — Independent read-only pass (storage, tokens, RBAC and tenancy, logging)
+
+**Method.** Three read-only passes, each given one area, told to skip what 7.1 already fixed, and to report only what they verified in the code: (1) storage, keys and retention; (2) tokens, public routes, the webhook, sessions; (3) RBAC, tenancy and logging. Nothing was run against a deployment. **Result: no High. One Medium (needs your decision); the rest are Low or Info.** (🟡 in the work table = the code and documents are done, the part that needs staging or people is not.) Each item below is fixed with a test, accepted with a reason, or assigned.
+
+### Fixed in this step
+
+| # | Sev. | Finding | Fix | Test |
+|---|---|---|---|---|
+| 1 | Low | `rewrapOutdatedKeys` had no ordering and no per-row handling: one corrupt row, or one wrapped by a retired key, was fetched first on every run, failed the hourly job for ever and starved every row behind it, so the old master key could never be retired | Ordered, per-row skip, returns `{ rewrapped, failed }`; the job fails (visible, retried) while any row fails; the runbook says not to drop the old key meanwhile | `storage.int-spec`: a row that cannot be rewrapped never blocks the others; `retention.processor.spec` |
+| 2 | Low | The production storage checks applied only when a guest flag was on, but licence documents are uploaded whatever the flags say: with the defaults (`memory` driver) every uploaded licence document became unreadable at the next restart | In production the private, encrypted store (s3, master keys, SSE, https) is always required | `env.spec` |
+| 3 | Low | `StorageService.read` ignored `expiresAt`: an image past its purge date stayed readable to Owner/Manager until the hourly job reached it, and for ever if the job was down | Expired objects answer 404 and write no audit row | `storage.int-spec`: refuses to serve an object past its purge date |
+| 4 | Low | Staff received `feedId` and `importBatchId` on stays (whether a stay came from a calendar or a CSV), against the rule that Staff get no feed status | Those fields go with `revenue:read` | `day-counter.int-spec` |
+| 5 | Low | Six log sites and the Redis error handler logged `e.message` (a failed insert can quote a stay summary, a lookup an e-mail address, a connection error a host) | `describeUnexpected(e, false)` (type, code, frames) everywhere; Redis logs the error name | Existing logging suites green; no dedicated test for the six sites |
+| 6 | Info | CLAUDE.md said every non-GET method on `/api/share` answers `LINK_UNAVAILABLE`; only HEAD does, the others match no route | Documentation corrected | – |
+
+### Needs your decision (Medium)
+
+| Finding | Why | Options |
+|---|---|---|
+| **`POST /api/auth/signup` is open in code.** This plan says signup is closed to the pilot, but nothing enforces it: only the edge can. An attacker can create an account with any company name, then invite arbitrary addresses (20 an hour per account, unlimited accounts, per-address limits weakened by IPv6): Dari's sender domain then mails "*<attacker text>* vous invite…" with a real link | Reputation and deliverability of the sender domain; no data exposure | (a) `SIGNUP_ENABLED`, off in production, and you create pilot accounts by hand; (b) keep signup open but require a verified e-mail before any invitation can be sent, a global daily cap on invitation mail and a fixed prefix in the subject; (c) block the route at the edge and record that this is the control. Recommended: (a) for the pilot |
+
+### Accepted or assigned
+
+| Finding | Sev. | Decision |
+|---|---|---|
+| The access JWT lives 15 minutes after logout, password reset or reuse detection (only refresh tokens are revoked) | Low | Accepted for the pilot; a `sessionsRevokedAt` compared to the token's `iat` in `AuthGuard` (which already reads the user on each request) removes it: assigned to before the launch is widened |
+| Refresh tokens have no absolute lifetime (each rotation issues 30 days) | Low | Assigned with the item above: cap the token family at about 90 days |
+| `forgot-password` is limited per address only; an attacker rotating addresses in an IPv6 /64 can flood a victim and keep invalidating their reset token | Low | Assigned: per-e-mail counter (about 3 an hour, still 204) and do not invalidate a token issued minutes ago; key the limiter on the /64 for IPv6 |
+| `EMAIL_IN_USE` on invitations is a cross-tenant existence check for any Owner/Manager and does not count against the hourly invitation quota | Low | Assigned with the item above: count the 409 against the quota. The 409 itself is accepted since Phase 1 |
+| `StorageAudit.action` accepts any audit action, so a future caller could record a mismatched action and the audit gate would still pass | Low | Accepted: all seven read sites are correct; derive the action from the object kind if a new read site appears |
+| Production defaults fail open: `NODE_ENV` defaults to `development` and `MAIL_DRIVER` to `console`; a deploy that forgets `NODE_ENV=production` prints reset and invitation links to stdout and skips every production guard | Low | Accepted: `npm run check:enablement` fails on `NODE_ENV` and the pilot checklist tests reset e-mail delivery on staging; revisit by requiring `NODE_ENV` explicitly |
+| `Booking.feedId`, `Booking.importBatchId` and `Notification.propertyId`/`bookingId` have no composite `(id, accountId)` keys; `createdBy` and `invitedBy` are plain strings | Low | Assigned (migration): defence in depth only; every writer takes the id from a row it just loaded through the scoped client |
+| A Staff `GET` on the checklist runs `createMany` and `deleteMany` (item sync), unaudited | Low | Accepted: scoped, idempotent, no exposure; move the sync to property changes when the checklist is next touched |
+| `check-enablement.ts` reads `process.env` directly; `main.ts` prints boot errors with `console.error`; `ImportBatch.fileName` keeps the uploader's file name (not returned by any route) | Low | Accepted (ops script and boot path; config errors list variable names only). Store a generic file name with the next import change |
+| The audit `ip` column keeps team users' addresses with no retention window | Low | **Assigned to G4**: decide a window or truncate the address (guest rows already carry none) |
+| A crash between `store.put` and the row insert leaves ciphertext with no row (unreadable, never removed); a crash between deleting a Fiche and revoking its links leaves an ACTIVE link that answers 404; a manager can regenerate a Fiche after the purge removed it and the next run removes it again; tax exports have no retention rule | Info | Accepted; add a periodic bucket-versus-rows sweep if storage cost matters; the tax retention belongs to G4 with the Fiche |
+
+### Checked and found sound
+
+Every stored-object read reaches `StorageService.read` and is audited before any byte is returned; no URL or presigned link exists; object keys are random; delete order (shred, remove, audit, mark); tenant isolation of stored objects; Secure Share (token format, hash lookup, one neutral answer, revocation checked in the transaction, view cap keyed on the link, headers); the check-in public surface; the WhatsApp webhook (raw bytes, constant-time HMAC, neutral answers, replay idempotent, challenge limited to a safe alphabet); reset and invitation tokens (256 bits, hash, atomic single use, fragment); login timing and lockout; refresh rotation and reuse detection; CSRF and cookies; all 19 controllers declare their access, Staff and Accountant limits hold, every foreign key from a request body goes through the scoped client, the only raw SQL is parameterised, no token or address in logs.
+
+### What this pass did not do
+
+Nothing was run against staging: the real edge (client address, body limits, the webhook body through the proxy) is 7.3. Passes by readers of the same kind share blind spots: the pen-test on staging and the real-device pass are the other half.
+
+---
+
+## 7.3 to 7.5 — Status
+
+| Step | Done here | Still yours |
+|---|---|---|
+| 7.3 Pen-test | [`pen-test.md`](pen-test.md) and `scripts/pentest-public.sh` (black-box checks of every public route, exit 1 on a failure) | Run the script and the manual list on staging through the real edge; record the results in `pen-test.md`; fix findings with regression tests |
+| 7.4 Limits and abuse | `common/edge.int-spec.ts`: a forged `X-Forwarded-For` does not change the audited address (one trusted hop takes the right-most entry) and rotating a forged left entry does not escape the per-address limit; the share, check-in and webhook abuse suites already cover caps, bodies and parallel openings | Confirm the edge overwrites `X-Forwarded-For` and passes the webhook body unchanged (pilot checklist section 1); Redis failure behaviour and Chromium concurrency under load are not measured here (they need a staging with Redis and real traffic) |
+| 7.5 Recovery | `storage/restore-drill.int-spec.ts` (dump, restore on a scratch database, every kind of object decrypts with the backed-up keys and not with others), key rotation (`storage.int-spec`), [`runbook.md`](runbook.md) (backups, restore and rotation drills, incident procedure) | Fill in the people table, restore your real backup on a scratch instance once, read the runbook aloud with the second person |
+| 7.6 Real devices | [`production-enablement.md`](production-enablement.md) / [`pilot-checklist.md`](pilot-checklist.md) section 2 | Needs real phones (iPhone Safari, low-end Android) |
+| 7.7 Legal sign-offs | Trackers in this file and in phases 3 to 6 | Counsel and the fiduciaire; record `validatedBy` in `RuleConfig` |
+| 7.8 Pilot | – | You: onboarding, weekly review, the decision on each flag; `docs/phase-8.md` from what the pilot shows |

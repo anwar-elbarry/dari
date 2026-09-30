@@ -12,6 +12,7 @@ import { ClientMeta } from './auth.types';
 import { LoginDto, SignupDto } from './dto';
 import { LoginLimiter } from './login-limiter';
 import { hashToken, randomToken } from './tokens';
+import { describeUnexpected } from '../common/http-exception.filter';
 
 export interface SessionTokens {
   access: string;
@@ -164,7 +165,7 @@ export class AuthService {
         subject: 'Réinitialisation du mot de passe / Password reset',
         text: `Pour choisir un nouveau mot de passe / To choose a new password:\n\n${link}\n\nCe lien expire dans ${this.config.PASSWORD_RESET_TTL_MIN} minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.\nThis link expires in ${this.config.PASSWORD_RESET_TTL_MIN} minutes. If you did not ask for it, ignore this message.`,
       })
-      .catch((e: unknown) => this.logger.error(`Password reset mail failed: ${e instanceof Error ? e.message : String(e)}`));
+      .catch((e: unknown) => this.logger.error(`Password reset mail failed: ${describeUnexpected(e, false)}`));
   }
 
   /** Single use; on success every existing session of the user is revoked. */

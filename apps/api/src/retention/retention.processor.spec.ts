@@ -3,10 +3,9 @@ import { StorageService } from '../storage/storage.service';
 import { JOB_PURGE, JOB_REWRAP, RetentionProcessor } from './retention.processor';
 import { PurgeResult, RetentionService } from './retention.service';
 
-const processor = (result: Partial<PurgeResult>, rewraps: number[] = [0]) => {
+const processor = (result: Partial<PurgeResult>, rewrap: { rewrapped: number; failed: number } = { rewrapped: 0, failed: 0 }) => {
   const purge = jest.fn().mockResolvedValue({ purged: 0, drafts: 0, failed: 0, overdue: 0, ...result });
-  const rewrapOutdatedKeys = jest.fn();
-  for (const n of rewraps) rewrapOutdatedKeys.mockResolvedValueOnce(n);
+  const rewrapOutdatedKeys = jest.fn().mockResolvedValue(rewrap);
   const queue = { upsertJobScheduler: jest.fn().mockResolvedValue(undefined) };
   return { p: new RetentionProcessor(queue as unknown as Queue, { purge } as unknown as RetentionService, { rewrapOutdatedKeys } as unknown as StorageService), queue, purge, rewrapOutdatedKeys };
 };
@@ -20,17 +19,17 @@ describe('RetentionProcessor', () => {
     expect(queue.upsertJobScheduler).toHaveBeenCalledWith(JOB_REWRAP, { every: 3_600_000 }, { name: JOB_REWRAP, data: {} });
   });
 
-  it('rewraps in batches until nothing is left, and never touches the purge', async () => {
-    const { p, rewrapOutdatedKeys, purge } = processor({}, [200, 150, 0]);
+  it('rewraps one bounded run per hour and never touches the purge', async () => {
+    const { p, rewrapOutdatedKeys, purge } = processor({}, { rewrapped: 350, failed: 0 });
     await expect(p.process(job(JOB_REWRAP))).resolves.toEqual({ rewrapped: 350 });
-    expect(rewrapOutdatedKeys).toHaveBeenCalledTimes(3);
+    expect(rewrapOutdatedKeys).toHaveBeenCalledTimes(1);
+    expect(rewrapOutdatedKeys).toHaveBeenCalledWith(2000); // 10 x 200 objects per run
     expect(purge).not.toHaveBeenCalled();
   });
 
-  it('caps the work of one rewrap run', async () => {
-    const { p, rewrapOutdatedKeys } = processor({}, Array(50).fill(200));
-    await p.process(job(JOB_REWRAP));
-    expect(rewrapOutdatedKeys).toHaveBeenCalledTimes(10);
+  it('fails the job when an object could not be rewrapped, so the old master key is not retired unnoticed', async () => {
+    const { p } = processor({}, { rewrapped: 10, failed: 1 });
+    await expect(p.process(job(JOB_REWRAP))).rejects.toThrow('could not rewrap 1 object(s)');
   });
 
   it('returns the summary when the purge is clean', async () => {

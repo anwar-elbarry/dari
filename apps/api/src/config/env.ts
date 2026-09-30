@@ -138,8 +138,9 @@ const envSchema = z
         if (!env[name]) ctx.addIssue({ code: 'custom', path: [name], message: 'required with the s3 storage driver' });
       }
     }
-    // The guest feature is the only user of storage: production requires it only when the feature is on.
-    if (env.NODE_ENV === 'production' && (env.GUEST_CHECKIN_ENABLED === 'true' || env.POLICE_REGISTER_ENABLED === 'true' || env.SECURE_SHARE_ENABLED === 'true' || env.TAX_REPORTS_ENABLED === 'true')) {
+    // Storage holds ID images, PDFs and licence documents. Licence documents are uploaded whatever the guest flags say,
+    // so production always needs the private, encrypted store: `memory` would lose them at the next restart (7.2 finding).
+    if (env.NODE_ENV === 'production') {
       if (env.STORAGE_DRIVER !== 's3') ctx.addIssue({ code: 'custom', path: ['STORAGE_DRIVER'], message: 'must be s3 in production (private, encrypted object storage)' });
       if (!env.STORAGE_MASTER_KEYS) ctx.addIssue({ code: 'custom', path: ['STORAGE_MASTER_KEYS'], message: 'required in production' });
       if (!env.S3_SSE) ctx.addIssue({ code: 'custom', path: ['S3_SSE'], message: 'server-side encryption must be enabled in production' });
