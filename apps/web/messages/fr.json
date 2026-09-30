@@ -27,12 +27,16 @@
     "LINK_WINDOW_CLOSED": "Ce séjour est trop ancien pour un lien d'enregistrement.",
     "BOOKING_NOT_ELIGIBLE": "Les liens d'enregistrement ne concernent que les séjours confirmés.",
     "PARTY_COMPLETE": "Tous les voyageurs attendus se sont déjà enregistrés.",
-    "PDF_UNAVAILABLE": "La fiche n'a pas pu être générée. Réessayez plus tard.",
+    "PDF_UNAVAILABLE": "Le document n'a pas pu être généré. Réessayez plus tard.",
     "INVALID_MONTH": "Le mois n'est pas valide.",
     "MONTH_NOT_STARTED": "Ce mois n'a pas encore commencé.",
     "REGISTER_TOO_LARGE": "Ce mois compte trop de séjours pour générer un registre.",
     "REGISTER_OUTDATED": "Le registre a changé depuis sa génération. Générez-le à nouveau avant de le partager.",
-    "EXPIRY_OUT_OF_BOUNDS": "La durée choisie n'est pas dans la plage autorisée."
+    "EXPIRY_OUT_OF_BOUNDS": "La durée choisie n'est pas dans la plage autorisée.",
+    "DISCLAIMER_MISSING": "L'avertissement n'est pas configuré : l'estimation ne peut pas être générée.",
+    "REPORT_BUSY": "L'estimation est en cours de génération. Réessayez dans un instant.",
+    "REPORT_TOO_LARGE": "Trop de séjours cette année pour générer l'estimation.",
+    "NO_CHANGE": "Aucun montant à enregistrer."
   },
   "auth": {
     "login": {
@@ -88,7 +92,7 @@
   "nav": {
     "properties": "Biens",
     "team": "Équipe",
-    "reports": "Rapports",
+    "reports": "Estimations fiscales",
     "menu": "Menu",
     "dashboard": "Tableau de bord",
     "shares": "Liens partagés"
@@ -176,10 +180,6 @@
     "revoke": "Annuler",
     "revoked": "Invitation annulée."
   },
-  "reports": {
-    "title": "Rapports",
-    "comingSoon": "Les rapports mensuels destinés au comptable arrivent dans une prochaine version."
-  },
   "dashboard": {
     "title": "Tableau de bord",
     "year": "Année {year}",
@@ -243,7 +243,8 @@
     "calendars": "Calendriers",
     "importTitle": "Importer des séjours",
     "year": "Année",
-    "openRegisters": "Registre de police"
+    "openRegisters": "Registre de police",
+    "openTax": "Estimation fiscale"
   },
   "feeds": {
     "intro": "Collez le lien iCal de chaque plateforme. Le lien est confidentiel : quiconque le possède peut lire le calendrier.",
@@ -656,5 +657,155 @@
     "temporaryTitle": "Le document ne peut pas être affiché pour le moment",
     "temporaryBody": "Patientez un instant, puis réessayez.",
     "retry": "Réessayer"
+  },
+  "tax": {
+    "title": "Estimation fiscale mensuelle",
+    "back": "Retour au bien",
+    "intro": "Une estimation par mois, calculée à partir des séjours et des montants saisis. Elle reste à confirmer avec votre comptable.",
+    "regime": "Régime fiscal",
+    "taxeSejour": "Taxe de séjour",
+    "unavailable": "Cette fonctionnalité n'est pas encore disponible.",
+    "loadFailed": "Les estimations n'ont pas pu être chargées.",
+    "noticeFailed": "L'avertissement n'a pas pu être chargé : aucun chiffre n'est affiché sans lui. Réessayez.",
+    "money": "{amount} MAD",
+    "notComputed": "Non calculé",
+    "beta": "Bêta",
+    "status": {
+      "none": "Non générée",
+      "generated": "Générée",
+      "outdated": "À régénérer"
+    },
+    "generatedOn": "Générée le {date}",
+    "outdatedHint": "Les données ont changé après la génération de cette estimation.",
+    "generate": "Générer l'estimation",
+    "regenerate": "Générer à nouveau",
+    "generating": "Génération…",
+    "openPdf": "Ouvrir le PDF",
+    "downloadXlsx": "Télécharger Excel",
+    "details": "Voir le détail",
+    "missingButton": "Données manquantes",
+    "missingCount": "{count, plural, one {# donnée manquante} other {# données manquantes}}",
+    "nothingMissing": "Aucune donnée manquante",
+    "generated": "L'estimation de {month} a été générée.",
+    "generatedWithProblems": "L'estimation de {month} a été générée avec {count, plural, one {# donnée manquante} other {# données manquantes}}. Les chiffres concernés peuvent être incomplets ou non calculés.",
+    "exportNotice": "Chaque ouverture ou téléchargement est enregistré.",
+    "missing": {
+      "title": "Données manquantes, {month}",
+      "intro": "Complétez ces éléments, puis générez à nouveau l'estimation. Ce qui manque reste non calculé ou incomplet.",
+      "none": "Rien de manquant pour ce mois.",
+      "stay": "Séjour du {checkIn} au {checkOut}",
+      "stayNoDates": "Séjour",
+      "enter": "Saisir les montants",
+      "enterParty": "Saisir le nombre de voyageurs",
+      "ruleHelp": "Un paramètre est absent ou n'a pas encore été validé : la ligne concernée est marquée comme non calculée. Il se renseigne dans la configuration, pas ici.",
+      "group": {
+        "NO_AMOUNTS": {
+          "title": "Séjours sans montants",
+          "help": "Aucun montant n'est saisi pour ces séjours : ils comptent pour zéro."
+        },
+        "TAXE_SEJOUR_MISSING": {
+          "title": "Séjours sans taxe de séjour",
+          "help": "La taxe de séjour est incluse dans le prix de ces séjours et son montant n'est pas saisi."
+        },
+        "PARTY_SIZE_MISSING": {
+          "title": "Séjours sans nombre de voyageurs",
+          "help": "Le nombre de voyageurs sert au calcul des taxes locales par personne."
+        },
+        "RULE_MISSING": {
+          "title": "Paramètres manquants ou non validés",
+          "help": "Un paramètre est absent : la ligne correspondante reste non calculée."
+        }
+      },
+      "close": "Fermer"
+    },
+    "amounts": {
+      "title": "Montants du séjour",
+      "stay": "Séjour du {checkIn} au {checkOut}",
+      "intro": "Saisissez les montants en dirhams, avec deux décimales au plus (par exemple 1234,50). Saisissez 0 si le montant est nul ; un champ vide reste non renseigné.",
+      "loading": "Chargement du séjour…",
+      "loadFailed": "Le séjour n'a pas pu être chargé.",
+      "invalid": "Montant invalide : chiffres seulement, deux décimales au plus.",
+      "invalidParty": "Entrez un nombre entier de 1 à 50.",
+      "field": {
+        "nightlyRevenue": "Nuitées",
+        "cleaningFee": "Frais de ménage facturés",
+        "addonRevenue": "Services additionnels",
+        "discounts": "Remises",
+        "refunds": "Remboursements",
+        "platformCommission": "Commission de plateforme",
+        "taxeSejourAmount": "Taxe de séjour",
+        "partySize": "Nombre de voyageurs"
+      },
+      "hint": {
+        "platformCommission": "Pour information : elle n'est pas déduite de la base.",
+        "taxeSejourAmount": "Utile quand la taxe de séjour est incluse dans le prix.",
+        "partySize": "De 1 à 50."
+      },
+      "save": "Enregistrer les montants",
+      "saving": "Enregistrement…",
+      "saved": "Montants enregistrés."
+    },
+    "detail": {
+      "title": "Estimation fiscale, {month}",
+      "backList": "Toutes les estimations",
+      "backProperty": "Mois du bien",
+      "summary": "Synthèse",
+      "grossBase": "Base brute",
+      "incomeTax": "Impôt sur le revenu",
+      "vat": "TVA",
+      "localTax": "Taxes locales",
+      "lines": "Lignes du calcul",
+      "linesHelp": "Estimation uniquement : à confirmer avec votre comptable.",
+      "colLine": "Ligne",
+      "colAmount": "Montant",
+      "problems": "Données manquantes",
+      "noProblems": "Aucune donnée manquante pour cette estimation.",
+      "fixProblems": "Compléter les données",
+      "rules": "Paramètres utilisés",
+      "rulesHelp": "Les taux et les seuils sont des paramètres, validés séparément par un professionnel. Un paramètre absent ou non validé laisse l'estimation en bêta.",
+      "ruleValidated": "Validé le {date}",
+      "ruleUnvalidated": "Non validé",
+      "ruleAbsent": "Manquant",
+      "outdatedManager": "Les données ont changé depuis la génération. Générez à nouveau l'estimation depuis la page du bien.",
+      "outdatedReader": "Les données ont changé depuis la génération. Demandez au gestionnaire de la générer à nouveau.",
+      "meta": "Générée le {date} · modèle {template} · avertissement {disclaimer}",
+      "notFound": "Cette estimation est introuvable.",
+      "bankAccount": "Type de compte du propriétaire"
+    },
+    "list": {
+      "title": "Estimations fiscales",
+      "intro": "Les estimations mensuelles générées par le gestionnaire, les plus récentes d'abord. Elles restent à confirmer avec votre comptable.",
+      "empty": "Aucune estimation n'a été générée pour l'instant.",
+      "emptyManager": "Générez-en une depuis la page d'un bien, rubrique Estimation fiscale.",
+      "grossBase": "Base brute",
+      "taxes": "Impôts estimés, total",
+      "partial": "Certaines lignes ne sont pas calculées : ce total est incomplet.",
+      "open": "Voir le détail"
+    },
+    "problem": {
+      "NO_AMOUNTS": "Séjours sans montants",
+      "TAXE_SEJOUR_MISSING": "Séjours sans taxe de séjour",
+      "PARTY_SIZE_MISSING": "Séjours sans nombre de voyageurs",
+      "RULE_MISSING": "Paramètres manquants"
+    },
+    "line": {
+      "nights_revenue": "Revenus des nuitées (nuitées + ménage − remises − remboursements)",
+      "addon_revenue": "Services additionnels",
+      "taxe_sejour_deducted": "Taxe de séjour déduite",
+      "gross_base": "Base brute",
+      "platform_commission": "Commission de plateforme (information)",
+      "income_tax": "Impôt sur le revenu (estimation)",
+      "vat": "TVA (estimation)",
+      "local_tax": "Taxes locales (estimation)",
+      "nonresident_statement": "Propriétaire non-résident / MRE"
+    },
+    "note": {
+      "not_applicable": "Sans objet",
+      "not_deducted": "Non déduite de la base",
+      "rule_missing": "Non calculé : paramètre manquant ({rule})",
+      "rate": "Taux {rate} %",
+      "catch_up": "Taux {rate} % appliqué au cumul annuel (régularisation)",
+      "residency": "Propriétaire non résident ({residency}, {account}) : relevé à établir avec votre comptable"
+    }
   }
 }

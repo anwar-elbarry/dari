@@ -7,6 +7,7 @@ import { DiscoveryModule } from '@nestjs/core';
 import { listRoutes } from '../test/routes';
 import { PdfRenderer } from '../checkin/pdf-renderer';
 import { StorageService } from '../storage/storage.service';
+import { insertTaxReport, seedTaxRules } from '../test/tax-fixtures';
 import { Client, createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 
 requireDatabase();
@@ -22,6 +23,7 @@ interface Ids {
   stayId: string;
   linkId: string;
   guestId: string;
+  taxReportId: string;
 }
 
 const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Promise<{ status: number }> }[] = [
@@ -57,6 +59,13 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'GET', route: '/api/properties/:id/registers/:month/pdf', call: (c, a) => c.get(`/api/properties/${a.propertyId}/registers/2026-03/pdf`) },
   { method: 'DELETE', route: '/api/shares/:id', call: (c, a) => c.delete(`/api/shares/${a.shareId}`) },
   { method: 'GET', route: '/api/shares/:id/access', call: (c, a) => c.get(`/api/shares/${a.shareId}/access`) },
+  { method: 'GET', route: '/api/tax/reports/:id', call: (c, a) => c.get(`/api/tax/reports/${a.taxReportId}`) },
+  { method: 'GET', route: '/api/tax/reports/:id/pdf', call: (c, a) => c.get(`/api/tax/reports/${a.taxReportId}/pdf`) },
+  { method: 'GET', route: '/api/tax/reports/:id/xlsx', call: (c, a) => c.get(`/api/tax/reports/${a.taxReportId}/xlsx`) },
+  { method: 'GET', route: '/api/properties/:id/tax-reports', call: (c, a) => c.get(`/api/properties/${a.propertyId}/tax-reports`) },
+  { method: 'GET', route: '/api/properties/:id/tax-reports/:month/missing', call: (c, a) => c.get(`/api/properties/${a.propertyId}/tax-reports/2026-03/missing`) },
+  { method: 'POST', route: '/api/properties/:id/tax-reports/:month', call: (c, a) => c.post(`/api/properties/${a.propertyId}/tax-reports/2026-03`) },
+  { method: 'PATCH', route: '/api/bookings/:id/amounts', call: (c, a) => c.patch(`/api/bookings/${a.bookingId}/amounts`, { nightlyRevenue: '1.00' }) },
 ];
 
 describe('tenant isolation (integration)', () => {
@@ -98,7 +107,10 @@ describe('tenant isolation (integration)', () => {
     const registerPdf = await t.app.get(StorageService).put(a.accountId, 'POLICE_REGISTER_PDF', Buffer.from('%PDF-1.4 stub'));
     await t.prisma.policeRegister.create({ data: { accountId: a.accountId, propertyId: property.id, month: '2026-03', pdfObjectId: registerPdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64), inputDigest: 'd', guestCount: 0, validation: {}, generatedBy: a.users.OWNER_MANAGER.id } });
     const share = await t.prisma.shareLink.create({ data: { accountId: a.accountId, resourceType: 'POLICE_REGISTER', resourceId: 'r', tokenHash: 'iso-share-a', recipientLabel: 'Police', expiresAt: new Date(Date.now() + 86_400_000), createdBy: a.users.OWNER_MANAGER.id } });
+    await seedTaxRules(t.prisma);
+    const taxReport = await insertTaxReport(t.prisma, t.app.get(StorageService), { accountId: a.accountId, propertyId: property.id, userId: a.users.OWNER_MANAGER.id, month: '2026-02' });
     idsA = {
+      taxReportId: taxReport.id,
       shareId: share.id, ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id, bookingId: booking.id, alertId: alert.id, stayId: stay.id, linkId: link.id, guestId: guest.id };
   });
 

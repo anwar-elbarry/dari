@@ -99,7 +99,7 @@ describe('parseEnv', () => {
     });
   });
 
-  describe.each(['POLICE_REGISTER_ENABLED', 'SECURE_SHARE_ENABLED'] as const)('%s', (flag) => {
+  describe.each(['POLICE_REGISTER_ENABLED', 'SECURE_SHARE_ENABLED', 'TAX_REPORTS_ENABLED'] as const)('%s', (flag) => {
     const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
     it('is on in development and test, off by default in production, and independent of the check-in flag', () => {
       expect(parseEnv(base)[flag]).toBe(true);

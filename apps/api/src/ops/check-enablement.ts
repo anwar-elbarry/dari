@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { chromium } from 'playwright-core';
 import { RulesService } from '../compliance/rules.service';
+import { TaxRulesService } from '../tax/tax-rules.service';
 import { AppConfig, parseEnv } from '../config/env';
 import { S3ObjectStore } from '../storage/s3-object-store';
 import { CheckStatus, evaluateEnablement, EnablementInput, summarize } from './enablement';
@@ -26,6 +27,14 @@ async function storageRoundTrip(c: AppConfig): Promise<boolean> {
     return same;
   } catch {
     return false;
+  }
+}
+
+async function taxStatus(rules: TaxRulesService): Promise<EnablementInput['tax']> {
+  try {
+    return { disclaimersPresent: true, rulesValidated: (await rules.status()).rules.every((r) => r.validated) };
+  } catch {
+    return { disclaimersPresent: false, rulesValidated: false };
   }
 }
 
@@ -60,6 +69,7 @@ async function main() {
       consentLocales: { fr: await consent('fr'), en: await consent('en') },
       retention: { idImages: { validated: (await rules.idRetention()).validated }, fiche: await rules.ficheRetention(), register: await rules.policeRegisterRetention() },
       storageRoundTrip: config ? await storageRoundTrip(config) : null,
+      tax: await taxStatus(new TaxRulesService(prisma as never)),
       chromium: await chromiumStarts({ PDF_CHROMIUM_PATH: config?.PDF_CHROMIUM_PATH ?? process.env.PDF_CHROMIUM_PATH, PDF_NO_SANDBOX: config?.PDF_NO_SANDBOX ?? process.env.PDF_NO_SANDBOX === 'true' }),
     };
     const checks = evaluateEnablement(input);

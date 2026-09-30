@@ -134,6 +134,11 @@ function Detail() {
                 {t('openRegisters')}
               </LinkButton>
             )}
+            {can('report:generate') && (
+              <LinkButton href={`/properties/${id}/tax`} variant="ghost">
+                {t('openTax')}
+              </LinkButton>
+            )}
             {canImport && (
               <LinkButton href={`/properties/${id}/import`} variant="ghost">
                 {t('importTitle')}

@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser, ClientMeta } from '../auth/auth.types';
 import { PropertyEvents } from '../common/property-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { can } from '../rbac/capabilities';
 import { countNights, dayLevel, projectedBreachDate } from './day-counter';
-import { BookingsQuery, ClassifyDto } from './dto';
+import { AmountsDto, BookingsQuery, ClassifyDto } from './dto';
 import { RulesService } from './rules.service';
 import { CALENDAR_TZ, toCalendarDate } from '../ical/parse';
 
@@ -94,6 +94,20 @@ export class BookingsService {
       orderBy: { checkIn: 'asc' },
       take: 2000,
     });
+  }
+
+  /** Sets or clears the revenue figures of a stay. Only the keys sent change; decimal text goes to Decimal(12,2) without a float. */
+  async updateAmounts(user: AuthUser, bookingId: string, dto: AmountsDto, meta: ClientMeta) {
+    const data: Record<string, string | number | null> = {};
+    for (const key of ['nightlyRevenue', 'cleaningFee', 'addonRevenue', 'discounts', 'refunds', 'platformCommission', 'taxeSejourAmount', 'partySize'] as const) {
+      if (dto[key] !== undefined) data[key] = dto[key] ?? null;
+    }
+    const db = this.prisma.forAccount(user.accountId);
+    if (Object.keys(data).length === 0) throw new BadRequestException({ code: 'NO_CHANGE', message: 'Send at least one amount.' });
+    const { count } = await db.booking.updateMany({ where: { id: bookingId }, data });
+    if (count === 0) throw notFound('Booking');
+    await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'booking.amounts.updated', resourceType: 'Booking', resourceId: bookingId, ip: meta.ip });
+    return db.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { ...BASE_FIELDS, ...REVENUE_FIELDS } });
   }
 
   /** Manual decision on a stay vs block. Marked MANUAL so later syncs keep it. */

@@ -9,6 +9,7 @@ import { AlertsModule } from './alerts/alerts.module';
 import { RetentionModule } from './retention/retention.module';
 import { CheckInModule } from './checkin/checkin.module';
 import { RegisterModule } from './register/register.module';
+import { TaxModule } from './tax/tax.module';
 import { ShareModule } from './share/share.module';
 import { StorageModule } from './storage/storage.module';
 import { AuditModule } from './audit/audit.module';
@@ -54,6 +55,7 @@ export class AppModule {
         StorageModule,
         CheckInModule,
         RegisterModule,
+        TaxModule,
         ShareModule,
         RetentionModule.register(resolved),
         AuthModule,

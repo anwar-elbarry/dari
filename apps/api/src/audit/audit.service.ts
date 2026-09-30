@@ -40,7 +40,11 @@ export type AuditAction =
   | 'register.read'
   | 'share.created'
   | 'share.revoked'
-  | 'share.accessed';
+  | 'share.accessed'
+  // Phase 5: tax estimates. Identifiers only.
+  | 'tax.report.generated'
+  | 'tax.export.read'
+  | 'booking.amounts.updated';
 
 export interface AuditEntry {
   accountId: string;

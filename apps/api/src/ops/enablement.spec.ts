@@ -10,6 +10,7 @@ const ready: EnablementInput = {
   retention: { idImages: { validated: true }, fiche: { days: 730, validated: true, enforceable: 730 }, register: { days: 1825, validated: true, enforceable: 1825 } },
   storageRoundTrip: true,
   chromium: true,
+  tax: { disclaimersPresent: true, rulesValidated: true },
 };
 const statusOf = (i: EnablementInput, id: string) => evaluateEnablement(i).find((c) => c.id === id)?.status;
 
@@ -33,10 +34,17 @@ describe('evaluateEnablement', () => {
     ['retention.fiche', { retention: { ...ready.retention, fiche: { days: 730, validated: false, enforceable: null } } }],
     ['storage.round-trip', { storageRoundTrip: false }],
     ['pdf.chromium', { chromium: false }],
+    ['tax.disclaimer', { tax: { disclaimersPresent: false, rulesValidated: true } }],
   ] as [string, Partial<EnablementInput>][])('blocks on %s', (id, change) => {
     const checks = evaluateEnablement({ ...ready, ...change });
     expect(checks.find((c) => c.id === id)?.status).toBe('fail');
     expect(summarize(checks).blocked).toBe(true);
+  });
+
+  it('only warns while the tax rules are unvalidated defaults (beta exports)', () => {
+    const checks = evaluateEnablement({ ...ready, tax: { disclaimersPresent: true, rulesValidated: false } });
+    expect(checks.find((c) => c.id === 'tax.rules')?.status).toBe('warn');
+    expect(summarize(checks).blocked).toBe(false);
   });
 
   it('only warns for a missing worker or an unset register period', () => {

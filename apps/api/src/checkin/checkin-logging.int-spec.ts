@@ -8,6 +8,7 @@ import { RetentionService } from '../retention/retention.service';
 import { MemoryObjectStore } from '../storage/memory-object-store';
 import { OBJECT_STORE } from '../storage/object-store';
 import { StorageService } from '../storage/storage.service';
+import { seedTaxRules } from '../test/tax-fixtures';
 import { createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 import { mapWorkerResponse, OcrClient } from './ocr.client';
 import { PdfRenderer } from './pdf-renderer';
@@ -257,5 +258,37 @@ describe('no personal data in logs or audit rows (integration)', () => {
     expect(output).not.toContain(label);
     expect(JSON.stringify(await t.prisma.auditLog.findMany())).not.toContain(PII.surname);
     await expectClean([created.token, again.token]);
+  });
+  it('the tax routes, including a failure that quotes the owner, leave no owner data or amounts in the logs or the audit trail', async () => {
+    await seedTaxRules(t.prisma);
+    const owner = await t.prisma.propertyOwner.create({ data: { accountId: a.accountId, name: PII.name, taxId: 'TAXID-QX-99', residency: 'MRE', bankAccountType: 'CONVERTIBLE_DIRHAM' } });
+    const property = await t.prisma.property.create({ data: { accountId: a.accountId, ownerId: owner.id, name: 'Riad taxé', address: PII.city, commune: 'Marrakech', licenseType: 'RIAD' } });
+    const stay = await t.prisma.booking.create({ data: { accountId: a.accountId, propertyId: property.id, checkIn: new Date('2026-03-04'), checkOut: new Date('2026-03-06'), source: 'DIRECT', nightlyRevenue: '4242424.24' } });
+    const base = `/api/properties/${property.id}/tax-reports`;
+    const render = jest.spyOn(t.app.get(PdfRenderer), 'render').mockResolvedValue(Buffer.from('%PDF-1.4 stub'));
+
+    await a.as.OWNER_MANAGER.get(base).expect(200);
+    await a.as.OWNER_MANAGER.get(`${base}/2026-03/missing`).expect(200);
+    const report = (await a.as.OWNER_MANAGER.post(`${base}/2026-03`).expect(200)).body as { id: string };
+    await a.as.OWNER_MANAGER.get(`/api/tax/reports/${report.id}`).expect(200);
+    await a.as.OWNER_MANAGER.get('/api/tax/reports').expect(200);
+    await a.as.OWNER_MANAGER.get('/api/tax/rules').expect(200);
+    await a.as.ACCOUNTANT.get(`/api/tax/reports/${report.id}/pdf`).expect(200);
+    await a.as.ACCOUNTANT.get(`/api/tax/reports/${report.id}/xlsx`).expect(200);
+    await a.as.OWNER_MANAGER.patch(`/api/bookings/${stay.id}/amounts`, { addonRevenue: '9191919.19' }).expect(200);
+    await a.as.OWNER_MANAGER.patch(`/api/bookings/${stay.id}/amounts`, { addonRevenue: `${PII.name}` }).expect(400);
+    await a.as.OWNER_MANAGER.get(`${base}/${PII.name}/missing`).expect(400);
+    await a.as.STAFF.get('/api/tax/reports').expect(403);
+
+    // The renderer and the store fail with messages that quote the owner and the address: a 500, only the type is logged.
+    render.mockRejectedValueOnce(new Error(`render failed for ${PII.name} ${PII.city} TAXID-QX-99`));
+    expect((await a.as.OWNER_MANAGER.post(`${base}/2026-03`)).status).toBe(500);
+    jest.spyOn(t.app.get(StorageService), 'put').mockRejectedValueOnce(new Error(`write failed for ${PII.name} at ${PII.city}`));
+    expect((await a.as.OWNER_MANAGER.post(`${base}/2026-03`)).status).toBe(500);
+
+    expect(JSON.stringify(await t.prisma.auditLog.findMany())).not.toContain('9191919');
+    expect(output).not.toContain('9191919');
+    expect(output).not.toContain('4242424');
+    await expectClean(['TAXID-QX-99']);
   });
 });

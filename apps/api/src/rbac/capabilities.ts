@@ -24,6 +24,8 @@ export const CAPABILITIES = [
   'police:read', // guest fields on the Fiche and its PDF (Owner/Manager only until counsel confirms Staff access)
   'register:read', // generate, validate and read the monthly police register (Owner/Manager only)
   'share:manage', // create, list and revoke Secure Share links, read their access log (Owner/Manager only)
+  'report:read', // monthly tax estimates and their exports: Owner/Manager and Accountant. Never guest data.
+  'report:generate', // generate a tax estimate and see its missing inputs (Owner/Manager only)
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -31,8 +33,8 @@ export type Capability = (typeof CAPABILITIES)[number];
 export const ROLE_CAPABILITIES: Record<Role, readonly Capability[]> = {
   OWNER_MANAGER: CAPABILITIES,
   STAFF: ['property:read', 'booking:read', 'checkin:manage', 'guest:read_meta'],
-  // Reports only, from Phase 5. No property, owner or guest data.
-  ACCOUNTANT: [],
+  // Reports only (Phase 5). No property, owner or guest data.
+  ACCOUNTANT: ['report:read'],
 };
 
 export function can(role: Role, capability: Capability): boolean {

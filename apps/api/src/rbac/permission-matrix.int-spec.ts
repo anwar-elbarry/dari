@@ -7,6 +7,7 @@ import { DiscoveryModule } from '@nestjs/core';
 import { listRoutes } from '../test/routes';
 import { PdfRenderer } from '../checkin/pdf-renderer';
 import { StorageService } from '../storage/storage.service';
+import { seedTaxRules } from '../test/tax-fixtures';
 import { createTestApp, requireDatabase, resetDatabase, RoleName, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 
 requireDatabase();
@@ -29,6 +30,7 @@ export interface Fixtures {
   /** A submitted guest with an encrypted ID image. */
   guestId: string;
   shareId: () => Promise<string>;
+  taxReportId: string;
 }
 
 interface Row {
@@ -44,6 +46,8 @@ interface Row {
 
 const ALL_SIGNED_IN = { ANON: 401, ACCOUNTANT: 200, STAFF: 200, OWNER_MANAGER: 200 };
 const MANAGER_ONLY = (ok: number) => ({ ANON: 401, ACCOUNTANT: 403, STAFF: 403, OWNER_MANAGER: ok });
+/** Tax reports: Owner/Manager and Accountant; Staff never. */
+const REPORT_READ = { ANON: 401, ACCOUNTANT: 200, STAFF: 403, OWNER_MANAGER: 200 };
 const STAFF_READ = { ANON: 401, ACCOUNTANT: 403, STAFF: 200, OWNER_MANAGER: 200 };
 
 export const MATRIX: Row[] = [
@@ -119,6 +123,17 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/shares/lifetime', url: () => '/api/shares/lifetime', expect: MANAGER_ONLY(200) },
   { method: 'DELETE', route: '/api/shares/:id', url: async (f) => `/api/shares/${await f.shareId()}`, expect: MANAGER_ONLY(204) },
   { method: 'GET', route: '/api/shares/:id/access', url: async (f) => `/api/shares/${await f.shareId()}/access`, expect: MANAGER_ONLY(200) },
+
+  // Tax estimates (Phase 5). The Accountant reads reports and their exports (report:read); only Owner/Manager generate, see what is missing, or fill in a stay's amounts.
+  { method: 'GET', route: '/api/tax/rules', url: () => '/api/tax/rules', expect: REPORT_READ },
+  { method: 'GET', route: '/api/tax/reports', url: () => '/api/tax/reports', expect: REPORT_READ },
+  { method: 'GET', route: '/api/tax/reports/:id', url: (f) => `/api/tax/reports/${f.taxReportId}`, expect: REPORT_READ },
+  { method: 'GET', route: '/api/tax/reports/:id/pdf', url: (f) => `/api/tax/reports/${f.taxReportId}/pdf`, expect: REPORT_READ },
+  { method: 'GET', route: '/api/tax/reports/:id/xlsx', url: (f) => `/api/tax/reports/${f.taxReportId}/xlsx`, expect: REPORT_READ },
+  { method: 'GET', route: '/api/properties/:id/tax-reports', url: (f) => `/api/properties/${f.propertyId}/tax-reports`, expect: MANAGER_ONLY(200) },
+  { method: 'GET', route: '/api/properties/:id/tax-reports/:month/missing', url: (f) => `/api/properties/${f.propertyId}/tax-reports/2026-03/missing`, expect: MANAGER_ONLY(200) },
+  { method: 'POST', route: '/api/properties/:id/tax-reports/:month', url: (f) => `/api/properties/${f.propertyId}/tax-reports/2026-03`, body: () => ({}), expect: MANAGER_ONLY(200) },
+  { method: 'PATCH', route: '/api/bookings/:id/amounts', url: (f) => `/api/bookings/${f.bookingId}/amounts`, body: () => ({ nightlyRevenue: '1200.50' }), expect: MANAGER_ONLY(200) },
 ];
 
 describe('permission matrix (integration)', () => {
@@ -153,8 +168,12 @@ describe('permission matrix (integration)', () => {
     await t.prisma.ficheDePolice.create({ data: { accountId: acc.accountId, guestCheckInId: guest.id, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64) } });
     const registerPdf = await t.app.get(StorageService).put(acc.accountId, 'POLICE_REGISTER_PDF', Buffer.from('%PDF-1.4 stub'));
     await t.prisma.policeRegister.create({ data: { accountId: acc.accountId, propertyId: property.id, month: '2026-03', pdfObjectId: registerPdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64), inputDigest: 'd', guestCount: 0, validation: {}, generatedBy: acc.users.OWNER_MANAGER.id } });
+    await seedTaxRules(t.prisma);
+    // A real, current report (an export of an out-of-date one is refused): February, which no other row touches.
+    const taxReportId = ((await acc.as.OWNER_MANAGER.post(`/api/properties/${property.id}/tax-reports/2026-02`).expect(200)).body as { id: string }).id;
     let n = 0;
     f = {
+      taxReportId,
       shareId: async () =>
         (await t.prisma.shareLink.create({ data: { accountId: acc.accountId, resourceType: 'POLICE_REGISTER', resourceId: 'r', tokenHash: `matrix-share-${n++}`, recipientLabel: 'Police', expiresAt: new Date(Date.now() + 86_400_000), createdBy: acc.users.OWNER_MANAGER.id } })).id,
       stayId: stay.id,

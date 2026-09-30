@@ -8,7 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "tokens": "node scripts/gen-tokens.mjs"
+    "tokens": "node scripts/gen-tokens.mjs",
+    "test": "jest"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
@@ -22,10 +23,33 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/jest": "^29.5.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "jest": "^29.7.0",
     "tailwindcss": "^4.3.3",
+    "ts-jest": "^29.2.0",
     "typescript": "^5.6.0"
+  },
+  "jest": {
+    "rootDir": "lib",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.ts$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "module": "commonjs",
+            "moduleResolution": "node",
+            "target": "ES2022",
+            "strict": true,
+            "esModuleInterop": true,
+            "isolatedModules": true
+          }
+        }
+      ]
+    },
+    "testEnvironment": "node"
   }
 }

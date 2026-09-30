@@ -32,7 +32,7 @@ function Frame({ children }: { children: ReactNode }) {
     can('property:read') && { href: '/properties', label: t('nav.properties') },
     can('share:manage') && { href: '/shares', label: t('nav.shares') },
     can('team:manage') && { href: '/team', label: t('nav.team') },
-    me.user.role !== 'STAFF' && { href: '/reports', label: t('nav.reports') },
+    can('report:read') && { href: '/reports', label: t('nav.reports') },
   ].filter(Boolean) as { href: string; label: string }[];
 
   return (
@@ -49,7 +49,7 @@ function Frame({ children }: { children: ReactNode }) {
         </div>
         <nav aria-label={t('nav.menu')} className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:px-3">
           {links.map((l) => {
-            const active = pathname === l.href || pathname.startsWith(`${l.href}/`);
+            const active = pathname === l.href || pathname.startsWith(`${l.href}/`) || (l.href === '/reports' && pathname.startsWith('/tax/reports/'));
             return (
               <Link
                 key={l.href}

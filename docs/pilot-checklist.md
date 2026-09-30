@@ -29,6 +29,15 @@ Run `npm run check:enablement -w apps/api` with the **production** environment l
 - [ ] (Phase 4) Regenerate a register that was shared: the old link shows the neutral page and the screen says it was revoked
 - [ ] (Phase 4) Open a Secure Share link on a phone in a private tab (iPhone Safari and Android Chrome): the notice shows, "Open in a new tab" opens the PDF in the phone's viewer, Arabic names are readable; after revocation the same link shows the neutral page
 
+## 2b. Tax estimate (Phase 5, BETA)
+
+- [ ] `npm run check:enablement` shows `tax.disclaimer` OK; `tax.rules` is a warning until the fiduciaire validates the rules
+- [ ] Open a generated tax PDF on a phone and print it: the watermark and footer are on every page and readable
+- [ ] Open the Excel export in Excel and in LibreOffice: banner at the top of each sheet, print preview shows the header and footer, amounts are numbers, nothing is calculated by a formula
+- [ ] Compare one real month with the manager's own figures: note every difference for the fiduciaire (rates, threshold, what counts as gross)
+- [ ] The Accountant account signs in, sees only "Estimations fiscales", opens a report, and cannot reach a property, a guest or the generate button
+- [ ] Fiduciaire has confirmed or replaced each default in `RuleConfig` (`validatedBy` filled): the watermark disappears on regeneration
+
 ## 3. Accepted limits to re-check with real data
 
 | Limit | Source | What to do in the pilot |

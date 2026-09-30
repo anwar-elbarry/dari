@@ -156,6 +156,7 @@ model Account {
   shareLinks      ShareLink[]
   shareAccesses   ShareAccess[]
   policeRegisters PoliceRegister[]
+  taxReports      TaxReport[]
   notifications   Notification[]
   auditLogs       AuditLog[]
   vendors         Vendor[]
@@ -567,7 +568,7 @@ model TaxRule {
   validatedBy    String?
   validatedAt    DateTime?
 
-  @@index([commune, licenseType, effectiveFrom])
+  @@unique([commune, licenseType, effectiveFrom])
 }
 
 // Config-driven rules (marital filter conditions, mandatory fields, IR/VAT rates & thresholds, retention days).
@@ -579,28 +580,45 @@ model RuleConfig {
   updatedAt   DateTime  @updatedAt
 }
 
+// A monthly tax ESTIMATE for one property (Phase 5). Money columns are Decimal(12,2) MAD; the lines carry integer
+// centimes. `ruleVersions` says which RuleConfig / TaxRule rows produced the figures and whether each was validated,
+// so a report built on unvalidated rules is always labelled as a beta estimate.
 model TaxReport {
-  id                   String           @id @default(uuid())
-  propertyId           String
-  month                String // YYYY-MM
-  regime               TaxRegime
-  nightsRevenue        Decimal          @db.Decimal(12, 2)
-  addonRevenue         Decimal          @db.Decimal(12, 2)
-  grossBase            Decimal          @db.Decimal(12, 2)
-  taxeSejourDeducted   Decimal          @db.Decimal(12, 2)
-  vatTotal             Decimal          @db.Decimal(12, 2)
-  incomeTaxTotal       Decimal          @db.Decimal(12, 2)
-  localTaxTotal        Decimal          @db.Decimal(12, 2)
-  bankAccountType      BankAccountType?
-  localTaxStatementUrl String?
-  pdfUrl               String?
-  excelUrl             String?
-  disclaimerVersion    String
-  createdAt            DateTime         @default(now())
+  id                 String           @id @default(uuid())
+  accountId          String
+  propertyId         String
+  month              String // YYYY-MM
+  regime             TaxRegime
+  nightsRevenue      Decimal          @db.Decimal(12, 2)
+  addonRevenue       Decimal          @db.Decimal(12, 2)
+  grossBase          Decimal          @db.Decimal(12, 2)
+  taxeSejourDeducted Decimal          @db.Decimal(12, 2)
+  vatTotal           Decimal          @db.Decimal(12, 2)
+  incomeTaxTotal     Decimal          @db.Decimal(12, 2)
+  localTaxTotal      Decimal          @db.Decimal(12, 2)
+  bankAccountType    BankAccountType?
+  lines              Json // ordered report lines (integer centimes, or null when not computed)
+  problems           Json // missing-data problems by booking id, never names
+  ruleVersions       Json // [{ key, validated, validatedAt }]
+  unvalidated        Boolean // true when any rule used is not validated: exports carry the beta watermark
+  inputDigest        String // a different digest now means the report is outdated
+  pdfObjectId        String
+  xlsxObjectId       String
+  templateVersion    String
+  disclaimerVersion  String
+  generatedBy        String // user id
+  generatedAt        DateTime         @default(now())
 
-  property Property @relation(fields: [propertyId], references: [id])
+  account  Account      @relation(fields: [accountId], references: [id])
+  property Property     @relation(fields: [propertyId, accountId], references: [id, accountId])
+  pdf      StoredObject @relation("TaxReportPdf", fields: [pdfObjectId, accountId], references: [id, accountId])
+  xlsx     StoredObject @relation("TaxReportXlsx", fields: [xlsxObjectId, accountId], references: [id, accountId])
 
   @@unique([propertyId, month])
+  @@unique([id, accountId])
+  @@index([accountId])
+  @@index([pdfObjectId])
+  @@index([xlsxObjectId])
 }
 
 model ChecklistItem {
@@ -661,6 +679,8 @@ enum StoredObjectKind {
   ID_IMAGE
   FICHE_PDF
   POLICE_REGISTER_PDF
+  TAX_REPORT_PDF
+  TAX_REPORT_XLSX
 }
 
 model StoredObject {
@@ -679,6 +699,8 @@ model StoredObject {
   guestDocs GuestCheckIn[]
   fiches    FicheDePolice[]
   registers PoliceRegister[]
+  taxPdfs   TaxReport[]      @relation("TaxReportPdf")
+  taxXlsxs  TaxReport[]      @relation("TaxReportXlsx")
 
   @@unique([id, accountId])
   @@index([accountId])

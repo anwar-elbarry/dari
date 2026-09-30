@@ -27,12 +27,16 @@
     "LINK_WINDOW_CLOSED": "This stay is too far in the past for a check-in link.",
     "BOOKING_NOT_ELIGIBLE": "Check-in links are only for confirmed stays.",
     "PARTY_COMPLETE": "Every expected guest has already checked in.",
-    "PDF_UNAVAILABLE": "The Fiche could not be generated. Try again later.",
+    "PDF_UNAVAILABLE": "The document could not be generated. Try again later.",
     "INVALID_MONTH": "The month is not valid.",
     "MONTH_NOT_STARTED": "This month has not started yet.",
     "REGISTER_TOO_LARGE": "This month has too many stays to generate a register.",
     "REGISTER_OUTDATED": "The register has changed since it was generated. Generate it again before sharing it.",
-    "EXPIRY_OUT_OF_BOUNDS": "The chosen duration is outside the allowed range."
+    "EXPIRY_OUT_OF_BOUNDS": "The chosen duration is outside the allowed range.",
+    "DISCLAIMER_MISSING": "The disclaimer is not configured: the estimate cannot be generated.",
+    "REPORT_BUSY": "The estimate is being generated. Try again in a moment.",
+    "REPORT_TOO_LARGE": "Too many stays this year to generate the estimate.",
+    "NO_CHANGE": "No amount to save."
   },
   "auth": {
     "login": {
@@ -88,7 +92,7 @@
   "nav": {
     "properties": "Properties",
     "team": "Team",
-    "reports": "Reports",
+    "reports": "Tax estimates",
     "menu": "Menu",
     "dashboard": "Dashboard",
     "shares": "Shared links"
@@ -176,10 +180,6 @@
     "revoke": "Cancel",
     "revoked": "Invitation cancelled."
   },
-  "reports": {
-    "title": "Reports",
-    "comingSoon": "Monthly reports for your accountant arrive in a coming release."
-  },
   "dashboard": {
     "title": "Dashboard",
     "year": "Year {year}",
@@ -243,7 +243,8 @@
     "calendars": "Calendars",
     "importTitle": "Import stays",
     "year": "Year",
-    "openRegisters": "Police register"
+    "openRegisters": "Police register",
+    "openTax": "Tax estimate"
   },
   "feeds": {
     "intro": "Paste the iCal link of each platform. The link is confidential: anyone who has it can read the calendar.",
@@ -656,5 +657,155 @@
     "temporaryTitle": "The document cannot be shown right now",
     "temporaryBody": "Wait a moment, then try again.",
     "retry": "Try again"
+  },
+  "tax": {
+    "title": "Monthly tax estimate",
+    "back": "Back to the property",
+    "intro": "One estimate per month, calculated from the stays and the amounts entered. It still has to be confirmed with your accountant.",
+    "regime": "Tax regime",
+    "taxeSejour": "Taxe de séjour",
+    "unavailable": "This feature is not available yet.",
+    "loadFailed": "The estimates could not be loaded.",
+    "noticeFailed": "The disclaimer could not be loaded: no figure is shown without it. Try again.",
+    "money": "{amount} MAD",
+    "notComputed": "Not computed",
+    "beta": "Beta",
+    "status": {
+      "none": "Not generated",
+      "generated": "Generated",
+      "outdated": "Out of date"
+    },
+    "generatedOn": "Generated on {date}",
+    "outdatedHint": "The data changed after this estimate was generated.",
+    "generate": "Generate the estimate",
+    "regenerate": "Generate again",
+    "generating": "Generating…",
+    "openPdf": "Open the PDF",
+    "downloadXlsx": "Download Excel",
+    "details": "See details",
+    "missingButton": "Missing data",
+    "missingCount": "{count, plural, one {# item missing} other {# items missing}}",
+    "nothingMissing": "Nothing missing",
+    "generated": "The estimate for {month} has been generated.",
+    "generatedWithProblems": "The estimate for {month} has been generated with {count, plural, one {# item missing} other {# items missing}}. The figures concerned may be incomplete or not computed.",
+    "exportNotice": "Every opening or download is logged.",
+    "missing": {
+      "title": "Missing data, {month}",
+      "intro": "Fill in these items, then generate the estimate again. Whatever is missing stays not computed or incomplete.",
+      "none": "Nothing is missing for this month.",
+      "stay": "Stay from {checkIn} to {checkOut}",
+      "stayNoDates": "Stay",
+      "enter": "Enter amounts",
+      "enterParty": "Enter the number of guests",
+      "ruleHelp": "A parameter is missing or has not been validated yet: the line concerned is marked as not computed. It is set in the configuration, not here.",
+      "group": {
+        "NO_AMOUNTS": {
+          "title": "Stays without amounts",
+          "help": "No amount is entered for these stays: they count as zero."
+        },
+        "TAXE_SEJOUR_MISSING": {
+          "title": "Stays without Taxe de séjour",
+          "help": "The Taxe de séjour is included in the price of these stays and its amount is not entered."
+        },
+        "PARTY_SIZE_MISSING": {
+          "title": "Stays without a number of guests",
+          "help": "The number of guests is used to calculate the per-person local taxes."
+        },
+        "RULE_MISSING": {
+          "title": "Missing or unvalidated parameters",
+          "help": "A parameter is missing: the matching line stays not computed."
+        }
+      },
+      "close": "Close"
+    },
+    "amounts": {
+      "title": "Amounts of the stay",
+      "stay": "Stay from {checkIn} to {checkOut}",
+      "intro": "Enter the amounts in dirhams, with at most two decimals (for example 1234.50). Enter 0 if the amount is nil; an empty field stays unset.",
+      "loading": "Loading the stay…",
+      "loadFailed": "The stay could not be loaded.",
+      "invalid": "Invalid amount: digits only, at most two decimals.",
+      "invalidParty": "Enter a whole number from 1 to 50.",
+      "field": {
+        "nightlyRevenue": "Nights",
+        "cleaningFee": "Cleaning fee invoiced",
+        "addonRevenue": "Additional services",
+        "discounts": "Discounts",
+        "refunds": "Refunds",
+        "platformCommission": "Platform commission",
+        "taxeSejourAmount": "Taxe de séjour",
+        "partySize": "Number of guests"
+      },
+      "hint": {
+        "platformCommission": "For information: it is not deducted from the base.",
+        "taxeSejourAmount": "Useful when the Taxe de séjour is included in the price.",
+        "partySize": "From 1 to 50."
+      },
+      "save": "Save the amounts",
+      "saving": "Saving…",
+      "saved": "Amounts saved."
+    },
+    "detail": {
+      "title": "Tax estimate, {month}",
+      "backList": "All estimates",
+      "backProperty": "Months of the property",
+      "summary": "Summary",
+      "grossBase": "Gross base",
+      "incomeTax": "Income tax",
+      "vat": "VAT",
+      "localTax": "Local taxes",
+      "lines": "Calculation lines",
+      "linesHelp": "Estimate only: confirm with your accountant.",
+      "colLine": "Line",
+      "colAmount": "Amount",
+      "problems": "Missing data",
+      "noProblems": "Nothing is missing for this estimate.",
+      "fixProblems": "Complete the data",
+      "rules": "Parameters used",
+      "rulesHelp": "Rates and thresholds are parameters, validated separately by a professional. A missing or unvalidated parameter keeps the estimate in beta.",
+      "ruleValidated": "Validated on {date}",
+      "ruleUnvalidated": "Not validated",
+      "ruleAbsent": "Missing",
+      "outdatedManager": "The data changed since it was generated. Generate the estimate again from the property page.",
+      "outdatedReader": "The data changed since it was generated. Ask the manager to generate it again.",
+      "meta": "Generated on {date} · template {template} · disclaimer {disclaimer}",
+      "notFound": "This estimate could not be found.",
+      "bankAccount": "Owner's account type"
+    },
+    "list": {
+      "title": "Tax estimates",
+      "intro": "The monthly estimates generated by the manager, most recent first. They still have to be confirmed with your accountant.",
+      "empty": "No estimate has been generated yet.",
+      "emptyManager": "Generate one from a property page, under Tax estimate.",
+      "grossBase": "Gross base",
+      "taxes": "Estimated taxes, total",
+      "partial": "Some lines are not computed: this total is incomplete.",
+      "open": "See details"
+    },
+    "problem": {
+      "NO_AMOUNTS": "Stays without amounts",
+      "TAXE_SEJOUR_MISSING": "Stays without Taxe de séjour",
+      "PARTY_SIZE_MISSING": "Stays without a number of guests",
+      "RULE_MISSING": "Missing parameters"
+    },
+    "line": {
+      "nights_revenue": "Nights revenue (nights + cleaning − discounts − refunds)",
+      "addon_revenue": "Additional services",
+      "taxe_sejour_deducted": "Taxe de séjour deducted",
+      "gross_base": "Gross base",
+      "platform_commission": "Platform commission (information)",
+      "income_tax": "Income tax (estimate)",
+      "vat": "VAT (estimate)",
+      "local_tax": "Local taxes (estimate)",
+      "nonresident_statement": "Non-resident / MRE owner"
+    },
+    "note": {
+      "not_applicable": "Not applicable",
+      "not_deducted": "Not deducted from the base",
+      "rule_missing": "Not computed: parameter missing ({rule})",
+      "rate": "Rate {rate}%",
+      "catch_up": "Rate {rate}% applied to the year to date (catch-up)",
+      "residency": "Non-resident owner ({residency}, {account}): statement to prepare with your accountant"
+    }
   }
 }

@@ -91,4 +91,30 @@ describe('composite tenant foreign keys (integration)', () => {
       await expect(t.prisma.shareAccess.create({ data: { accountId: b, shareLinkId: linkB.id, userAgent: 'x' } })).resolves.toBeDefined();
     });
   });
+
+  describe('tax reports (Phase 5)', () => {
+    const stored = (accountId: string, kind: 'TAX_REPORT_PDF' | 'TAX_REPORT_XLSX') => t.prisma.storedObject.create({ data: { accountId, key: `k-${Math.random()}`, kind, sizeBytes: 1, sha256: 'a'.repeat(64), wrappedKey: 'w' } });
+    const report = (accountId: string, propertyId: string, pdfObjectId: string, xlsxObjectId: string, month = '2026-10') =>
+      t.prisma.taxReport.create({
+        data: {
+          accountId, propertyId, month, regime: 'PROPERTY_INCOME', nightsRevenue: '0', addonRevenue: '0', grossBase: '0', taxeSejourDeducted: '0', vatTotal: '0', incomeTaxTotal: '0', localTaxTotal: '0',
+          lines: [], problems: [], ruleVersions: [], unvalidated: true, inputDigest: 'd', pdfObjectId, xlsxObjectId, templateVersion: 'draft-1', disclaimerVersion: 'beta-1', generatedBy: 'u',
+        },
+      });
+
+    it('refuses a report on a property, a PDF or an Excel file of another account, accepts its own', async () => {
+      const propertyA = (await property(a, ownerA)).id;
+      const [pdfA, xlsxA, pdfB, xlsxB] = [(await stored(a, 'TAX_REPORT_PDF')).id, (await stored(a, 'TAX_REPORT_XLSX')).id, (await stored(b, 'TAX_REPORT_PDF')).id, (await stored(b, 'TAX_REPORT_XLSX')).id];
+      await expect(report(a, propertyB, pdfA, xlsxA)).rejects.toMatchObject({ code: 'P2003' });
+      await expect(report(a, propertyA, pdfB, xlsxA)).rejects.toMatchObject({ code: 'P2003' });
+      await expect(report(a, propertyA, pdfA, xlsxB)).rejects.toMatchObject({ code: 'P2003' });
+      await expect(report(a, propertyA, pdfA, xlsxA)).resolves.toBeDefined();
+    });
+
+    it('allows one report per property and month', async () => {
+      const propertyA = (await property(a, ownerA)).id;
+      await report(a, propertyA, (await stored(a, 'TAX_REPORT_PDF')).id, (await stored(a, 'TAX_REPORT_XLSX')).id);
+      await expect(report(a, propertyA, (await stored(a, 'TAX_REPORT_PDF')).id, (await stored(a, 'TAX_REPORT_XLSX')).id)).rejects.toMatchObject({ code: 'P2002' });
+    });
+  });
 });

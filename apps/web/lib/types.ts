@@ -305,3 +305,128 @@ export interface ShareAccessRow {
   at: string;
   userAgent: string;
 }
+
+/* ---- Monthly tax estimate (Phase 5). Money is always integer centimes; see lib/tax.ts for display. ---- */
+export type TaxReportStatus = 'generated' | 'outdated';
+export type TaxMonthStatus = 'none' | TaxReportStatus;
+export type TaxProblemCode = 'NO_AMOUNTS' | 'TAXE_SEJOUR_MISSING' | 'PARTY_SIZE_MISSING' | 'RULE_MISSING';
+export type TaxLineKey = 'nights_revenue' | 'addon_revenue' | 'taxe_sejour_deducted' | 'gross_base' | 'platform_commission' | 'income_tax' | 'vat' | 'local_tax' | 'nonresident_statement';
+export type TaxLineNote = 'not_applicable' | 'rule_missing' | 'rate_bps' | 'catch_up' | 'residency' | 'not_deducted';
+
+/** The disclaimer wording comes from the API (RuleConfig), never from the app. */
+export interface DisclaimerText {
+  version: string;
+  banner: string;
+  text: string;
+}
+export type Disclaimer = Record<'fr' | 'en', DisclaimerText>;
+
+export interface TaxRuleStatus {
+  key: string;
+  present: boolean;
+  value?: unknown;
+  validated: boolean;
+  validatedBy?: string | null;
+  validatedAt?: string | null;
+}
+
+export interface TaxRules {
+  disclaimers: { beta: Disclaimer; standard: Disclaimer };
+  rules: TaxRuleStatus[];
+  localTaxRules: number;
+}
+
+export interface TaxProblem {
+  code: TaxProblemCode;
+  bookingId?: string;
+  rule?: string;
+}
+
+export type TaxProblemCounts = Partial<Record<TaxProblemCode, number>>;
+
+export interface TaxTotals {
+  nightsRevenue: number;
+  addonRevenue: number;
+  grossBase: number;
+  taxeSejourDeducted: number;
+  vatTotal: number;
+  incomeTaxTotal: number;
+  localTaxTotal: number;
+}
+
+export interface TaxReportSummary {
+  id: string;
+  propertyId: string;
+  propertyName: string;
+  /** YYYY-MM */
+  month: string;
+  regime: TaxRegime;
+  status: TaxReportStatus;
+  beta: boolean;
+  totals: TaxTotals;
+  problemCounts: TaxProblemCounts;
+  /** Only for people who may generate. */
+  problems?: TaxProblem[];
+  bankAccountType: BankAccountType | null;
+  templateVersion: string;
+  disclaimerVersion: string;
+  generatedAt: string;
+}
+
+export interface TaxLine {
+  key: TaxLineKey;
+  /** Integer centimes; null = not computed. */
+  amount: number | null;
+  info?: boolean;
+  note?: TaxLineNote;
+  detail?: string;
+}
+
+export interface TaxReportRule {
+  key: string;
+  present: boolean;
+  validated: boolean;
+  validatedAt: string | null;
+}
+
+export interface TaxReportDetail extends TaxReportSummary {
+  lines: TaxLine[];
+  rules: TaxReportRule[];
+}
+
+export interface TaxMonth {
+  month: string;
+  status: TaxMonthStatus;
+  reportId: string | null;
+  generatedAt: string | null;
+  beta: boolean | null;
+}
+
+export interface TaxMonths {
+  property: { id: string; name: string; regime: TaxRegime; taxeSejourMode: TaxeSejourMode };
+  months: TaxMonth[];
+}
+
+export interface TaxMissing {
+  month: string;
+  beta: boolean;
+  problems: TaxProblem[];
+  problemCounts: TaxProblemCounts;
+  stays: Record<string, { checkIn: string; checkOut: string }>;
+}
+
+/** A stay as Owner/Manager receive it: revenue fields are Decimal strings ("1234.5") or null. */
+export interface StayAmounts {
+  id: string;
+  propertyId: string;
+  checkIn: string;
+  checkOut: string;
+  partySize: number | null;
+  nightlyRevenue: string | null;
+  cleaningFee: string | null;
+  addonRevenue: string | null;
+  discounts: string | null;
+  refunds: string | null;
+  platformCommission: string | null;
+  taxeSejourAmount: string | null;
+}

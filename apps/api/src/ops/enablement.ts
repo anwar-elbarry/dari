@@ -18,6 +18,8 @@ export interface EnablementInput {
   /** Null = not run (the environment is invalid, so there is nothing to connect to). */
   storageRoundTrip: boolean | null;
   chromium: boolean;
+  /** Phase 5: the tax estimate's rules and the disclaimer wording (`TAX_REPORTS_ENABLED`). */
+  tax: { disclaimersPresent: boolean; rulesValidated: boolean };
 }
 
 /** Steps that no code can verify. Printed every time, never counted as passed. */
@@ -61,6 +63,8 @@ export function evaluateEnablement(i: EnablementInput): Check[] {
     i.storageRoundTrip === null
       ? { id: 'storage.round-trip', status: 'fail', message: 'Storage round trip not run (fix the environment first)' }
       : mark('storage.round-trip', i.storageRoundTrip, 'Storage: write, read and delete of a test object succeeded', 'Storage: the round trip of a test object failed (endpoint, bucket or credentials)'),
+    mark('tax.disclaimer', i.tax.disclaimersPresent, 'Tax disclaimer wording present in RuleConfig (fr, en; beta and standard)', 'Tax disclaimer wording missing from RuleConfig: tax exports are refused'),
+    mark('tax.rules', i.tax.rulesValidated, 'Tax rules validated by a fiduciaire', 'Tax rules are unvalidated defaults: every tax report and export is a BETA estimate with a watermark (accepted while the fiduciaire has not validated them)', 'warn'),
     mark('pdf.chromium', i.chromium, 'Chromium starts: Fiche PDFs can be generated', 'Chromium does not start (install it, or set PDF_CHROMIUM_PATH): Fiche PDFs would be unavailable'),
   );
   return [...checks, ...MANUAL_STEPS];

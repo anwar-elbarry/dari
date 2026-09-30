@@ -18,7 +18,7 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | 2 | iCal sync, CSV import, 120-day counter, dashboard, alerts | Day counter matches a hand-checked real calendar | **Done** (see outcome in `docs/phase-2.md`) — [`docs/phase-2.md`](docs/phase-2.md) |
 | 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-3.md`) — [`docs/phase-3.md`](docs/phase-3.md) |
 | 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-4.md`) — [`docs/phase-4.md`](docs/phase-4.md) |
-| 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | Planned, blocked on fiduciaire from step 5.2 — [`docs/phase-5.md`](docs/phase-5.md) |
+| 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | **Code done as a BETA (unvalidated default rates, watermarked exports) · fiduciaire validation open** (see outcome in `docs/phase-5.md`) — [`docs/phase-5.md`](docs/phase-5.md) |
 | 6 | Licensing checklist, team management, WhatsApp | Invites and seat limits work; WhatsApp message delivered | Not started |
 | 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | Not started |
 | 8 | Fast-follow | Driven by pilot feedback | Not started |
@@ -137,9 +137,9 @@ Not code, but it decides when real customer data may be processed. Start in week
 
 ## Phase 5 — Tax engine and Accountant portal
 
-**Detailed plan:** [`docs/phase-5.md`](docs/phase-5.md)
+**Detailed plan and outcome:** [`docs/phase-5.md`](docs/phase-5.md)
 
-**Goal:** monthly estimates the fiduciaire can rely on. **Do not start the pipeline before the fiduciaire has confirmed the rules** (steps 5.0–5.1 can go first).
+**Goal:** monthly estimates the fiduciaire can rely on. *Built as a BETA on the founder's decision (2026-09-30): the default rates are unvalidated `RuleConfig` data, and every report and export carries a watermark and disclaimer until a fiduciaire validates the rules.*
 
 - `TaxRule` and `RuleConfig` seeded from the fiduciaire's validation, with `validatedBy`
 - Pipeline: gross base → Taxe de Séjour treatment → regime (property income / professional / company) → local taxes → output
@@ -151,6 +151,8 @@ Not code, but it decides when real customer data may be processed. Start in week
 **Exit:** the engine reproduces the fiduciaire's worked examples to the centime.
 
 ## Phase 6 — Licensing checklist, team and messaging
+
+**Detailed plan:** [`docs/phase-6.md`](docs/phase-6.md)
 
 - Marrakech checklist filtered by license type, document attachments, progress bar
 - Team management: invitations, role changes, seat limits by plan

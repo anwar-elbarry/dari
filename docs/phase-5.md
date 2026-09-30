@@ -6,7 +6,13 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 
 **Why it matters:** this is the second reason customers pay, and the only feature that states amounts of money owed. A wrong rate or a regime applied to the wrong owner is a financial and reputational risk for the customer and a liability risk for Dari. Every rate, threshold and treatment comes from the fiduciaire as data (rule 1 in `CLAUDE.md`), every output says "estimate only — confirm with your accountant" (rule 2), and money is integer centimes (rule 9).
 
-**Hard gate for this phase:** the fiduciaire's written validation of the formulas, rates, thresholds and Taxe de Séjour treatment, with worked examples. The README marks the phase "Blocked on fiduciaire". Steps 5.0 and 5.1 (data model, rule loading, disclaimers, Accountant access) can be built before the answer arrives; **the pipeline steps (5.2 onward) start only once the worked examples exist**, because the golden-file tests are built from them. The whole feature stays behind `TAX_REPORTS_ENABLED` (off in production) until the validation is recorded in the database (`validatedBy`, `validatedAt`).
+**Hard gate for this phase:** the fiduciaire's written validation of the formulas, rates, thresholds and Taxe de Séjour treatment, with worked examples.
+
+> **Founder decision, 2026-09-30: build the whole pipeline now and ship it as a BETA.** The plan below was written to wait for the fiduciaire. The founder chose to build steps 5.2 onward with the standard rates they supplied as **unvalidated defaults**, and to compensate with an unmissable watermark and disclaimer. Consequences, all implemented (see the outcome at the end):
+> - The defaults are `RuleConfig` rows with `validatedBy` NULL, not constants (rule 1 in `CLAUDE.md` still holds). A fiduciaire replaces them and fills `validatedBy` / `validatedAt`.
+> - **A report is a beta estimate while any rule it used is unvalidated or missing, or while its month is incomplete.** Its PDF, Excel export and screens carry the beta watermark, banner and full disclaimer (wording in `RuleConfig`, never in the app). When every rule used is validated and the month is complete, the beta marking disappears by itself and the standard "estimate only" notice remains.
+> - **The gate did not disappear, it moved:** the fiduciaire's validation is still required before Dari calls these figures anything more than a mathematical projection, and before the flag is turned on for real customers' declarations. Golden files from the fiduciaire's worked examples are still to be added when they arrive; the tests today use hand-checked examples of the supplied defaults.
+> - The rates the founder supplied are *not confirmed by this project*: nothing in the repository, and no reference this plan could cite, establishes that 10 % / 15 % with a 120 000 MAD threshold, applied as coded, matches the DGI rules for a given owner (abatements, the exact base, per-owner versus per-property, the treatment of Taxe de séjour and of the platform commission are all open). They are the fiduciaire's to confirm.
 
 ---
 
@@ -77,12 +83,14 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 
 | Route | Method | Access | Notes |
 |---|---|---|---|
-| `/tax/rules/status` | GET | `report:read` | Which rules are validated, from whom and when; no values the fiduciaire has not validated |
-| `/properties/:id/tax-reports` | GET | `report:read` | Months with status (none, generated, outdated, incomplete) |
+| `/tax/rules` | GET | `report:read` | Which rules are in force, with their values, whether and by whom they were validated, and the disclaimer wording (beta and standard, FR and EN) the screens show |
+| `/tax/reports` | GET | `report:read` | Every report of the account, newest first, with status and totals (`?year=`, `?propertyId=`; `X-Truncated: true` past 300). The Accountant's index: counts of problems, never booking ids |
+| `/tax/reports/:id` | GET | `report:read` | The lines, totals, rules used (with validation status), problem counts |
+| `/properties/:id/tax-reports` | GET | `report:generate` | The property's months with status (none, generated, outdated) |
 | `/properties/:id/tax-reports/:month/missing` | GET | `report:generate` | Stays without amounts, properties without regime; ids only |
 | `/properties/:id/tax-reports/:month` | POST | `report:generate` | Generate or regenerate; audited |
-| `/properties/:id/tax-reports/:month` | GET | `report:read` | The lines, totals, rule versions, disclaimer version |
-| `/properties/:id/tax-reports/:month/pdf` · `/xlsx` | GET | `report:read` | Decrypts, audits, streams; `no-store` |
+| `/tax/reports/:id/pdf` · `/xlsx` | GET | `report:read` | Decrypts, audits, streams; `no-store`. Refused with 409 `REPORT_OUTDATED` when the report no longer matches the data or the rules |
+| `/bookings/:id/amounts` | PATCH | `booking:write` | Revenue figures of a stay as decimal text (or null); the input of the estimate |
 
 Every route goes into the permission matrix and the tenant-isolation suite. The Accountant's responses are checked by a test that greps them for guest fields and names.
 
@@ -105,6 +113,12 @@ Help text stays neutral ("confirm with your accountant"), never states the law (
 
 | Route | Owner/Manager | Staff | Accountant | Anonymous |
 |---|---|---|---|---|
+| `GET /tax/rules`, `/tax/reports`, `/tax/reports/:id`, `…/pdf`, `…/xlsx` | 200 | 403 | 200 | 401 |
+| `GET /properties/:id/tax-reports`, `…/:month/missing` | 200 | 403 | 403 | 401 |
+| `POST /properties/:id/tax-reports/:month` | 200 | 403 | 403 | 401 |
+| `PATCH /bookings/:id/amounts` | 200 | 403 | 403 | 401 |
+
+---|---|---|---|---|
 | `GET /tax/rules/status` | 200 | 403 | 200 | 401 |
 | `GET /properties/:id/tax-reports` | 200 | 403 | 200 | 401 |
 | `GET …/:month/missing` | 200 | 403 | 403 | 401 |
@@ -117,15 +131,15 @@ Help text stays neutral ("confirm with your accountant"), never states the law (
 
 | Step | Work | Model |
 |---|---|---|
-| 5.0 | Data model, migration, capabilities (`report:read`, `report:generate`), Accountant route guard, `TAX_REPORTS_ENABLED`, rule loading with validation status, disclaimer as `RuleConfig` | fast |
-| 5.1 | Missing-data report and amounts entry on a stay (manager), with tests; Accountant home screen (empty state) | fast |
-| 5.2 | **Pipeline** from the fiduciaire's worked examples: pure functions per step, golden-file tests to the centime, rounding rule | strong |
-| 5.3 | **Report generation**: month selection rule, digest and `outdated`, rule versions, storage, audit | strong |
-| 5.4 | Exports: PDF template (versioned, disclaimer on every page, no "certified" wording) and Excel (formula-injection safe) | fast |
-| 5.5 | Web: reports list, detail, missing data, Accountant portal | fast |
-| 5.6 | Hardening: Accountant data-leak suite, logging suite extended, security review, e2e, docs, Phase 6 plan | strong |
+| 5.0 | Data model, migration, capabilities (`report:read`, `report:generate`), Accountant route guard, `TAX_REPORTS_ENABLED`, rule loading with validation status, disclaimer as `RuleConfig` — **done** | fast |
+| 5.1 | Missing-data report and amounts entry on a stay (manager), with tests; Accountant home screen (empty state) — **done** | fast |
+| 5.2 | **Pipeline** from the fiduciaire's worked examples: pure functions per step, golden-file tests to the centime, rounding rule — **done (BETA defaults, no fiduciaire golden files yet)** | strong |
+| 5.3 | **Report generation**: month selection rule, digest and `outdated`, rule versions, storage, audit — **done** | strong |
+| 5.4 | Exports: PDF template (versioned, disclaimer on every page, no "certified" wording) and Excel (formula-injection safe) — **done** | fast |
+| 5.5 | Web: reports list, detail, missing data, Accountant portal — **done** | fast |
+| 5.6 | Hardening: Accountant data-leak suite, logging suite extended, security review, e2e, docs, Phase 6 plan — **done** (see the outcome) | strong |
 
-Steps 5.2 and 5.3 carry the risk and wait for the fiduciaire.
+Steps 5.2 and 5.3 carry the risk. They were built on the founder's beta defaults; the fiduciaire's validation is still owed.
 
 ---
 
@@ -166,7 +180,7 @@ Steps 5.2 and 5.3 carry the risk and wait for the fiduciaire.
 | Risk | Mitigation |
 |---|---|
 | The fiduciaire's answer is late or partial | Steps 5.0–5.1 do not depend on it; the pipeline shows "not computed" per missing rule; the phase ships per regime as rules arrive |
-| A wrong figure reaches a customer's declaration | Golden-file tests from the fiduciaire; disclaimer everywhere; rule versions on each report; "estimate only" wording reviewed by counsel |
+| A wrong figure reaches a customer's declaration | The beta watermark and disclaimer while rules are unvalidated; rule versions on each report; golden-file tests from the fiduciaire once supplied; wording reviewed by counsel. **The rates in use are the founder's, not confirmed by a fiduciaire** |
 | Rounding differences of a few centimes | Rounding is a validated rule and part of the golden files |
 | Amounts missing on iCal stays | The missing-data report before generating; a report with missing amounts is marked incomplete |
 | The Accountant role leaks guest data | Dedicated grep suite over every Accountant-reachable response; capability map reviewed |
@@ -180,3 +194,46 @@ Steps 5.2 and 5.3 carry the risk and wait for the fiduciaire.
 4. Should an Accountant see all properties of the account, or only those the manager assigns?
 5. Who approves the disclaimer wording in French and English (counsel or the fiduciaire)?
 6. Is Excel required, or is CSV enough for the pilot accountants?
+
+---
+
+## Outcome (Phase 5 closed as a BETA: code complete, fiduciaire validation open)
+
+Steps 5.0 to 5.6 are done, on the founder's decision to ship with unvalidated defaults and a watermark (see the box at the top). CI runs the pipeline unit tests, the integration suites (Postgres, Redis, a real Chromium: generation, exports, staleness, Accountant leaks, flag, log redaction, permission matrix, tenant isolation, foreign keys) and the phone-viewport e2e (manager: banner, amounts, generate, lines, PDF and Excel, out-of-date cycle; Accountant: reads the estimate, cannot reach a property, cannot generate; Staff: nothing).
+
+**What was delivered**
+- **Rules as data** (migration `20260930120000`): `tax.property_income` (10 % up to 120 000 MAD of annual gross base, 15 % above, applied to the whole year to date), `tax.vat` (10 %, tax-inclusive, professional and company), `tax.rounding` (half-up per line), `tax.stay_month` (check-out month), and the disclaimer wording (beta and standard, FR and EN), all with `validatedBy` NULL. `TaxRule` supplies local taxes per commune and licence type (none seeded). `tax/hygiene.spec.ts` fails the build if a threshold literal or a float on money appears in `src/tax`.
+- **The pipeline** (`tax/pipeline.ts`, `money.ts`, `rules.ts`): pure, integer centimes, BigInt ratios rounded half away from zero; gross base, Taxe de séjour (included or collected), property income tax with a catch-up when the owner's year to date crosses the threshold, VAT, local taxes, a non-resident statement line. A missing or malformed rule gives "not computed" and a `RULE_MISSING` problem, never a guess.
+- **Reports** (`tax-report.service.ts`): built from confirmed stays, digest-based `outdated` detection (stays, amounts, property settings, rules and disclaimer version), PDF and Excel stored as encrypted files with the provisional-file swap of 4.6, audited reads that fail closed, no export of an out-of-date report.
+- **Exports:** the PDF has a diagonal watermark, a red banner and the full disclaimer in a footer on every page; the Excel has a red banner and the full text at the top of every sheet, the print header and footer, and a background image; values only, no formulas, text neutralised. Verified by reading the produced files in the tests (text of the PDF, cells and headers of the workbook).
+- **Stay amounts** through `PATCH /bookings/:id/amounts` (decimal text only, audited by id without the amounts) and the web screens: property tax page, missing-data and amounts dialogs, report detail, the Accountant's `/reports` home, nav entry, FR and EN.
+- **Ops:** `TAX_REPORTS_ENABLED` (off in production), the enablement check reports missing disclaimer wording (blocking) and unvalidated rules (warning).
+
+**Independent security review** (read-only pass over the API): no high finding. Fixed, each with a regression test:
+- **Medium:** listing reports rebuilt every report from scratch (up to 20 000 stays each); a per-request cache now shares the rule reads and the year's stays, and the list routes are throttled.
+- **Medium:** the account-wide list silently stopped at 100 reports; it is now 300 with `?year=` / `?propertyId=` filters and an `X-Truncated` header.
+- **Low/medium:** the owner's annual total added properties under other regimes; only properties under the same income regime add up.
+- **Low/medium:** a month with a stay lacking amounts, party size or an included Taxe de séjour got the standard notice when the rules were validated; any data gap now keeps the beta marking. A stay with only a commission or a Taxe de séjour entered counts as having amounts.
+- **Low:** an out-of-date report's files stayed downloadable (and could lack the beta marking if a rule had since become unvalidated); they now answer 409 until regenerated.
+- **Low:** a negative income-tax line (a refund lowering the year to date) is clamped to zero; Excel header and footer strings could exceed Excel's limit or read a leading digit as a font size; totals beyond the `Decimal(12,2)` range are refused (422) instead of a 500; `TaxRule` got the unique index the plan promised; a changed disclaimer version now marks reports outdated.
+
+**Accepted and documented**
+- **The rates are the founder's, not confirmed.** See the box at the top. The report says so on every page while any rule is unvalidated.
+- The catch-up appears in the month the owner crosses the threshold, on the properties that have stays that month; a property with no stay that month shows it in the next report it generates. A yearly summary (Phase 8) is the clean answer.
+- The local-tax line reads `TaxRule.tptRate` as MAD per person per night when `basis` is `PER_PERSON_NIGHT`. What `tptRate` means (a per-night amount or a percentage of turnover) is for the fiduciaire to confirm; with no `TaxRule` row it is "not computed".
+- The Accountant sees the owner's residency and bank-account type on a non-resident statement line, and property names (which can contain an owner's name). Both are needed to read the estimate; counsel may decide otherwise.
+- The standard (non-beta) disclaimer is seeded unvalidated too; its wording should be approved with the beta text (open decision 5).
+- The two exports are not shareable through Secure Share and have no retention rule: they hold no guest data, but a retention period for them can be added to the purge job if counsel wants one.
+
+### Hard gates: tracker (Phase 5 additions)
+
+**Dates are proposals (set 2026-09-30): confirm or change them.**
+
+| Gate | Owner | Proposed date | Status |
+|---|---|---|---|
+| Fiduciaire confirms or replaces each default: income-tax rates and threshold, whether the whole year to date moves to the higher rate, VAT rate and basis, rounding, which stays belong to a month, treatment of Taxe de séjour and of the platform commission | Founder + fiduciaire | 2026-10-20 | Open |
+| Three worked examples per regime (property income, professional, company) to become golden-file tests | Fiduciaire | 2026-10-20 | Open |
+| Income-tax rule for the professional and company regimes; local-tax `TaxRule` rows (and what `tptRate` means) | Fiduciaire | 2026-10-20 | Open |
+| Wording of the beta and standard disclaimers approved (FR and EN) | Counsel or fiduciaire | 2026-10-20 | Open |
+| Decide whether reports may be used for real customers' declarations once rules are validated (the watermark then disappears by itself) | Founder | after the above | Open |
+

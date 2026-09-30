@@ -30,7 +30,10 @@ describe('role capabilities', () => {
     for (const c of ['register:read', 'share:manage'] as const) expect(can('OWNER_MANAGER', c)).toBe(true);
   });
 
-  it('gives Accountant nothing in Phase 1 (reports arrive in Phase 5)', () => {
-    expect(ROLE_CAPABILITIES.ACCOUNTANT).toEqual([]);
+  it('gives the Accountant tax reports and nothing else; Staff get none', () => {
+    expect(ROLE_CAPABILITIES.ACCOUNTANT).toEqual(['report:read']);
+    for (const c of ['report:read', 'report:generate'] as const) expect(can('STAFF', c)).toBe(false);
+    expect(can('ACCOUNTANT', 'report:generate')).toBe(false);
+    expect(can('OWNER_MANAGER', 'report:generate')).toBe(true);
   });
 });
