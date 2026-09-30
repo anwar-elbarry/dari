@@ -100,6 +100,8 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 
 ## Auth, roles and tenancy (apps/api/src)
 - Sessions: access JWT (15 min) + rotating refresh token, both httpOnly, SameSite=Lax; only token hashes are stored. Names and paths come from `cookieScheme()` in `auth/cookies.ts`: `__Host-dari_at` / `__Host-dari_rt` (Path=/) when `COOKIE_SECURE`, else `dari_at` (`/api`) / `dari_rt` (`/api/auth`) for plain-HTTP development. Never hard-code the names.
+- Signup: `SIGNUP_ENABLED` (off in production); closed answers 403 `SIGNUP_CLOSED` (web message under `errors.*`). Rate limits key on the client address with IPv6 collapsed to its /64 (`common/throttle-key.ts`, `ClientThrottlerGuard`).
+- Deleting a calendar feed detaches its bookings first (`feeds.service.ts`): the composite key `(feedId, accountId)` cannot SET NULL.
 - Every state-changing request needs the header `X-Requested-With: dari` (CSRF). The web client adds it.
 - Guards run in order: rate limit → CSRF → session (`AuthGuard`, re-reads the user each request) → capabilities.
 - **Every route must be `@Public()` or declare `@Requires('capability')` / `@AnyRole()`.** Undeclared routes are refused, and `rbac/route-declarations.spec.ts` fails.

@@ -1,6 +1,7 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ClientThrottlerGuard } from './common/client-throttler.guard';
 import { PropertyEventsModule } from './common/property-events';
 import { RedisThrottlerStorage } from './common/redis-throttler.storage';
 import { JobsModule } from './jobs/jobs.module';
@@ -73,7 +74,7 @@ export class AppModule {
       controllers: [HealthController],
       // Order matters: rate limit, then CSRF header, then session, then capabilities.
       providers: [
-        { provide: APP_GUARD, useClass: ThrottlerGuard },
+        { provide: APP_GUARD, useClass: ClientThrottlerGuard },
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_GUARD, useExisting: AuthGuard },
         { provide: APP_GUARD, useClass: CapabilitiesGuard },

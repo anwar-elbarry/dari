@@ -47,4 +47,14 @@ describe('client address behind the proxy (integration)', () => {
     expect(limited.status).toBe(429);
     expect(limited.headers['cache-control']).toMatch(/no-store/);
   });
+
+  it('counts every address of one IPv6 /64 against the same limit', async () => {
+    t = await createTestApp({ env: { TRUST_PROXY: '1', RATE_LIMIT_ENABLED: 'true' } });
+    await resetDatabase(t.prisma, t.redis);
+    const statuses: number[] = [];
+    for (let i = 0; i < 9; i++) statuses.push((await signupFrom(`2001:db8:aaaa:1::${i + 1}`, `edge-v6-${i}@example.test`)).status);
+    expect(statuses).toContain(429);
+    // Another /64 is another client.
+    expect((await signupFrom('2001:db8:aaaa:2::1', 'edge-v6-other@example.test')).status).toBe(201);
+  });
 });

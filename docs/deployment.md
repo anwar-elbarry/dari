@@ -43,6 +43,7 @@ Validated at boot by `apps/api/src/config/env.ts`; the API refuses to start on a
 | `REDIS_URL` | Managed Redis, private network, `rediss://` or password |
 | `MAIL_DRIVER` | `resend`. `console` and `file` are refused in production. Resend is a US provider: reset, invitation and alert e-mails carry user addresses, so it belongs in the cross-border position with counsel |
 | `MAIL_API_KEY` | Provider API key, from the secret store. Required with `resend`; never logged |
+| `SIGNUP_ENABLED` | Leave unset (off) in production: `POST /api/auth/signup` answers 403 `SIGNUP_CLOSED` and the web form says signup is closed. Set `true` only when public signup opens (e-mail verification first: `docs/phase-7.md`). Until then, create pilot accounts by hand or set it to `true` for the moment of creating one |
 | `GUEST_CHECKIN_ENABLED` | Leave unset (off) until the legal gates in `docs/phase-3.md` are closed; `true` turns the guest check-in routes on. The storage settings below are mandatory in production whatever the flags say |
 | `POLICE_REGISTER_ENABLED`, `SECURE_SHARE_ENABLED` | Leave unset (off) until the Phase 4 gates are closed. The storage settings below are mandatory in production regardless |
 | `TAX_REPORTS_ENABLED` | Leave unset (off) until you accept shipping the tax estimate as a **BETA** (default rates not validated by a fiduciaire: every report and export is watermarked) or the fiduciaire has validated the rules. `true` needs the tax `RuleConfig` rows (migration `20260930120000`) including the disclaimer wording; `npm run check:enablement` reports both |

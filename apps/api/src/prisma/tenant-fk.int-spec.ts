@@ -56,6 +56,28 @@ describe('composite tenant foreign keys (integration)', () => {
     ).rejects.toMatchObject({ code: 'P2003' });
   });
 
+  it('refuses a booking that points at a feed or an import batch of another account, accepts its own', async () => {
+    const propertyA = (await property(a, ownerA)).id;
+    const feedB = await t.prisma.icalFeed.create({ data: { accountId: b, propertyId: propertyB, platform: 'AIRBNB', url: 'https://example.test/x.ics' } });
+    const batchB = await t.prisma.importBatch.create({ data: { accountId: b, propertyId: propertyB, fileName: 'x.csv', rowCount: 1, importedCount: 1, errorCount: 0, createdBy: 'u' } });
+    const feedA = await t.prisma.icalFeed.create({ data: { accountId: a, propertyId: propertyA, platform: 'AIRBNB', url: 'https://example.test/a.ics' } });
+    const booking = (extra: { feedId?: string; importBatchId?: string }) =>
+      t.prisma.booking.create({ data: { accountId: a, propertyId: propertyA, checkIn: new Date('2026-10-01'), checkOut: new Date('2026-10-03'), source: 'DIRECT', ...extra } });
+    await expect(booking({ feedId: feedB.id })).rejects.toMatchObject({ code: 'P2003' });
+    await expect(booking({ importBatchId: batchB.id })).rejects.toMatchObject({ code: 'P2003' });
+    await expect(booking({ feedId: feedA.id })).resolves.toBeDefined();
+  });
+
+  it('refuses a notification that points at a property or a booking of another account, accepts its own', async () => {
+    const propertyA = (await property(a, ownerA)).id;
+    const bookingA = await t.prisma.booking.create({ data: { accountId: a, propertyId: propertyA, checkIn: new Date('2026-10-01'), checkOut: new Date('2026-10-03'), source: 'DIRECT' } });
+    const bookingB = await t.prisma.booking.create({ data: { accountId: b, propertyId: propertyB, checkIn: new Date('2026-10-01'), checkOut: new Date('2026-10-03'), source: 'DIRECT' } });
+    const note = (extra: { propertyId?: string; bookingId?: string }) => t.prisma.notification.create({ data: { accountId: a, type: 'x', message: 'm', ...extra } });
+    await expect(note({ propertyId: propertyB })).rejects.toMatchObject({ code: 'P2003' });
+    await expect(note({ bookingId: bookingB.id })).rejects.toMatchObject({ code: 'P2003' });
+    await expect(note({ propertyId: propertyA, bookingId: bookingA.id })).resolves.toBeDefined();
+  });
+
   it('still cascades a property delete to its calendar feeds', async () => {
     await t.prisma.icalFeed.create({ data: { accountId: b, propertyId: propertyB, platform: 'AIRBNB', url: 'https://example.test/x.ics' } });
     await t.prisma.property.delete({ where: { id: propertyB } });

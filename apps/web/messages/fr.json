@@ -14,6 +14,7 @@
   },
   "errors": {
     "INVALID_CREDENTIALS": "E-mail ou mot de passe incorrect.",
+    "SIGNUP_CLOSED": "L'inscription est fermée pour le moment. Contactez-nous pour ouvrir un compte.",
     "EMAIL_IN_USE": "Un compte utilise déjà cet e-mail.",
     "TOO_MANY_ATTEMPTS": "Trop de tentatives. Réessayez dans 15 minutes.",
     "TOO_MANY_REQUESTS": "Trop de requêtes. Patientez une minute.",

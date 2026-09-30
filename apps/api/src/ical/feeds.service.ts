@@ -61,7 +61,13 @@ export class FeedsService {
 
   /** Deleting a feed keeps its bookings (feedId becomes null): past nights are a record, not a cache. */
   async remove(user: AuthUser, propertyId: string, feedId: string, meta: ClientMeta) {
-    const { count } = await this.prisma.forAccount(user.accountId).icalFeed.deleteMany({ where: { id: feedId, propertyId } });
+    // The database key is (feedId, accountId), which cannot SET NULL: detach the bookings first, in the same transaction.
+    const count = await this.prisma.forAccount(user.accountId).$transaction(async (tx) => {
+      const feed = await tx.icalFeed.findFirst({ where: { id: feedId, propertyId }, select: { id: true } });
+      if (!feed) return 0;
+      await tx.booking.updateMany({ where: { feedId }, data: { feedId: null } });
+      return (await tx.icalFeed.deleteMany({ where: { id: feedId, propertyId } })).count;
+    });
     if (count === 0) throw notFound();
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'ical_feed.deleted', resourceType: 'IcalFeed', resourceId: feedId, ip: meta.ip });
   }

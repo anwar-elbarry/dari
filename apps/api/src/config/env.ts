@@ -70,6 +70,11 @@ const envSchema = z
      */
     WHATSAPP_ENABLED: z.enum(['true', 'false']).optional(),
     /**
+     * Public self-service signup (`POST /api/auth/signup`). On outside production, off in production: pilot accounts
+     * are created by the operator until e-mail verification exists (docs/phase-7.md). Off answers 403 SIGNUP_CLOSED.
+     */
+    SIGNUP_ENABLED: z.enum(['true', 'false']).optional(),
+    /**
      * `stub` records messages in memory and sends nothing (development and tests only: refused in production once
      * WhatsApp is on). `cloud` is Meta's WhatsApp Cloud API. The secrets live in the secret store, never in the repo.
      */
@@ -181,7 +186,7 @@ const envSchema = z
       ctx.addIssue({ code: 'custom', path: ['COOKIE_SECURE'], message: 'cookies must be secure in production' });
     }
   })
-  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, POLICE_REGISTER_ENABLED, SECURE_SHARE_ENABLED, TAX_REPORTS_ENABLED, WHATSAPP_ENABLED, ...env }) => ({
+  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, POLICE_REGISTER_ENABLED, SECURE_SHARE_ENABLED, TAX_REPORTS_ENABLED, WHATSAPP_ENABLED, SIGNUP_ENABLED, ...env }) => ({
     ...env,
     COOKIE_SECURE: COOKIE_SECURE === undefined ? env.NODE_ENV === 'production' : COOKIE_SECURE === 'true',
     GUEST_CHECKIN_ENABLED: GUEST_CHECKIN_ENABLED === undefined ? env.NODE_ENV !== 'production' : GUEST_CHECKIN_ENABLED === 'true',
@@ -189,6 +194,7 @@ const envSchema = z
     SECURE_SHARE_ENABLED: SECURE_SHARE_ENABLED === undefined ? env.NODE_ENV !== 'production' : SECURE_SHARE_ENABLED === 'true',
     TAX_REPORTS_ENABLED: TAX_REPORTS_ENABLED === undefined ? env.NODE_ENV !== 'production' : TAX_REPORTS_ENABLED === 'true',
     WHATSAPP_ENABLED: WHATSAPP_ENABLED === undefined ? env.NODE_ENV !== 'production' : WHATSAPP_ENABLED === 'true',
+    SIGNUP_ENABLED: SIGNUP_ENABLED === undefined ? env.NODE_ENV !== 'production' : SIGNUP_ENABLED === 'true',
   }));
 
 /** https, or plain http only to a host that is not on the internet: a bare service name, localhost, a private IPv4 or *.internal/*.local/*.svc. */

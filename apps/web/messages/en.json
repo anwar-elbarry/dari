@@ -14,6 +14,7 @@
   },
   "errors": {
     "INVALID_CREDENTIALS": "Wrong email or password.",
+    "SIGNUP_CLOSED": "Signup is closed for now. Contact us to open an account.",
     "EMAIL_IN_USE": "An account already uses this email.",
     "TOO_MANY_ATTEMPTS": "Too many attempts. Try again in 15 minutes.",
     "TOO_MANY_REQUESTS": "Too many requests. Wait a minute.",

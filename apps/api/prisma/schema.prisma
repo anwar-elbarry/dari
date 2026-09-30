@@ -350,11 +350,13 @@ model Booking {
 
   account      Account        @relation(fields: [accountId], references: [id])
   property     Property       @relation(fields: [propertyId, accountId], references: [id, accountId])
-  feed         IcalFeed?      @relation(fields: [feedId], references: [id], onDelete: SetNull)
-  importBatch  ImportBatch?   @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
-  checkIns     GuestCheckIn[]
-  checkInLinks CheckInLink[]
-  orders       AddOnOrder[]
+  // Composite keys with the account; no SET NULL (accountId is required), so deleting a feed clears `feedId` in code first.
+  feed          IcalFeed?      @relation(fields: [feedId, accountId], references: [id, accountId], onDelete: Restrict)
+  importBatch   ImportBatch?   @relation(fields: [importBatchId, accountId], references: [id, accountId], onDelete: Restrict)
+  checkIns      GuestCheckIn[]
+  checkInLinks  CheckInLink[]
+  orders        AddOnOrder[]
+  notifications Notification[]
 
   @@unique([feedId, externalUid])
   @@unique([propertyId, source, confirmationCode])
@@ -383,6 +385,7 @@ model IcalFeed {
   bookings Booking[]
 
   @@unique([propertyId, platform])
+  @@unique([id, accountId])
   @@index([accountId])
 }
 
@@ -401,6 +404,7 @@ model ImportBatch {
   property Property  @relation(fields: [propertyId, accountId], references: [id, accountId], onDelete: Cascade)
   bookings Booking[]
 
+  @@unique([id, accountId])
   @@index([accountId])
   @@index([propertyId])
 }
@@ -758,7 +762,8 @@ model Notification {
   createdAt  DateTime  @default(now())
 
   account  Account   @relation(fields: [accountId], references: [id])
-  property Property? @relation(fields: [propertyId], references: [id])
+  property Property? @relation(fields: [propertyId, accountId], references: [id, accountId], onDelete: Cascade)
+  booking  Booking?  @relation(fields: [bookingId, accountId], references: [id, accountId], onDelete: Cascade)
 
   @@unique([accountId, type, propertyId, year])
   @@index([accountId, resolvedAt])

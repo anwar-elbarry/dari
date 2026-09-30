@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, HttpException, HttpStatus, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -53,6 +53,7 @@ export class AuthService {
    * Removing that needs email verification at signup (planned after the pilot); rate limits mitigate.
    */
   async signup(dto: SignupDto, meta: ClientMeta): Promise<SessionTokens> {
+    if (!this.config.SIGNUP_ENABLED) throw new ForbiddenException({ code: 'SIGNUP_CLOSED', message: 'Signup is closed. Contact us to open an account.' });
     const passwordHash = await hashPassword(dto.password);
     let user: User;
     try {

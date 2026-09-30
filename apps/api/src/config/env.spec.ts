@@ -14,6 +14,13 @@ describe('parseEnv', () => {
     expect(env.TRUST_PROXY).toBe(1);
   });
 
+  it('opens signup outside production and closes it in production unless set', () => {
+    expect(parseEnv(base).SIGNUP_ENABLED).toBe(true);
+    const prod = { ...base, JWT_ACCESS_SECRET: 'x'.repeat(48), NODE_ENV: 'production', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20), REDIS_URL: 'redis://localhost:6379', ...prodStorage };
+    expect(parseEnv(prod).SIGNUP_ENABLED).toBe(false);
+    expect(parseEnv({ ...prod, SIGNUP_ENABLED: 'true' }).SIGNUP_ENABLED).toBe(true);
+  });
+
   it('coerces numeric strings', () => {
     expect(parseEnv({ ...base, PORT: '8080', THROTTLE_LIMIT: '5' })).toMatchObject({ PORT: 8080, THROTTLE_LIMIT: 5 });
   });
