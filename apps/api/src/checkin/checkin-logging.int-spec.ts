@@ -196,4 +196,34 @@ describe('no personal data in logs or audit rows (integration)', () => {
     expect(JSON.stringify(listing.body)).not.toContain(link.token);
     await expectClean([link.token, link.token.slice(0, 20)]);
   });
+  it('the register routes, including a renderer or storage failure that quotes the guests, leave no personal data in the logs', async () => {
+    const property = await t.prisma.property.findFirstOrThrow();
+    const stay = await t.prisma.booking.create({ data: { accountId: a.accountId, propertyId: property.id, checkIn: new Date('2025-10-04'), checkOut: new Date('2025-10-06'), source: 'DIRECT' } });
+    const link = await t.prisma.checkInLink.create({ data: { accountId: a.accountId, bookingId: stay.id, tokenHash: 'reg-log', expiresAt: new Date(Date.now() + DAY), createdBy: 'u', maxGuests: 1 } });
+    await t.prisma.guestCheckIn.create({
+      data: {
+        accountId: a.accountId, bookingId: stay.id, propertyId: property.id, linkId: link.id, guestIndex: 1, status: 'SUBMITTED', docType: 'PASSPORT', fullName: PII.name, nationality: 'FRA', docNumber: PII.docNumber,
+        dob: new Date(PII.dob), entryStampNumber: PII.stamp, cityOfOrigin: PII.city, nextDestination: PII.next, profession: PII.job, submittedAt: new Date(),
+      },
+    });
+    const base = `/api/properties/${property.id}/registers`;
+    const render = jest.spyOn(t.app.get(PdfRenderer), 'render').mockResolvedValue(Buffer.from('%PDF-1.4 stub'));
+
+    await a.as.OWNER_MANAGER.get(base).expect(200);
+    await a.as.OWNER_MANAGER.get(`${base}/2025-10/validation`).expect(200);
+    await a.as.OWNER_MANAGER.post(`${base}/2025-10`).expect(200);
+    await a.as.OWNER_MANAGER.get(`${base}/2025-10/pdf`).expect(200);
+    await a.as.STAFF.get(base).expect(200);
+    await a.as.STAFF.get(`${base}/2025-10/pdf`).expect(403);
+    await a.as.OWNER_MANAGER.get(`${base}/${PII.name}`).expect(404);
+    await a.as.OWNER_MANAGER.get(`${base}/${PII.docNumber}/pdf`).expect(400);
+
+    // The renderer and the store fail with messages that quote the guests: a 500, and only the type is logged.
+    render.mockRejectedValueOnce(new Error(`render failed for ${PII.name} ${PII.docNumber} ${PII.city}`));
+    expect((await a.as.OWNER_MANAGER.post(`${base}/2025-10`)).status).toBe(500);
+    jest.spyOn(t.app.get(StorageService), 'put').mockRejectedValueOnce(new Error(`write failed for ${PII.name} (${PII.docNumber}) ${PII.dob}`));
+    expect((await a.as.OWNER_MANAGER.post(`${base}/2025-10`)).status).toBe(500);
+
+    await expectClean();
+  });
 });

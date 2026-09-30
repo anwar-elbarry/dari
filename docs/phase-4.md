@@ -111,13 +111,25 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 |---|---|---|
 | 4.0 | Carry-overs that need code: retention rows for the Fiche and register, the production enablement check, the pilot manual-test list — **done** (see below) | fast |
 | 4.1 | Data model, migration, capabilities, RuleConfig rows, feature flags — **done** (see below) | fast |
-| 4.2 | **Register generator**: month query, validation report, versioned template, PDF, encrypted storage, regenerate, audit | strong |
+| 4.2 | **Register generator**: month query, validation report, versioned template, PDF, encrypted storage, regenerate, audit — **done** (see below) | strong |
 | 4.3 | **Secure Share API**: create, list, revoke, access log, the public route with fail-closed access recording | strong |
 | 4.4 | Web: registers, validation report, share dialog, shares list | fast |
 | 4.5 | Web: public viewer page | fast |
 | 4.6 | Hardening: abuse and logging tests for the public route, security review, phone e2e, docs, Phase 5 plan | strong |
 
 Steps 4.2 and 4.3 carry the risk.
+
+### Step 4.2 outcome
+- `src/register`: `register-month.ts` (UTC month bounds), `register-build.ts` (pure: rows, problems, summary, digest), `register-template.ts` (pure, `REGISTER_TEMPLATE_VERSION = 'draft-1'`, A4 landscape, escaped, "indicative layout", no compliance wording), `RegisterService`, `RegisterController` (behind `PoliceRegisterEnabledGuard`, `no-store`), `RegisterModule` (reuses the Fiche's `PdfRenderer`).
+- **Month rule as decided:** a stay is listed under the month of **arrival** (`checkIn` in the month, UTC), only confirmed `BOOKING` stays (cancelled, owner blocks and uncertain events are left out). A stay that leaves after the month appears once, marked † with a note on the page. One row per submitted guest, ordered by arrival then guest index. Drafts are never printed.
+- **Validation** (`NO_CHECKIN`, `PARTY_INCOMPLETE`, `DRAFT`, `MISSING_FIELD` with the field names, `UNVERIFIED`) is by booking and guest id; names and values never appear in it, in the audit rows or in the stored `validation` counts. A register with gaps is still generated (the manager may need it as is) but the PDF carries a line saying how many points were incomplete.
+- **Status per month:** `none`, `generated`, `outdated`. `PoliceRegister.inputDigest` (migration `20260930110000`) is a SHA-256 of everything printed and of the problem list, so any correction, new check-in or property edit turns a register `outdated`. Staff get the month and status only.
+- Routes: `GET /properties/:id/registers` (`booking:read`), `GET …/:month/validation`, `POST …/:month` (10 per minute), `GET …/:month/pdf` (60 per minute, audit `register.read` before any byte, fail closed). Malformed month 400 `INVALID_MONTH`; a month that has not started 422 `MONTH_NOT_STARTED`; more than 500 stays or 1500 guests 422 `REGISTER_TOO_LARGE`.
+- Regeneration replaces the row and shreds the previous PDF; parallel generation ends with one row and one live object.
+- **Retention:** the hourly job deletes a register (PDF and row) once `retention.police_register_days` is set *and validated*, counted from the last day of its month (`lastFullMonthBefore`). Otherwise registers are kept.
+- Found by the PDF test: dates and header words wrapped mid-word in the first layout; column widths and `nowrap` on dates fixed.
+- Tests added: unit (month, build, digest, template) and integration with a real Chromium (once-only listing across months, exclusions, validation, encryption and checksum, regeneration, parallel generation, outdated status, audit, fail-closed read, flag off), permission matrix and tenant isolation rows, retention (rule, boundaries, idempotence), and the log-redaction suite for the register routes including renderer and storage failures that quote the guests.
+- Left for 4.3: revoking Secure Share links that point at a purged Fiche or register (`ShareLink.resourceId` is validated there), and the share dialog entry points.
 
 ### Step 4.1 outcome
 - Migration `20260930100000`: `PoliceRegister` rebuilt (`accountId`, `pdfObjectId`, `templateVersion`, `sha256`, `guestCount`, `validation`, unique `(propertyId, month)`, composite keys to `Property` and `StoredObject`); `ShareAccess` added (composite key to `ShareLink`, no IP column); `ShareLink` gets `(id, accountId)` unique and an index on the polymorphic `(resourceType, resourceId)`; `StoredObjectKind.POLICE_REGISTER_PDF`. The old `PoliceRegister` table was never written, so it is cleared in the migration.

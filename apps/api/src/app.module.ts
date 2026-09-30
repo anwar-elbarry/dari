@@ -8,6 +8,7 @@ import { REDIS, RedisClient, RedisModule } from './redis/redis.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { RetentionModule } from './retention/retention.module';
 import { CheckInModule } from './checkin/checkin.module';
+import { RegisterModule } from './register/register.module';
 import { StorageModule } from './storage/storage.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthGuard } from './auth/auth.guard';
@@ -51,6 +52,7 @@ export class AppModule {
         AuditModule,
         StorageModule,
         CheckInModule,
+        RegisterModule,
         RetentionModule.register(resolved),
         AuthModule,
         InvitationsModule,

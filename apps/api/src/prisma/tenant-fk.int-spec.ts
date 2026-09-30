@@ -65,7 +65,7 @@ describe('composite tenant foreign keys (integration)', () => {
   describe('police registers and share links (Phase 4)', () => {
     const stored = (accountId: string) => t.prisma.storedObject.create({ data: { accountId, key: `k-${Math.random()}`, kind: 'POLICE_REGISTER_PDF', sizeBytes: 1, sha256: 'a'.repeat(64), wrappedKey: 'w' } });
     const register = (accountId: string, propertyId: string, pdfObjectId: string, month = '2026-10') =>
-      t.prisma.policeRegister.create({ data: { accountId, propertyId, month, pdfObjectId, templateVersion: 'draft-1', sha256: 'a'.repeat(64), guestCount: 0, validation: {}, generatedBy: 'u' } });
+      t.prisma.policeRegister.create({ data: { accountId, propertyId, month, pdfObjectId, templateVersion: 'draft-1', sha256: 'a'.repeat(64), inputDigest: 'd', guestCount: 0, validation: {}, generatedBy: 'u' } });
 
     it('refuses a register on a property or a PDF of another account, accepts its own', async () => {
       const propertyA = (await property(a, ownerA)).id;

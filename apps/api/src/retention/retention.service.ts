@@ -25,11 +25,19 @@ export interface PurgeResult {
   overdue: number;
 }
 
+/** The latest month (YYYY-MM) that had fully ended by `cutoff`, i.e. whose last day is on or before it. */
+export function lastFullMonthBefore(cutoff: Date): string {
+  const nextDay = new Date(cutoff.getTime() + DAY);
+  const endsToday = nextDay.getUTCDate() === 1; // the cutoff is the last day of its month
+  const d = new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth() - (endsToday ? 0 : 1), 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 const purgeAudit = (resourceType: string, resourceId: string): StorageAudit => ({ actorId: null, action: 'retention.purged', resourceType, resourceId });
 
 /**
  * Deletes what must not be kept: ID images after the retention window, abandoned drafts after a day, and any
- * object past its own purge date. Structured guest records are kept; Fiche PDFs are kept until counsel sets and validates a period. Every deletion is audited
+ * object past its own purge date. Structured guest records are kept; Fiche PDFs and registers are kept until counsel sets and validates a period. Every deletion is audited
  * (`retention.purged`, identifiers only). Safe to run at any time and as often as wanted: a second run finds
  * nothing to do. A failure on one object never stops the others; it is retried on the next run and reported.
  */
@@ -75,7 +83,7 @@ export class RetentionService {
       select: { docImageId: true, accountId: true },
       take: BATCH,
     });
-    // 5. Fiche PDFs past the rule, once counsel has set and validated a period (no period: kept). The register PDF joins in step 4.2.
+    // 5. Fiche PDFs past the rule, once counsel has set and validated a period (no period: kept).
     const fiche = (await this.rules.ficheRetention()).enforceable;
     const ficheDue =
       fiche === null
@@ -92,9 +100,26 @@ export class RetentionService {
 
     for (const [id, accountId] of targets) await this.remove(accountId, id, purgeAudit('StoredObject', id), result);
 
+    // 6. Monthly registers past the rule (counted from the last day of the month), once counsel has validated a period.
+    await this.purgeRegisters(now, result);
+
     result.overdue = await this.prisma.storedObject.count({ where: { deletedAt: null, expiresAt: { lte: new Date(now.getTime() - OVERDUE_AFTER_MS) } } });
     if (result.failed > 0 || result.overdue > 0) await this.alert(result);
     return result;
+  }
+
+  /** The register row goes with its PDF: a month without a file reads as "no register" and can be generated again. */
+  private async purgeRegisters(now: Date, result: PurgeResult) {
+    const days = (await this.rules.policeRegisterRetention()).enforceable;
+    if (days === null) return;
+    const due = await this.prisma.policeRegister.findMany({
+      where: { month: { lte: lastFullMonthBefore(new Date(now.getTime() - days * DAY)) }, pdf: { is: { deletedAt: null } } },
+      select: { id: true, accountId: true, pdfObjectId: true },
+      take: BATCH,
+    });
+    for (const r of due) {
+      if (await this.remove(r.accountId, r.pdfObjectId, purgeAudit('PoliceRegister', r.id), result)) await this.prisma.policeRegister.deleteMany({ where: { id: r.id } });
+    }
   }
 
   private async remove(accountId: string, objectId: string, audit: StorageAudit, result: PurgeResult): Promise<boolean> {

@@ -159,6 +159,44 @@ describe('retention (integration)', () => {
     });
   });
 
+  describe('police registers', () => {
+    async function register(month: string) {
+      const owner = await t.prisma.propertyOwner.create({ data: { accountId: a.accountId, name: 'Owner', residency: 'RESIDENT' } });
+      const property = await t.prisma.property.create({ data: { accountId: a.accountId, ownerId: owner.id, name: 'Riad', address: 'x', commune: 'Marrakech', licenseType: 'RIAD' } });
+      const pdf = await storage.put(a.accountId, 'POLICE_REGISTER_PDF', Buffer.from(`%PDF-1.4 stub ${Math.random()}`));
+      const row = await t.prisma.policeRegister.create({ data: { accountId: a.accountId, propertyId: property.id, month, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64), inputDigest: 'd', guestCount: 0, validation: {}, generatedBy: 'u' } });
+      return { row, pdfId: pdf.id };
+    }
+    const setRule = (value: object, validatedBy: string | null) =>
+      t.prisma.ruleConfig.upsert({ where: { key: 'retention.police_register_days' }, update: { value, validatedBy }, create: { key: 'retention.police_register_days', value, validatedBy } });
+
+    it.each([['no rule row', null, null], ['a null period', { days: null }, null], ['a period not validated', { days: 30 }, null]])('keeps every register with %s', async (_l, value, by) => {
+      const { pdfId } = await register('2020-01');
+      if (value) await setRule(value, by);
+      await retention.purge(new Date(Date.now() + 3650 * DAY));
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: pdfId } })).deletedAt).toBeNull();
+      expect(await t.prisma.policeRegister.count()).toBe(1);
+    });
+
+    it('deletes a register and its PDF once the validated period has passed since the END of its month, and only then', async () => {
+      await setRule({ days: 365 }, 'Counsel');
+      const now = new Date('2027-06-15T12:00:00Z'); // cutoff 2026-06-15: June 2026 has not ended, May 2026 has
+      const old = await register('2026-05');
+      const edge = await register('2026-06');
+      const recent = await register('2027-03');
+      const result = await retention.purge(now);
+      expect(result.failed).toBe(0);
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: old.pdfId } })).wrappedKey).toBe(''); // shredded
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: old.pdfId } })).deletedAt).not.toBeNull();
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: edge.pdfId } })).deletedAt).toBeNull();
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: recent.pdfId } })).deletedAt).toBeNull();
+      expect((await t.prisma.policeRegister.findMany()).map((r) => r.month).sort()).toEqual(['2026-06', '2027-03']);
+      const audit = await t.prisma.auditLog.findMany({ where: { action: 'retention.purged', resourceType: 'PoliceRegister' } });
+      expect(audit.map((r) => r.resourceId)).toEqual([old.row.id]);
+      expect(await retention.purge(now)).toMatchObject({ purged: 0, failed: 0 }); // idempotent
+    });
+  });
+
   describe('abandoned drafts', () => {
     it('removes a draft and its photo after a day, and keeps a fresh one', async () => {
       const old = await guest(a, { status: 'PENDING', createdHoursAgo: 25 });

@@ -499,6 +499,7 @@ model PoliceRegister {
   pdfObjectId     String
   templateVersion String
   sha256          String // of the PDF
+  inputDigest     String // digest of the data the PDF was built from: a different digest now means the register is outdated
   guestCount      Int
   validation      Json
   generatedBy     String // user id

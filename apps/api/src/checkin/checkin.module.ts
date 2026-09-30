@@ -33,6 +33,6 @@ import { PublicCheckInService, WINDOW_COUNTER } from './public.service';
     PublicCheckInService,
     GuestsService,
   ],
-  exports: [ConsentService, CheckInEnabledGuard],
+  exports: [ConsentService, CheckInEnabledGuard, PdfRenderer],
 })
 export class CheckInModule {}

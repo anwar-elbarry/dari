@@ -105,6 +105,12 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/guests/:id/fiche', url: (f) => `/api/guests/${f.guestId}/fiche`, expect: MANAGER_ONLY(200) },
   { method: 'POST', route: '/api/guests/:id/fiche/regenerate', url: (f) => `/api/guests/${f.guestId}/fiche/regenerate`, body: () => ({}), expect: MANAGER_ONLY(200) },
   { method: 'GET', route: '/api/guests/:id/document', url: (f) => `/api/guests/${f.guestId}/document`, expect: MANAGER_ONLY(200) },
+
+  // Monthly police register (Phase 4). Staff see which months exist; only Owner/Manager see validation, generate or open the PDF.
+  { method: 'GET', route: '/api/properties/:id/registers', url: (f) => `/api/properties/${f.propertyId}/registers`, expect: STAFF_READ },
+  { method: 'GET', route: '/api/properties/:id/registers/:month/validation', url: (f) => `/api/properties/${f.propertyId}/registers/2026-03/validation`, expect: MANAGER_ONLY(200) },
+  { method: 'POST', route: '/api/properties/:id/registers/:month', url: (f) => `/api/properties/${f.propertyId}/registers/2026-03`, body: () => ({}), expect: MANAGER_ONLY(200) },
+  { method: 'GET', route: '/api/properties/:id/registers/:month/pdf', url: (f) => `/api/properties/${f.propertyId}/registers/2026-03/pdf`, expect: MANAGER_ONLY(200) },
 ];
 
 describe('permission matrix (integration)', () => {
@@ -137,6 +143,8 @@ describe('permission matrix (integration)', () => {
     jest.spyOn(t.app.get(PdfRenderer), 'render').mockResolvedValue(Buffer.from('%PDF-1.4 stub'));
     const pdf = await t.app.get(StorageService).put(acc.accountId, 'FICHE_PDF', Buffer.from('%PDF-1.4 stub'));
     await t.prisma.ficheDePolice.create({ data: { accountId: acc.accountId, guestCheckInId: guest.id, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64) } });
+    const registerPdf = await t.app.get(StorageService).put(acc.accountId, 'POLICE_REGISTER_PDF', Buffer.from('%PDF-1.4 stub'));
+    await t.prisma.policeRegister.create({ data: { accountId: acc.accountId, propertyId: property.id, month: '2026-03', pdfObjectId: registerPdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64), inputDigest: 'd', guestCount: 0, validation: {}, generatedBy: acc.users.OWNER_MANAGER.id } });
     let n = 0;
     f = {
       stayId: stay.id,

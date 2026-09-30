@@ -66,6 +66,7 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Flags `POLICE_REGISTER_ENABLED` and `SECURE_SHARE_ENABLED` (own guards in `register/` and `share/`, 404 when off, off by default in production). Never branch on them elsewhere.
 - Capabilities `register:read`, `share:manage`: Owner/Manager only. Share lifetime bounds are `RuleConfig` rows `share.min_hours` / `share.max_hours`, read through `RulesService.shareLifetime()`; do not hard-code 24 or 72.
 - `ShareAccess` stores time and a trimmed user agent only, never an IP or a token. `ShareLink.resourceId` is polymorphic (no foreign key): the service must check it against the account.
+- Register (`src/register`): a stay is listed under its month of **arrival**; only confirmed `BOOKING` stays. `buildRegister()` is pure (rows, problems by id, summary counts, digest); the digest in `PoliceRegister.inputDigest` is how a register is known to be `outdated`. Validation output carries ids and field names, never values. The template is versioned (`REGISTER_TEMPLATE_VERSION`), escapes everything and never claims compliance (a test greps for it). PDF reads audit `register.read` first (fail closed). Routes are in the permission matrix and the tenant-isolation suite.
 - Fiche and register retention: `retention.fiche_days`, `retention.police_register_days`; a period counts only once counsel has validated it (`RecordRetentionRule.enforceable`). `npm run check:enablement -w apps/api` before enabling anything in production.
 
 ## Alerts (apps/api/src/alerts)
