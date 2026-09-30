@@ -60,6 +60,8 @@ export class PreferencesService {
   async setPhone(user: AuthUser, input: string | null, meta: ClientMeta) {
     let phone: string | null = null;
     if (input !== null) {
+      // No number is collected for a channel that cannot be used yet. Removing one is always possible.
+      if (!this.config.WHATSAPP_ENABLED) throw new UnprocessableEntityException({ code: 'WHATSAPP_UNAVAILABLE', message: 'WhatsApp is not available yet.' });
       phone = normalizePhone(input);
       if (!phone) throw new BadRequestException({ code: 'INVALID_PHONE', message: 'Enter the number with its country code, for example +212 6 12 34 56 78.' });
     }

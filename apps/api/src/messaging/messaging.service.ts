@@ -1,7 +1,9 @@
+import { createHmac } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { MessageStatus, MessageSubject } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { RulesService, WhatsAppTemplateKind } from '../compliance/rules.service';
+import { WindowCounter } from '../common/window-counter';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,6 +11,16 @@ import { inQuietHours, startOfLocalDay } from './quiet-hours';
 import { StatusReport } from './signature';
 import { OutgoingTemplate, WHATSAPP_PROVIDER, WhatsAppProvider, WhatsAppProviderError } from './whatsapp.provider';
 import { templateVariable } from './phone';
+
+export const MESSAGING_COUNTER = Symbol('MESSAGING_COUNTER');
+
+/**
+ * Most WhatsApp messages one number can be sent from Dari in a day, across every account. It stops Dari's number being
+ * used to message people who have nothing to do with the sender (an anti-abuse limit, not a legal parameter). The
+ * counter key is a keyed hash that expires with the window: the number itself is never stored.
+ */
+export const RECIPIENT_DAILY_LIMIT = 3;
+const DAY_MS = 86_400_000;
 
 export interface EmailFallback {
   to: string;
@@ -33,7 +45,7 @@ export interface SendInput {
 }
 
 /** Why WhatsApp was not used, when it was not. Nothing here is personal data. */
-export type Skipped = 'DISABLED' | 'NO_NUMBER' | 'NO_TEMPLATE' | 'QUIET_HOURS' | 'CAP_REACHED';
+export type Skipped = 'DISABLED' | 'NO_NUMBER' | 'NO_TEMPLATE' | 'QUIET_HOURS' | 'CAP_REACHED' | 'RECIPIENT_LIMIT';
 
 export interface SendResult {
   /** The channel that carried the message (or was last tried); null when nothing was sent. */
@@ -63,6 +75,7 @@ export class MessagingService {
     private readonly rules: RulesService,
     private readonly mail: MailService,
     @Inject(WHATSAPP_PROVIDER) private readonly provider: WhatsAppProvider,
+    @Inject(MESSAGING_COUNTER) private readonly counter: WindowCounter,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -110,7 +123,9 @@ export class MessagingService {
       where: { accountId: input.accountId, channel: 'WHATSAPP', status: { not: 'FAILED' }, createdAt: { gte: startOfLocalDay(now, quiet.timezone) } },
     });
     // A soft cap: two requests racing may pass together, by one message each at most.
-    return today >= cap.messages ? 'CAP_REACHED' : null;
+    if (today >= cap.messages) return 'CAP_REACHED';
+    const recipient = createHmac('sha256', this.config.JWT_ACCESS_SECRET).update(input.whatsappTo).digest('hex');
+    return (await this.counter.hit(`wa:${recipient}`, DAY_MS)) > RECIPIENT_DAILY_LIMIT ? 'RECIPIENT_LIMIT' : null;
   }
 
   private async sendEmail(input: SendInput, email: EmailFallback): Promise<SendResult> {

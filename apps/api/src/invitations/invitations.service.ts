@@ -23,6 +23,8 @@ const emailInUse = () => new ConflictException({ code: 'EMAIL_IN_USE', message: 
 
 /** Anti-abuse cap on how many times one invitation's link may be re-issued (operational, not a legal parameter). */
 export const MAX_INVITATION_RESENDS = 3;
+/** Invitations (new or re-sent) one account may e-mail in an hour: the mail goes out under Dari's sender domain, in the account's own words. */
+export const INVITATIONS_PER_HOUR = 20;
 
 @Injectable()
 export class InvitationsService {
@@ -41,7 +43,16 @@ export class InvitationsService {
    * parallel invitations cannot both take the last seat. The Accountant uses no seat.
    * Note: an email already registered in any account returns 409 (one user = one account).
    */
+  /** New invitations and re-sends both count: cancelling and inviting again does not reset the allowance. */
+  private async assertInvitationQuota(accountId: string) {
+    const recent = await this.prisma.invitation.aggregate({ where: { accountId, createdAt: { gt: new Date(Date.now() - 3_600_000) } }, _count: true, _sum: { resendCount: true } });
+    if (recent._count + (recent._sum.resendCount ?? 0) >= INVITATIONS_PER_HOUR) {
+      throw new HttpException({ code: 'INVITATION_QUOTA', message: 'Too many invitations sent in the last hour. Try again later.' }, HttpStatus.TOO_MANY_REQUESTS);
+    }
+  }
+
   async create(user: AuthUser, dto: CreateInvitationDto, meta: ClientMeta) {
+    await this.assertInvitationQuota(user.accountId);
     if (await this.prisma.user.findUnique({ where: { email: dto.email }, select: { id: true } })) throw emailInUse();
 
     const db = this.prisma.forAccount(user.accountId);
@@ -106,17 +117,18 @@ export class InvitationsService {
       select: { id: true, email: true, role: true, resendCount: true },
     });
     if (!inv) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Invitation not found.' });
-    if (inv.resendCount >= MAX_INVITATION_RESENDS) {
-      throw new HttpException({ code: 'RESEND_CAP_REACHED', message: 'This invitation has been re-sent too many times. Revoke it and invite again.' }, HttpStatus.TOO_MANY_REQUESTS);
-    }
+    await this.assertInvitationQuota(user.accountId);
+    const capReached = () => new HttpException({ code: 'RESEND_CAP_REACHED', message: 'This invitation has been re-sent too many times. Revoke it and invite again.' }, HttpStatus.TOO_MANY_REQUESTS);
+    if (inv.resendCount >= MAX_INVITATION_RESENDS) throw capReached();
 
     const raw = randomToken();
     const now = new Date();
     const updated = await db.invitation.updateMany({
-      where: { id, acceptedAt: null, revokedAt: null },
+      // The cap is part of the write, so parallel re-sends cannot each pass a stale read.
+      where: { id, acceptedAt: null, revokedAt: null, resendCount: { lt: MAX_INVITATION_RESENDS } },
       data: { tokenHash: hashToken(raw), expiresAt: new Date(now.getTime() + this.config.INVITATION_TTL_DAYS * 86_400_000), resentAt: now, resendCount: { increment: 1 } },
     });
-    if (updated.count === 0) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Invitation not found.' });
+    if (updated.count === 0) throw capReached();
 
     const account = await this.prisma.account.findUniqueOrThrow({ where: { id: user.accountId }, select: { companyName: true } });
     try {

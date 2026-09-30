@@ -112,7 +112,7 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 6.3 ✅ | Checklist API and template loading; document upload, audited read, shred, retention | fast |
 | 6.4 ✅ | **Messaging service**: provider interface, WhatsApp Cloud driver, e-mail fallback, templates from RuleConfig, quiet hours, caps, delivery log, signed webhook | strong |
 | 6.5 ✅ | Web: team, checklist, preferences, delivery status | fast |
-| 6.6 | Hardening: webhook abuse and logging suites, security review, e2e, docs, Phase 7 plan | strong |
+| 6.6 ✅ | Hardening: webhook abuse and logging suites, security review, e2e, docs, Phase 7 plan | strong |
 
 Steps 6.2 and 6.4 carry the risk.
 
@@ -175,6 +175,22 @@ Steps 6.2 and 6.4 carry the risk.
 - Client checks mirror the API (`lib/phone.ts`); the API decides. Strings live in `team.*`, `checklist.*`, `notifications.*`, `delivery.*` and the new `errors.*` codes. next-intl reads a dot in a key as nesting, so alert types are looked up as `alert_day_counter_red`.
 - **E2E** (`e2e/phase6.spec.ts`, phone viewport): seats and refusal of a Staff invitation on a full plan, the accountant taking no seat, resend and cancel; the checklist with a note, a deadline and a document that downloads back byte for byte, a refused file type, Staff seeing status only, the Accountant redirected; the WhatsApp choices and a link sent from Dari (number masked, manual button gone). `phase1.spec.ts` now follows the Starter plan (one seat: the owner invites the accountant; a Staff invitation is refused). The specs put back what they change (invitations, the WhatsApp rules). The checklist steps in the spec are invented and stay in the e2e database.
 - Running the whole suite locally, everything passed except the Phase 3 passport reading, which needs Tesseract (not installed in that container).
+
+### Step 6.6 as built: independent security review
+
+A read-only reviewer read every Phase 6 file (team, checklist, messaging, webhook, migrations) and traced each candidate through the code before reporting it. **No high finding; no cross-tenant access, capability gap, logging leak or webhook-authentication flaw.** One medium and six lows, all fixed with a regression test except one accepted limit:
+
+| # | Severity | Finding | Outcome |
+|---|---|---|---|
+| 1 | Medium | The WhatsApp sender could be used as a spam or phishing relay: any account could message any number, with its own property or company name as free text inside an approved template | Fixed. Names put in a template lose everything that makes a link, a domain or an address (`nameVariable`, 60 characters); one number can receive at most 3 messages a day from Dari across all accounts (`RECIPIENT_DAILY_LIMIT`, a keyed hash in a window counter that expires with the window: the number is not stored; Redis-backed in production). The per-account cap and the approved-template rule stay. Residual: account creation is open, so a determined abuser can still create accounts; watch Meta's quality rating in the pilot |
+| 2 | Low | A `null` role, flag or status passed validation (`@IsOptional` lets `null` through) and ended as a 500 | Fixed: absent is allowed, `null` is a 400 |
+| 3 | Low | Invitation e-mails had no route throttle or quota; the resend cap was a read-then-write that parallel requests could overshoot; cancel and re-invite reset it | Fixed: route throttle, 20 invitations an hour per account counting new invitations and re-sends (`INVITATION_QUOTA`), and the cap is part of the write |
+| 4 | Low | Inviting reveals whether an e-mail is registered in another account | **Accepted, as in Phase 1** (a taken e-mail returns 409; fixing it needs e-mail verification at signup, planned after the pilot). Now bounded by the throttle and the hourly quota |
+| 5 | Low | With two Owner/Manager users (none can be created from the app), each could disable the other at the same moment and leave no active owner | Fixed: the change is refused inside the locked transaction when no other active owner would remain (`LAST_MANAGER`) |
+| 6 | Low | The user's own settings routes were not behind the WhatsApp flag, contrary to the guard's comment | Decided and fixed the other way: they stay reachable (they carry the e-mail and dashboard choices too), but while WhatsApp is off they refuse a WhatsApp choice and refuse to store a number. The guard's comment says so |
+| 7 | Low | The licence-document and register purges took a fixed batch with no order, so rows that keep failing could hide the rows behind them | Fixed: paged sweep that skips past failures |
+
+Also checked and sound (from the review): tenant scoping and composite keys on every new table, sessions ending on disable and role change, the audit row before every document read, upload limits and download-only serving, the constant-time signature check and its raw-body handling, the CSRF exemption confined to one route by a test, fixed provider error codes, and no phone number, token, note or message body in logs, deliveries or audit rows.
 
 ### Decisions taken (2026-09-30)
 
@@ -246,3 +262,21 @@ Steps 6.2 and 6.4 carry the risk.
 4. ~~Seat limits per plan~~ decided (see above); still open: who changes a limit before billing exists, and the Enterprise figure.
 5. ~~Staff and the checklist~~ decided: status only.
 6. Is e-mail enough as the fallback, or is SMS wanted too?
+
+---
+
+## Outcome (Phase 6 closed: code complete, gates open)
+
+Steps 6.0 to 6.6 are done. CI runs the unit and integration suites (Postgres, Redis, Chromium) and the phone-viewport e2e, including `phase6.spec.ts`.
+
+**What was delivered**
+- **Team:** members, seats by plan from `RuleConfig` (Starter 1, Growth 3, Conciergerie 6; the accountant uses no seat), role changes, remove and restore access with sessions ended at once, invitation resend with a cap and an hourly quota; screens for all of it.
+- **Licensing checklist:** the loader and validator for counsel's list (nothing is written in code), per-property copies by city and licence type, status, deadline, note, encrypted documents (audited read, download only, provisional-then-adopt), retention once validated, Staff status only.
+- **Messaging:** WhatsApp Cloud API delivery with e-mail as the fallback for check-in links, day-counter alerts and Secure Share links; quiet hours, a daily cap and a per-number limit; per-user channel choices; delivery history; a signed, replay-safe webhook. The manual `wa.me` button remains until WhatsApp is ready.
+- **Ops:** the enablement check reports the WhatsApp, checklist and licence-retention gaps as warnings; the pilot checklist has a Phase 6 section.
+
+**Accepted and documented**
+- Everything in the review table (finding 4), plus: the daily WhatsApp cap is soft; a message Meta accepts and later fails to deliver does not trigger an e-mail; owners cannot be promoted, demoted or removed from the screen; licence-document retention counts from the upload; Enterprise has no seat figure and a new account starts at the column default (1).
+- The token in a check-in or share link goes to Meta once WhatsApp is on (in the message text). That is the channel, and the CNDP position on it is an open gate below.
+
+The open gates (Meta, templates, the CNDP position on Meta, the checklist and its validation, licence-document retention, Enterprise seats) are in the tracker above. Phase 7 ([`phase-7.md`](phase-7.md)) puts every phase's gates in one list with owners and dates.

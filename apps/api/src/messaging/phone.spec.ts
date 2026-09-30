@@ -1,4 +1,4 @@
-import { maskPhone, normalizePhone, templateVariable } from './phone';
+import { maskPhone, nameVariable, normalizePhone, templateVariable } from './phone';
 
 describe('normalizePhone', () => {
   it.each([
@@ -17,6 +17,19 @@ describe('maskPhone', () => {
   it('keeps the prefix and the last two digits', () => {
     expect(maskPhone('+212612345678')).toBe('+212•••••••78');
     expect(maskPhone('+212612345678')).not.toContain('6123456');
+  });
+});
+
+describe('nameVariable', () => {
+  it('keeps an ordinary name and strips what makes a link, a domain or an address', () => {
+    expect(nameVariable('Riad Yasmine')).toBe('Riad Yasmine');
+    expect(nameVariable('Dar Al-Andalus, Médina')).toBe('Dar Al-Andalus, Médina');
+    for (const hostile of ['Your account is blocked http://evil.example/login', 'pay at evil.example', 'write to a@evil.example', 'www.evil.example now']) {
+      const out = nameVariable(hostile);
+      expect(out).not.toMatch(/[:/@.]/);
+    }
+    expect(nameVariable('x'.repeat(200))).toHaveLength(60);
+    expect(nameVariable('...')).toBe('-');
   });
 });
 

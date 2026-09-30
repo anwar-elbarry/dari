@@ -34,6 +34,12 @@ export class StubWhatsAppProvider implements WhatsAppProvider {
     this.failures.push(code);
   }
 
+  /** For tests: forget failures that were queued but never used. */
+  reset() {
+    this.failures = [];
+    this.sent.length = 0;
+  }
+
   async send(message: OutgoingTemplate) {
     const failure = this.failures.shift();
     if (failure) throw new WhatsAppProviderError(failure);

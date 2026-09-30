@@ -38,6 +38,18 @@ Run `npm run check:enablement -w apps/api` with the **production** environment l
 - [ ] The Accountant account signs in, sees only "Estimations fiscales", opens a report, and cannot reach a property, a guest or the generate button
 - [ ] Fiduciaire has confirmed or replaced each default in `RuleConfig` (`validatedBy` filled): the watermark disappears on regeneration
 
+## 2c. Team, checklist and WhatsApp (Phase 6)
+
+- [ ] `npm run check:enablement` shows the `msg.*`, `checklist.validated` and `retention.license-docs` lines as OK, or the warnings are understood (they never block the guest feature)
+- [ ] Team: invite a real colleague on a phone; the e-mail arrives; accepting lands on the right screen; the seat bar moves; removing access ends their session at once
+- [ ] Starter (1 seat) refuses a Staff invitation with the plain message, and accepts the accountant
+- [ ] Checklist: counsel's list loaded with `npm run checklist:load` including `validatedBy` and `validatedAt`; the "not validated" notice is gone; a step ticked, a note and a deadline saved; a PDF and a photo attached and downloaded back; Staff see status only
+- [ ] Licence-document retention set by counsel and validated (`retention.license_documents_days`), or the documents are kept and the reason is written down
+- [ ] Meta: business verification done; templates approved; names entered in `whatsapp.templates`; `WHATSAPP_DRIVER=cloud` with its four secrets; webhook registered with the verify token; the edge passes the body through unchanged
+- [ ] Send a check-in link to your own phone from Dari: it arrives, the status moves to delivered and read on the arrivals screen; then switch the provider token off and check that an alert falls back to e-mail
+- [ ] Quiet hours: an early warning triggered at night waits (arrives by e-mail); a critical one reaches WhatsApp
+- [ ] CNDP position on Meta as a recipient of check-in links and phone numbers written down
+
 ## 3. Accepted limits to re-check with real data
 
 | Limit | Source | What to do in the pilot |
@@ -49,5 +61,5 @@ Run `npm run check:enablement -w apps/api` with the **production** environment l
 | OCR accuracy on real photos is unmeasured | `phase-3.md` | Log the share of fields guests correct, by hand, over the first 20 check-ins |
 | Real Moroccan CIN / CNIE cards may have no readable MRZ | `phase-3.md` | Test real cards with their owners' permission (never stored in the repository) |
 | Whether a Moroccan national needs an entry stamp | `phase-3.md` | Ask the prefecture; all four fields are required for everyone today |
-| WhatsApp sees the token when the manager taps "Send by WhatsApp" (`wa.me`) | `phase-3.md` | Counsel knows the channel; keep expiries short; the Business API removes it in Phase 6 |
+| WhatsApp sees the token when the manager taps "Send by WhatsApp" (`wa.me`) | `phase-3.md` | Only while WhatsApp is not ready in Dari; once the Business API is on, the link goes straight to Meta and the manual button is gone. Counsel knows the channel either way; keep expiries short |
 | Structured guest fields (name, document number) are kept after the ID image is purged | `retention.int-spec.ts` | Ask counsel whether they follow the Fiche retention too |

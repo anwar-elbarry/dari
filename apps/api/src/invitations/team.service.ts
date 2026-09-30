@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Role } from '@prisma/client';
 import { AuditService, AuditAction } from '../audit/audit.service';
 import { AuthUser, ClientMeta } from '../auth/auth.types';
@@ -97,6 +97,14 @@ export class TeamService {
       if (dto.disabled === true && !current.disabledAt) out.push('user.disabled');
       if (dto.disabled === false && current.disabledAt) out.push('user.enabled');
       if (out.length === 0) return out; // no effective change: no write, no audit
+
+      // An account never ends up with no active Owner/Manager. The caller cannot change their own row, but with two owners
+      // each can disable the other at the same moment: the lock above serialises them and this re-reads who is still active.
+      const wasActiveOwner = current.role === 'OWNER_MANAGER' && current.disabledAt === null;
+      if (wasActiveOwner && (newRole !== 'OWNER_MANAGER' || willDisabled)) {
+        const others = await tx.user.count({ where: { accountId: user.accountId, role: 'OWNER_MANAGER', disabledAt: null, id: { not: id } } });
+        if (others === 0) throw new ConflictException({ code: 'LAST_MANAGER', message: 'The last Owner/Manager cannot be disabled or changed.' });
+      }
 
       // Moving a member into a counted, active seat (re-enabling, or Accountant -> Staff) needs room.
       const wasCounted = current.disabledAt === null && counted(current.role);

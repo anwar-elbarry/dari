@@ -7,6 +7,7 @@ import { BookingsService, currentYear } from '../compliance/bookings.service';
 import { DayCounterRule, RulesService } from '../compliance/rules.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { MessagingService } from '../messaging/messaging.service';
+import { nameVariable } from '../messaging/phone';
 import { PrismaService } from '../prisma/prisma.service';
 
 export const ALERT_AMBER = 'day_counter.amber';
@@ -122,7 +123,7 @@ export class AlertsService implements OnModuleInit {
     });
     const subject = { type: 'ALERT' as const, id: notification?.id ?? propertyId };
     // A critical alert is urgent: it may go out by WhatsApp during quiet hours.
-    const base = { accountId, kind: 'day_counter_alert' as const, subject, variables: [propertyName, String(nights), red ? 'critique' : 'préventive'], urgent: red };
+    const base = { accountId, kind: 'day_counter_alert' as const, subject, variables: [nameVariable(propertyName), String(nights), red ? 'critique' : 'préventive'], urgent: red };
     const channels = new Set<string>();
     const run = async (input: Parameters<MessagingService['send']>[0]) => {
       try {

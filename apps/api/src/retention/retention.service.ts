@@ -122,14 +122,34 @@ export class RetentionService {
   private async purgeLicenseDocuments(now: Date, result: PurgeResult) {
     const days = (await this.rules.licenseDocumentRetention()).enforceable;
     if (days === null) return;
-    const due = await this.prisma.checklistItem.findMany({
-      where: { document: { is: { deletedAt: null, createdAt: { lte: new Date(now.getTime() - days * DAY) } } } },
-      select: { id: true, accountId: true, documentObjectId: true },
-      take: BATCH,
-    });
-    for (const item of due) {
-      if (!item.documentObjectId || !(await this.remove(item.accountId, item.documentObjectId, purgeAudit('ChecklistItem', item.id), result))) continue;
-      await this.prisma.checklistItem.updateMany({ where: { id: item.id, documentObjectId: item.documentObjectId }, data: { documentObjectId: null } });
+    await this.sweep(
+      (skip) =>
+        this.prisma.checklistItem.findMany({
+          where: { document: { is: { deletedAt: null, createdAt: { lte: new Date(now.getTime() - days * DAY) } } } },
+          select: { id: true, accountId: true, documentObjectId: true },
+          orderBy: { id: 'asc' },
+          take: BATCH,
+          skip,
+        }),
+      async (item) => {
+        if (!item.documentObjectId || !(await this.remove(item.accountId, item.documentObjectId, purgeAudit('ChecklistItem', item.id), result))) return false;
+        await this.prisma.checklistItem.updateMany({ where: { id: item.id, documentObjectId: item.documentObjectId }, data: { documentObjectId: null } });
+        return true;
+      },
+    );
+  }
+
+  /**
+   * Works through what is due a page at a time. A row that could not be purged stays in the result set, so the next
+   * page skips past it: rows that keep failing (a store outage) cannot hide the rows behind them.
+   */
+  private async sweep<T>(page: (skip: number) => Promise<T[]>, handle: (row: T) => Promise<boolean>) {
+    let skip = 0;
+    for (let i = 0; i < 5; i++) {
+      const rows = await page(skip);
+      if (rows.length === 0) return;
+      for (const row of rows) if (!(await handle(row))) skip += 1;
+      if (rows.length < BATCH) return;
     }
   }
 
@@ -137,16 +157,22 @@ export class RetentionService {
   private async purgeRegisters(now: Date, result: PurgeResult) {
     const days = (await this.rules.policeRegisterRetention()).enforceable;
     if (days === null) return;
-    const due = await this.prisma.policeRegister.findMany({
-      where: { month: { lte: lastFullMonthBefore(new Date(now.getTime() - days * DAY)) }, pdf: { is: { deletedAt: null } } },
-      select: { id: true, accountId: true, pdfObjectId: true },
-      take: BATCH,
-    });
-    for (const r of due) {
-      if (!(await this.remove(r.accountId, r.pdfObjectId, purgeAudit('PoliceRegister', r.id), result))) continue;
-      await this.revokeShares('POLICE_REGISTER', [r], now);
-      await this.prisma.policeRegister.deleteMany({ where: { id: r.id } });
-    }
+    await this.sweep(
+      (skip) =>
+        this.prisma.policeRegister.findMany({
+          where: { month: { lte: lastFullMonthBefore(new Date(now.getTime() - days * DAY)) }, pdf: { is: { deletedAt: null } } },
+          select: { id: true, accountId: true, pdfObjectId: true },
+          orderBy: { id: 'asc' },
+          take: BATCH,
+          skip,
+        }),
+      async (r) => {
+        if (!(await this.remove(r.accountId, r.pdfObjectId, purgeAudit('PoliceRegister', r.id), result))) return false;
+        await this.revokeShares('POLICE_REGISTER', [r], now);
+        await this.prisma.policeRegister.deleteMany({ where: { id: r.id } });
+        return true;
+      },
+    );
   }
 
   /** Revokes the live share links of purged records, each audited (`share.revoked`, no actor). */

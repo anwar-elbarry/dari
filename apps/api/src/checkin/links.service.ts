@@ -6,7 +6,7 @@ import { randomToken, hashToken } from '../auth/tokens';
 import { RulesService } from '../compliance/rules.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { MessagingService } from '../messaging/messaging.service';
-import { normalizePhone } from '../messaging/phone';
+import { nameVariable, normalizePhone } from '../messaging/phone';
 import { PrismaService } from '../prisma/prisma.service';
 
 const notFound = () => new NotFoundException({ code: 'NOT_FOUND', message: 'Not found.' });
@@ -101,7 +101,7 @@ export class LinksService {
   private async deliver(user: AuthUser, booking: { propertyId: string }, linkId: string, url: string, phone: string | null) {
     if (!phone) return null;
     const property = await this.prisma.forAccount(user.accountId).property.findFirst({ where: { id: booking.propertyId }, select: { name: true } });
-    const r = await this.messaging.send({ accountId: user.accountId, kind: 'checkin_link', subject: { type: 'CHECKIN_LINK', id: linkId }, whatsappTo: phone, variables: [property?.name ?? '-', url], actorId: user.id });
+    const r = await this.messaging.send({ accountId: user.accountId, kind: 'checkin_link', subject: { type: 'CHECKIN_LINK', id: linkId }, whatsappTo: phone, variables: [nameVariable(property?.name ?? '-'), url], actorId: user.id });
     return { channel: r.channel, status: r.status, skipped: r.skipped };
   }
 

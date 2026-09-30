@@ -7,7 +7,7 @@ import { WindowCounter } from '../common/window-counter';
 import { RulesService } from '../compliance/rules.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { MessagingService } from '../messaging/messaging.service';
-import { normalizePhone } from '../messaging/phone';
+import { nameVariable, normalizePhone } from '../messaging/phone';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterService } from '../register/register.service';
 import { StorageService } from '../storage/storage.service';
@@ -105,7 +105,7 @@ export class ShareService {
   private async deliver(user: AuthUser, linkId: string, url: string, phone: string | null) {
     if (!phone) return null;
     const account = await this.prisma.account.findUniqueOrThrow({ where: { id: user.accountId }, select: { companyName: true } });
-    const r = await this.messaging.send({ accountId: user.accountId, kind: 'share_link', subject: { type: 'SHARE_LINK', id: linkId }, whatsappTo: phone, variables: [account.companyName, url], actorId: user.id });
+    const r = await this.messaging.send({ accountId: user.accountId, kind: 'share_link', subject: { type: 'SHARE_LINK', id: linkId }, whatsappTo: phone, variables: [nameVariable(account.companyName), url], actorId: user.id });
     return { channel: r.channel, status: r.status, skipped: r.skipped };
   }
 

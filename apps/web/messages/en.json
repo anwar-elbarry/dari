@@ -47,7 +47,9 @@
     "DOCUMENT_INVALID": "This file is not accepted. Use a PDF or a photo.",
     "DOCUMENT_TOO_LARGE": "This file is too large (8 MB at most).",
     "FILE_REQUIRED": "Choose a file first.",
-    "DOCUMENT_CHANGED": "The document was changed at the same time. Try again."
+    "DOCUMENT_CHANGED": "The document was changed at the same time. Try again.",
+    "INVITATION_QUOTA": "Too many invitations were sent in the last hour. Try again later.",
+    "LAST_MANAGER": "The last owner or manager cannot be changed."
   },
   "auth": {
     "login": {
@@ -924,6 +926,7 @@
     "failure_PROVIDER_RATE_LIMITED": "WhatsApp is busy, try again later.",
     "failure_PROVIDER_REJECTED": "WhatsApp did not accept the message.",
     "failure_REPORTED_FAILED": "WhatsApp could not deliver it.",
-    "failure_MAIL_FAILED": "The email could not be sent."
+    "failure_MAIL_FAILED": "The email could not be sent.",
+    "skipped_RECIPIENT_LIMIT": "This number has already received several messages today: copy the link and send it yourself."
   }
 }

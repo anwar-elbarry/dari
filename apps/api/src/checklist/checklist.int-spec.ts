@@ -155,7 +155,7 @@ describe('licensing checklist (integration)', () => {
       expect(cleared.body).toMatchObject({ dueDate: null, note: null });
     });
 
-    it.each([[{}], [{ status: 'FINISHED' }], [{ dueDate: '2026-13-40' }], [{ dueDate: '2026-02-30' }], [{ dueDate: '01/12/2026' }], [{ note: 'x'.repeat(501) }], [{ accountId: 'x' }], [{ status: 'DONE', extra: 1 }]])('refuses %j', async (body) => {
+    it.each([[{}], [{ status: 'FINISHED' }], [{ dueDate: '2026-13-40' }], [{ dueDate: '2026-02-30' }], [{ dueDate: '01/12/2026' }], [{ note: 'x'.repeat(501) }], [{ accountId: 'x' }], [{ status: null }], [{ status: 'DONE', extra: 1 }]])('refuses %j', async (body) => {
       await a.as.OWNER_MANAGER.patch(`${url()}/${await itemId('test_all')}`, body).expect(400);
     });
 

@@ -19,6 +19,7 @@ export class InvitationsController {
   ) {}
 
   @Requires('team:manage')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateInvitationDto, @Req() req: Request) {
     return this.invitations.create(user, dto, clientMeta(req));
@@ -38,6 +39,7 @@ export class InvitationsController {
   }
 
   @Requires('team:manage')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post(':id/resend')
   @HttpCode(204)
   async resend(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {

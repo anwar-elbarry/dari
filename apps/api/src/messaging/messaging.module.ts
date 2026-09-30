@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { MemoryWindowCounter, RedisWindowCounter, WindowCounter } from '../common/window-counter';
 import { ComplianceModule } from '../compliance/compliance.module';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { MessagingController } from './messaging.controller';
-import { MessagingService } from './messaging.service';
+import { REDIS, RedisClient } from '../redis/redis.module';
+import { MESSAGING_COUNTER, MessagingService } from './messaging.service';
 import { PreferencesService } from './preferences.service';
 import { CloudWhatsAppProvider, StubWhatsAppProvider, WHATSAPP_PROVIDER, WhatsAppProvider } from './whatsapp.provider';
 import { WhatsAppEnabledGuard } from './whatsapp-enabled.guard';
@@ -16,6 +18,7 @@ import { WhatsAppWebhookController } from './whatsapp-webhook.controller';
     MessagingService,
     PreferencesService,
     WhatsAppEnabledGuard,
+    { provide: MESSAGING_COUNTER, inject: [REDIS], useFactory: (redis: RedisClient): WindowCounter => (redis ? new RedisWindowCounter(redis) : new MemoryWindowCounter()) },
     {
       provide: WHATSAPP_PROVIDER,
       inject: [APP_CONFIG],

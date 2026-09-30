@@ -1,5 +1,6 @@
 import { StorageService } from '../storage/storage.service';
 import { createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
+import { MESSAGING_COUNTER } from './messaging.service';
 import { StubWhatsAppProvider, WHATSAPP_PROVIDER } from './whatsapp.provider';
 
 requireDatabase();
@@ -29,8 +30,9 @@ describe('link delivery by WhatsApp (integration)', () => {
   });
   beforeEach(async () => {
     await resetDatabase(t.prisma, t.redis);
-    wa.sent.length = 0;
+    wa.reset();
     t.mail.sent.length = 0;
+    (t.app.get(MESSAGING_COUNTER) as unknown as { entries: Map<string, unknown> }).entries.clear(); // the per-number daily limit is tested on its own
     a = await seedAccount(t, 'Alpha');
     b = await seedAccount(t, 'Beta');
     await rule('whatsapp.templates', { checkin_link: { name: 'checkin_link_v1', language: 'fr' }, share_link: { name: 'share_link_v1', language: 'fr' } });
@@ -67,6 +69,14 @@ describe('link delivery by WhatsApp (integration)', () => {
     it('Staff can send it too', async () => {
       const res = await create({ whatsappTo: PHONE }, a.as.STAFF).expect(201);
       expect(res.body.delivery.status).toBe('SENT');
+    });
+
+    it('a property name written to look like a link or a message cannot carry one into the template', async () => {
+      await t.prisma.property.update({ where: { id: propertyId }, data: { name: 'Your account is blocked, open http://evil.example/login or write a@evil.example' } });
+      await create({ whatsappTo: PHONE }).expect(201);
+      const name = wa.sent[0]!.variables[0]!;
+      expect(name).not.toMatch(/[:/@.]/);
+      expect(name.length).toBeLessThanOrEqual(60);
     });
 
     it('a malformed number is refused before any link is made', async () => {

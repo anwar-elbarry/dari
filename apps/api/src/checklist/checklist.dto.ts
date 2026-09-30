@@ -6,7 +6,8 @@ const trimOrNull = ({ value }: { value: unknown }) => (typeof value === 'string'
 
 /** Every field is optional, `null` clears a due date or a note; at least one must be present (checked in the service). */
 export class UpdateChecklistItemDto {
-  @IsOptional()
+  // Absent is allowed, `null` is not.
+  @ValidateIf((_o, v) => v !== undefined)
   @IsEnum(ChecklistStatus)
   status?: ChecklistStatus;
 

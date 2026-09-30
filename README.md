@@ -19,8 +19,8 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-3.md`) — [`docs/phase-3.md`](docs/phase-3.md) |
 | 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-4.md`) — [`docs/phase-4.md`](docs/phase-4.md) |
 | 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | **Code done as a BETA (unvalidated default rates, watermarked exports) · fiduciaire validation open** (see outcome in `docs/phase-5.md`) — [`docs/phase-5.md`](docs/phase-5.md) |
-| 6 | Licensing checklist, team management, WhatsApp | Invites and seat limits work; WhatsApp message delivered | **In progress** (6.0 to 6.3 done: gates, model, team, checklist) — [`docs/phase-6.md`](docs/phase-6.md) |
-| 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | Not started |
+| 6 | Licensing checklist, team management, WhatsApp | Invites and seat limits work; WhatsApp message delivered | **Code done · gates open** (see outcome and gate tracker in `docs/phase-6.md`) — [`docs/phase-6.md`](docs/phase-6.md) |
+| 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | Planned — [`docs/phase-7.md`](docs/phase-7.md) |
 | 8 | Fast-follow | Driven by pilot feedback | Not started |
 
 The Tech Spec estimates ~12–14 weeks for 2–3 engineers. **This project is built solo with Claude**, so the plan below applies the solo adjustments in the next section. Realistic solo estimate: about 5–7 months full-time, longer part-time. Cut scope before cutting quality on anything touching ID data or tax.
@@ -161,6 +161,8 @@ Not code, but it decides when real customer data may be processed. Start in week
 **Exit:** a manager can run a full property onboarding without help.
 
 ## Phase 7 — Hardening and pilot
+
+**Detailed plan:** [`docs/phase-7.md`](docs/phase-7.md)
 
 *Solo: run a small pilot (3–5 customers, no real ID data until the CNDP filing is accepted) after Phase 3, then do the full hardening below before widening the launch.*
 

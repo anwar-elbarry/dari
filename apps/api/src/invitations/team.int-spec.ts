@@ -1,3 +1,5 @@
+import { TeamService } from './team.service';
+import { INVITATIONS_PER_HOUR, MAX_INVITATION_RESENDS } from './invitations.service';
 import { client, createTestApp, PASSWORD, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 
 requireDatabase();
@@ -148,6 +150,14 @@ describe('team management (integration)', () => {
       expect((await t.prisma.user.findUniqueOrThrow({ where: { id } })).role).toBe('STAFF');
     });
 
+    it('a null role or flag is refused, not sent to the database', async () => {
+      const id = a.users.STAFF.id;
+      await a.as.OWNER_MANAGER.patch(`/api/users/${id}`, { role: null }).expect(400);
+      await a.as.OWNER_MANAGER.patch(`/api/users/${id}`, { disabled: null }).expect(400);
+      await a.as.OWNER_MANAGER.patch(`/api/users/${id}`, { role: null, disabled: true }).expect(400);
+      expect((await t.prisma.user.findUniqueOrThrow({ where: { id } })).disabledAt).toBeNull();
+    });
+
     it('refuses to change your own row', async () => {
       const res = await a.as.OWNER_MANAGER.patch(`/api/users/${a.users.OWNER_MANAGER.id}`, { disabled: true }).expect(403);
       expect(res.body.error.code).toBe('CANNOT_MODIFY_SELF');
@@ -185,6 +195,20 @@ describe('team management (integration)', () => {
         disabled: false,
       }).expect(200);
       expect(await t.prisma.auditLog.count({ where: { action: 'user.enabled' } })).toBe(1);
+    });
+
+    it('moving the accountant to Staff needs a free seat; a disabled member can change role without one, and re-enabling then checks', async () => {
+      await setLimit(2); // owner + Staff: full
+      const blocked = await a.as.OWNER_MANAGER.patch(`/api/users/${a.users.ACCOUNTANT.id}`, { role: 'STAFF' }).expect(409);
+      expect(blocked.body.error.code).toBe('SEAT_LIMIT_REACHED');
+      expect((await t.prisma.user.findUniqueOrThrow({ where: { id: a.users.ACCOUNTANT.id } })).role).toBe('ACCOUNTANT');
+
+      await a.as.OWNER_MANAGER.patch(`/api/users/${a.users.ACCOUNTANT.id}`, { disabled: true }).expect(200);
+      await a.as.OWNER_MANAGER.patch(`/api/users/${a.users.ACCOUNTANT.id}`, { role: 'STAFF' }).expect(200); // disabled: no seat used
+      expect((await a.as.OWNER_MANAGER.get('/api/users').expect(200)).body.seats).toEqual({ used: 2, limit: 2 });
+      await a.as.OWNER_MANAGER.patch(`/api/users/${a.users.ACCOUNTANT.id}`, { disabled: false }).expect(409); // now a Staff seat is needed
+      await setLimit(3);
+      await a.as.OWNER_MANAGER.patch(`/api/users/${a.users.ACCOUNTANT.id}`, { disabled: false }).expect(200);
     });
 
     it('a no-op change writes nothing and no team audit row', async () => {
@@ -241,6 +265,43 @@ describe('team management (integration)', () => {
       await a.as.OWNER_MANAGER.patch(`/api/users/${a.users.OWNER_MANAGER.id}`, {
         disabled: true,
       }).expect(403);
+    });
+  });
+
+  describe('the last active owner, when two owners change each other at once', () => {
+    it('refuses the change that would leave no active Owner/Manager', async () => {
+      const second = await extraManager();
+      // The other owner has just been disabled by the first (the effect of the request that won the race) ...
+      await t.prisma.user.update({ where: { id: second.id }, data: { disabledAt: new Date() } });
+      // ... and the second owner's own request, authenticated a moment earlier, now arrives at the first.
+      const actor = { id: second.id, accountId: a.accountId, role: 'OWNER_MANAGER' as const };
+      await expect(t.app.get(TeamService).update(actor, a.users.OWNER_MANAGER.id, { disabled: true }, { ip: null, userAgent: null })).rejects.toMatchObject({ response: { code: 'LAST_MANAGER' } });
+      expect((await t.prisma.user.findUniqueOrThrow({ where: { id: a.users.OWNER_MANAGER.id } })).disabledAt).toBeNull();
+      await expect(t.app.get(TeamService).update(actor, a.users.OWNER_MANAGER.id, { role: 'STAFF' }, { ip: null, userAgent: null })).rejects.toMatchObject({ response: { code: 'LAST_MANAGER' } });
+    });
+  });
+
+  describe('invitation abuse limits', () => {
+    it('parallel re-sends cannot pass the cap', async () => {
+      await invite('cap@x.test', 'STAFF').expect(201);
+      const inv = await t.prisma.invitation.findFirstOrThrow({ where: { email: 'cap@x.test' } });
+      const results = await Promise.all(Array.from({ length: 8 }, () => a.as.OWNER_MANAGER.post(`/api/invitations/${inv.id}/resend`)));
+      expect(results.filter((r) => r.status === 204)).toHaveLength(MAX_INVITATION_RESENDS);
+      expect(results.filter((r) => r.status === 429).every((r) => ['RESEND_CAP_REACHED', 'TOO_MANY_REQUESTS'].includes(r.body.error.code))).toBe(true);
+      expect((await t.prisma.invitation.findUniqueOrThrow({ where: { id: inv.id } })).resendCount).toBe(MAX_INVITATION_RESENDS);
+    });
+
+    it('an account can e-mail only so many invitations an hour; cancelling and inviting again does not reset it', async () => {
+      await t.prisma.account.update({ where: { id: a.accountId }, data: { seatLimit: 100 } });
+      await t.prisma.invitation.createMany({
+        data: Array.from({ length: INVITATIONS_PER_HOUR }, (_, i) => ({ accountId: a.accountId, email: `bulk${i}@x.test`, role: 'ACCOUNTANT' as const, tokenHash: `bulk-${i}`, invitedBy: a.users.OWNER_MANAGER.id, expiresAt: new Date(Date.now() + 86_400_000), revokedAt: new Date() })),
+      });
+      const res = await invite('one-more@x.test', 'ACCOUNTANT').expect(429);
+      expect(res.body.error.code).toBe('INVITATION_QUOTA');
+      expect(t.mail.sent.filter((m) => m.to === 'one-more@x.test')).toHaveLength(0);
+      // an hour later it is free again
+      await t.prisma.invitation.updateMany({ where: { accountId: a.accountId }, data: { createdAt: new Date(Date.now() - 2 * 3_600_000) } });
+      await invite('one-more@x.test', 'ACCOUNTANT').expect(201);
     });
   });
 

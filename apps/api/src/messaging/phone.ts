@@ -19,6 +19,15 @@ export function maskPhone(phone: string): string {
   return `${phone.slice(0, 4)}${'•'.repeat(Math.max(phone.length - 6, 2))}${phone.slice(-2)}`;
 }
 
+/**
+ * A name typed by a customer (a property, a company) that goes into an approved template. It carries no link, no
+ * domain and no address: an account holder could otherwise dress a phishing text as a check-in message sent from
+ * Dari's own number. Separators that make a URL or an e-mail address are turned into spaces, and the length is short.
+ */
+export function nameVariable(value: string, max = 60): string {
+  return templateVariable(value.replace(/[:/\\@.<>[\]{}|]+/g, ' '), max);
+}
+
 /** WhatsApp templates take plain single-line text: no line breaks, tabs or runs of spaces (Meta rejects them). */
 export function templateVariable(value: string, max = 200): string {
   const v = value.replace(/\s+/g, ' ').trim();

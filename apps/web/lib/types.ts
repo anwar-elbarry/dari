@@ -103,7 +103,7 @@ export type DeliveryStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED'
 export interface DeliveryResult {
   channel: 'WHATSAPP' | 'EMAIL' | null;
   status: DeliveryStatus | null;
-  skipped: 'DISABLED' | 'NO_NUMBER' | 'NO_TEMPLATE' | 'QUIET_HOURS' | 'CAP_REACHED' | null;
+  skipped: 'DISABLED' | 'NO_NUMBER' | 'NO_TEMPLATE' | 'QUIET_HOURS' | 'CAP_REACHED' | 'RECIPIENT_LIMIT' | null;
 }
 
 export interface Delivery {

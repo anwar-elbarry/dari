@@ -1,6 +1,6 @@
 import { DAY_COUNTER_RULE_KEY } from '../compliance/rules.service';
 import { createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
-import { MessagingService } from './messaging.service';
+import { MESSAGING_COUNTER, MessagingService, RECIPIENT_DAILY_LIMIT } from './messaging.service';
 import { StubWhatsAppProvider, WHATSAPP_PROVIDER } from './whatsapp.provider';
 
 requireDatabase();
@@ -29,6 +29,8 @@ describe('messaging (integration)', () => {
   const email = { to: 'manager@alpha.test', subject: 'Subject', text: 'Body with https://x.test/checkin#token=SECRET-TOKEN' };
   const send = (over: object = {}, now = NOON) =>
     messaging.send({ accountId: a.accountId, kind: 'checkin_link', subject: { type: 'CHECKIN_LINK', id: 'link-1' }, whatsappTo: PHONE, variables: ['Riad Atlas', 'https://x.test/checkin#token=SECRET-TOKEN'], ...over }, now);
+  /** A different number per send: one number may only be messaged a few times a day. */
+  const num = (i: number) => `+2126110000${String(i).padStart(2, '0')}`;
   const rows = () => t.prisma.messageDelivery.findMany({ orderBy: { createdAt: 'asc' } });
 
   beforeAll(async () => {
@@ -42,7 +44,8 @@ describe('messaging (integration)', () => {
   beforeEach(async () => {
     await resetDatabase(t.prisma, t.redis);
     t.mail.sent.length = 0;
-    wa.sent.length = 0;
+    wa.reset();
+    (t.app.get(MESSAGING_COUNTER) as unknown as { entries: Map<string, unknown> }).entries.clear(); // the per-number daily limit is tested on its own
     a = await seedAccount(t, 'Alpha');
     b = await seedAccount(t, 'Beta');
     await templates();
@@ -70,9 +73,9 @@ describe('messaging (integration)', () => {
     });
 
     it('falls back to e-mail on every provider failure, and marks the WhatsApp attempt as fallen back', async () => {
-      for (const code of ['PROVIDER_UNREACHABLE', 'PROVIDER_AUTH', 'PROVIDER_RATE_LIMITED', 'PROVIDER_REJECTED'] as const) {
+      for (const [i, code] of (['PROVIDER_UNREACHABLE', 'PROVIDER_AUTH', 'PROVIDER_RATE_LIMITED', 'PROVIDER_REJECTED'] as const).entries()) {
         wa.failNext(code);
-        const r = await send({ email });
+        const r = await send({ email, whatsappTo: num(i) });
         expect(r).toMatchObject({ channel: 'EMAIL', status: 'SENT' });
       }
       expect(t.mail.sent).toHaveLength(4);
@@ -111,15 +114,25 @@ describe('messaging (integration)', () => {
     it('caps WhatsApp per account per day; failed sends do not count; e-mail is never capped; another account is separate; the next day resets', async () => {
       await rule('messaging.daily_cap', { messages: 2 });
       wa.failNext();
-      await send(); // fails: does not use the cap
-      await send();
-      await send();
-      const third = await send({ email });
+      await send({ whatsappTo: num(1) }); // fails: does not use the cap
+      await send({ whatsappTo: num(2) });
+      await send({ whatsappTo: num(3) });
+      const third = await send({ email, whatsappTo: num(4) });
       expect(third).toMatchObject({ channel: 'EMAIL', skipped: 'CAP_REACHED' });
       expect(wa.sent).toHaveLength(2);
       expect(await messaging.send({ accountId: b.accountId, kind: 'checkin_link', subject: { type: 'CHECKIN_LINK', id: 'x' }, whatsappTo: PHONE, variables: ['P', 'u'] }, NOON)).toMatchObject({ channel: 'WHATSAPP', status: 'SENT' });
       const tomorrow = new Date(Date.now() + 26 * 3_600_000);
-      expect(await send({}, tomorrow)).toMatchObject({ channel: 'WHATSAPP', status: 'SENT' });
+      expect(await send({ whatsappTo: num(5) }, tomorrow)).toMatchObject({ channel: 'WHATSAPP', status: 'SENT' });
+    });
+
+    it('lets one number receive only a few messages a day from Dari, whoever asks (anti-abuse), and stores no number', async () => {
+      for (let i = 0; i < RECIPIENT_DAILY_LIMIT; i++) expect(await send()).toMatchObject({ channel: 'WHATSAPP', status: 'SENT' });
+      expect(await send({ email })).toMatchObject({ channel: 'EMAIL', skipped: 'RECIPIENT_LIMIT' });
+      expect(await send()).toEqual({ channel: null, status: null, deliveryId: null, skipped: 'RECIPIENT_LIMIT' });
+      // another account asking for the same number is held too; another number is not
+      expect(await messaging.send({ accountId: b.accountId, kind: 'checkin_link', subject: { type: 'CHECKIN_LINK', id: 'x' }, whatsappTo: PHONE, variables: ['P', 'u'] }, NOON)).toMatchObject({ skipped: 'RECIPIENT_LIMIT' });
+      expect(await send({ whatsappTo: '+212611000000' })).toMatchObject({ channel: 'WHATSAPP', status: 'SENT' });
+      expect(JSON.stringify([await rows(), await t.prisma.auditLog.findMany()])).not.toMatch(/612345678|611000000/);
     });
 
     it('flattens template variables to single-line text', async () => {
@@ -159,6 +172,27 @@ describe('messaging (integration)', () => {
   });
 
   describe('notification preferences and the WhatsApp number', () => {
+    it('no number is collected while WhatsApp is off; removing one and the e-mail choices still work', async () => {
+      const off = await createTestApp({ env: { WHATSAPP_ENABLED: 'false' } });
+      try {
+        await resetDatabase(off.prisma, off.redis);
+        const acc = await seedAccount(off, 'Gamma');
+        const res = await acc.as.OWNER_MANAGER.put('/api/me/phone', { phone: PHONE }).expect(422);
+        expect(res.body.error.code).toBe('WHATSAPP_UNAVAILABLE');
+        expect((await off.prisma.user.findUniqueOrThrow({ where: { id: acc.users.OWNER_MANAGER.id } })).phone).toBeNull();
+        await acc.as.OWNER_MANAGER.put('/api/me/notification-preferences', { alertType: 'day_counter.red', channel: 'WHATSAPP' }).expect(422);
+        await acc.as.OWNER_MANAGER.put('/api/me/notification-preferences', { alertType: 'day_counter.red', channel: 'NONE' }).expect(200);
+        await acc.as.OWNER_MANAGER.put('/api/me/phone', { phone: null }).expect(200);
+      } finally {
+        await off.app.close();
+      }
+      await resetDatabase(t.prisma, t.redis);
+      a = await seedAccount(t, 'Alpha');
+      b = await seedAccount(t, 'Beta');
+      await templates();
+      await quiet('00:00', '00:00');
+    });
+
     it('default to e-mail; the number is never returned in full', async () => {
       const r = (await a.as.OWNER_MANAGER.get('/api/me/notification-preferences').expect(200)).body;
       expect(r).toEqual({ whatsapp: { enabled: true, ready: true, checkinLink: true, shareLink: true }, phone: null, preferences: [{ alertType: 'day_counter.amber', channel: 'EMAIL' }, { alertType: 'day_counter.red', channel: 'EMAIL' }] });

@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsOptional } from 'class-validator';
+import { IsBoolean, IsIn, ValidateIf } from 'class-validator';
 import { INVITABLE_ROLES, InvitableRole } from './dto';
 
 /**
@@ -7,11 +7,12 @@ import { INVITABLE_ROLES, InvitableRole } from './dto';
  * Owner/Manager to Staff or Accountant is allowed, except for the last one (guarded in the service).
  */
 export class UpdateMemberDto {
-  @IsOptional()
+  // Absent is allowed, `null` is not (IsOptional would let it through to the database).
+  @ValidateIf((_o, v) => v !== undefined)
   @IsIn(INVITABLE_ROLES)
   role?: InvitableRole;
 
-  @IsOptional()
+  @ValidateIf((_o, v) => v !== undefined)
   @IsBoolean()
   disabled?: boolean;
 }
