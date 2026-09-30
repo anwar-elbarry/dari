@@ -25,7 +25,13 @@ const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: CALENDAR_TZ, year: '
 
 /** Calendar date of an instant in the platform's timezone. Date-only values are taken as given. */
 export function toCalendarDate(d: Date, dateOnly: boolean): string {
-  return dateOnly ? d.toISOString().slice(0, 10) : dayFmt.format(d);
+  return dateOnly ? localDay(d) : dayFmt.format(d);
+}
+
+/** node-ical builds a date-only value at local midnight of the machine, so read it back with local getters (toISOString shifts it a day on machines east of UTC). */
+function localDay(d: Date): string {
+  const p = (n: number, w = 2) => String(n).padStart(w, '0');
+  return `${p(d.getFullYear(), 4)}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
 export function parseIcs(text: string): ParseResult {
