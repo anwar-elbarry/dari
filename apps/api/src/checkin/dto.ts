@@ -1,7 +1,7 @@
 import { applyDecorators } from '@nestjs/common';
 import { DocType } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { Equals, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, Min } from 'class-validator';
+import { Equals, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 
 const clean = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.normalize('NFC').replace(/\s+/g, ' ').trim() : value);
 const upper = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toUpperCase() : value);
@@ -29,6 +29,19 @@ export class CreateLinkDto {
   @Min(1)
   @Max(10)
   maxGuests?: number;
+
+  /** Send the link by WhatsApp to this number (E.164). Used for this one message and stored nowhere. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  whatsappTo?: string;
+}
+
+export class ResendLinkDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  whatsappTo?: string;
 }
 
 /**

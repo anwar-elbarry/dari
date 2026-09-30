@@ -70,6 +70,13 @@ async function main() {
       retention: { idImages: { validated: (await rules.idRetention()).validated }, fiche: await rules.ficheRetention(), register: await rules.policeRegisterRetention() },
       storageRoundTrip: config ? await storageRoundTrip(config) : null,
       tax: await taxStatus(new TaxRulesService(prisma as never)),
+      messaging: {
+        driverCloud: process.env.WHATSAPP_DRIVER === 'cloud',
+        webhookConfigured: !!process.env.WHATSAPP_APP_SECRET && !!process.env.WHATSAPP_VERIFY_TOKEN,
+        templatesApproved: Object.keys((await rules.whatsappTemplates()).templates).length,
+        checklistValidated: (await prisma.checklistTemplateStep.count()) > 0 && (await prisma.checklistTemplateStep.count({ where: { validatedBy: null } })) === 0,
+        licenseRetention: await rules.licenseDocumentRetention(),
+      },
       chromium: await chromiumStarts({ PDF_CHROMIUM_PATH: config?.PDF_CHROMIUM_PATH ?? process.env.PDF_CHROMIUM_PATH, PDF_NO_SANDBOX: config?.PDF_NO_SANDBOX ?? process.env.PDF_NO_SANDBOX === 'true' }),
     };
     const checks = evaluateEnablement(input);

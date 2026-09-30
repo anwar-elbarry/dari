@@ -1,10 +1,12 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CheckInLink } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser, ClientMeta } from '../auth/auth.types';
 import { randomToken, hashToken } from '../auth/tokens';
 import { RulesService } from '../compliance/rules.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
+import { MessagingService } from '../messaging/messaging.service';
+import { normalizePhone } from '../messaging/phone';
 import { PrismaService } from '../prisma/prisma.service';
 
 const notFound = () => new NotFoundException({ code: 'NOT_FOUND', message: 'Not found.' });
@@ -43,6 +45,7 @@ export class LinksService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly rules: RulesService,
+    private readonly messaging: MessagingService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -83,12 +86,39 @@ export class LinksService {
     return { link, token };
   }
 
-  async create(user: AuthUser, bookingId: string, maxGuests: number | undefined, meta: ClientMeta) {
+  /** A malformed number is refused before anything is issued. Null when none was given. */
+  private phoneOf(whatsappTo: string | undefined): string | null {
+    if (whatsappTo === undefined) return null;
+    const phone = normalizePhone(whatsappTo);
+    if (!phone) throw new BadRequestException({ code: 'INVALID_PHONE', message: 'Enter the number with its country code, for example +212 6 12 34 56 78.' });
+    return phone;
+  }
+
+  /**
+   * Sends the link by WhatsApp when a number was given. The link exists whatever happens here: if WhatsApp is off,
+   * not ready or fails, the caller still has the URL to copy (there is no guest e-mail to fall back to).
+   */
+  private async deliver(user: AuthUser, booking: { propertyId: string }, linkId: string, url: string, phone: string | null) {
+    if (!phone) return null;
+    const property = await this.prisma.forAccount(user.accountId).property.findFirst({ where: { id: booking.propertyId }, select: { name: true } });
+    const r = await this.messaging.send({ accountId: user.accountId, kind: 'checkin_link', subject: { type: 'CHECKIN_LINK', id: linkId }, whatsappTo: phone, variables: [property?.name ?? '-', url], actorId: user.id });
+    return { channel: r.channel, status: r.status, skipped: r.skipped };
+  }
+
+  async create(user: AuthUser, bookingId: string, maxGuests: number | undefined, whatsappTo: string | undefined, meta: ClientMeta) {
+    const phone = this.phoneOf(whatsappTo);
     const booking = await this.bookingFor(user, bookingId);
     const { link, token } = await this.issue(user, booking, maxGuests);
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'checkin.link.created', resourceType: 'CheckInLink', resourceId: link.id, ip: meta.ip });
     // The only time the token is ever returned.
-    return { ...linkView(link), token, url: this.urlFor(token) };
+    const url = this.urlFor(token);
+    return { ...linkView(link), token, url, delivery: await this.deliver(user, booking, link.id, url, phone) };
+  }
+
+  /** Delivery attempts for one link (WhatsApp, then the fallback if any), for the arrivals screen. */
+  async deliveries(user: AuthUser, linkId: string) {
+    if (!(await this.prisma.forAccount(user.accountId).checkInLink.findFirst({ where: { id: linkId }, select: { id: true } }))) throw notFound();
+    return this.messaging.deliveriesFor(user.accountId, 'CHECKIN_LINK', linkId);
   }
 
   async list(user: AuthUser, bookingId: string) {
@@ -108,7 +138,8 @@ export class LinksService {
   }
 
   /** A fresh token replaces the old one, which stops working at once. */
-  async resend(user: AuthUser, linkId: string, meta: ClientMeta) {
+  async resend(user: AuthUser, linkId: string, whatsappTo: string | undefined, meta: ClientMeta) {
+    const phone = this.phoneOf(whatsappTo);
     const db = this.prisma.forAccount(user.accountId);
     const old = await db.checkInLink.findFirst({ where: { id: linkId } });
     if (!old) throw notFound();
@@ -119,6 +150,7 @@ export class LinksService {
       await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'checkin.link.revoked', resourceType: 'CheckInLink', resourceId: old.id, ip: meta.ip });
     }
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'checkin.link.created', resourceType: 'CheckInLink', resourceId: link.id, ip: meta.ip });
-    return { ...linkView(link), token, url: this.urlFor(token) };
+    const url = this.urlFor(token);
+    return { ...linkView(link), token, url, delivery: await this.deliver(user, booking, link.id, url, phone) };
   }
 }

@@ -52,7 +52,8 @@ export type AuditAction =
   | 'user.enabled'
   | 'checklist.updated'
   | 'license_document.read'
-  | 'message.sent';
+  | 'message.sent'
+  | 'user.phone_changed';
 
 export interface AuditEntry {
   accountId: string;

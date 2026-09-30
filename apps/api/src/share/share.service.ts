@@ -1,4 +1,4 @@
-import { ConflictException, HttpException, HttpStatus, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ShareLink, ShareResourceType } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser, ClientMeta } from '../auth/auth.types';
@@ -6,6 +6,8 @@ import { hashToken, randomToken } from '../auth/tokens';
 import { WindowCounter } from '../common/window-counter';
 import { RulesService } from '../compliance/rules.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
+import { MessagingService } from '../messaging/messaging.service';
+import { normalizePhone } from '../messaging/phone';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterService } from '../register/register.service';
 import { StorageService } from '../storage/storage.service';
@@ -44,6 +46,7 @@ export class ShareService {
     private readonly audit: AuditService,
     private readonly rules: RulesService,
     private readonly registers: RegisterService,
+    private readonly messaging: MessagingService,
     @Inject(SHARE_COUNTER) private readonly counter: WindowCounter,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
@@ -79,6 +82,8 @@ export class ShareService {
     if (dto.expiresInHours < bounds.minHours || dto.expiresInHours > bounds.maxHours) {
       throw new UnprocessableEntityException({ code: 'EXPIRY_OUT_OF_BOUNDS', message: `The link must expire between ${bounds.minHours} and ${bounds.maxHours} hours from now.` });
     }
+    const phone = dto.whatsappTo === undefined ? null : normalizePhone(dto.whatsappTo);
+    if (dto.whatsappTo !== undefined && !phone) throw new BadRequestException({ code: 'INVALID_PHONE', message: 'Enter the number with its country code, for example +212 6 12 34 56 78.' });
     const resourceId = await this.resolveResource(user, dto);
     const token = randomToken(); // 256 bits
     const link = await this.prisma.forAccount(user.accountId).shareLink.create({
@@ -89,7 +94,19 @@ export class ShareService {
     });
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'share.created', resourceType: 'ShareLink', resourceId: link.id, ip: meta.ip });
     // The only time the token is ever returned.
-    return { ...(await this.views(user.accountId, [link]))[0], token, url: this.urlFor(token) };
+    const url = this.urlFor(token);
+    return { ...(await this.views(user.accountId, [link]))[0], token, url, delivery: await this.deliver(user, link.id, url, phone) };
+  }
+
+  /**
+   * Sends the link by WhatsApp when a number was given. The label the manager typed is a private reminder and is not
+   * put in the message. If WhatsApp is off, not ready or fails, the caller still has the URL to copy.
+   */
+  private async deliver(user: AuthUser, linkId: string, url: string, phone: string | null) {
+    if (!phone) return null;
+    const account = await this.prisma.account.findUniqueOrThrow({ where: { id: user.accountId }, select: { companyName: true } });
+    const r = await this.messaging.send({ accountId: user.accountId, kind: 'share_link', subject: { type: 'SHARE_LINK', id: linkId }, whatsappTo: phone, variables: [account.companyName, url], actorId: user.id });
+    return { channel: r.channel, status: r.status, skipped: r.skipped };
   }
 
   /** Never includes the token or its hash. The resource is described by ids only. */

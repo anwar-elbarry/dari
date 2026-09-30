@@ -52,7 +52,7 @@ export interface QuietHoursRule {
   validated: boolean;
 }
 export interface DailyCapRule {
-  /** Messages per account per day, all channels. */
+  /** WhatsApp messages per account per day (the paid, interruptive channel; e-mail is not capped). */
   messages: number;
   validated: boolean;
 }

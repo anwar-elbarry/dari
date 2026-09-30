@@ -97,6 +97,7 @@ export function client(app: INestApplication) {
   return {
     get: (url: string) => agent.get(url),
     post: (url: string, body?: object) => agent.post(url).set(CSRF_HEADER, CSRF_HEADER_VALUE).send(body ?? {}),
+    put: (url: string, body?: object) => agent.put(url).set(CSRF_HEADER, CSRF_HEADER_VALUE).send(body ?? {}),
     patch: (url: string, body?: object) => agent.patch(url).set(CSRF_HEADER, CSRF_HEADER_VALUE).send(body ?? {}),
     delete: (url: string) => agent.delete(url).set(CSRF_HEADER, CSRF_HEADER_VALUE),
     /** multipart/form-data with one file field named "file" and optional text fields. */

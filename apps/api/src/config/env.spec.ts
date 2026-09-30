@@ -112,8 +112,25 @@ describe('parseEnv', () => {
       expect(parseEnv({ ...base, WHATSAPP_ENABLED: 'false' }).WHATSAPP_ENABLED).toBe(false);
       expect(() => parseEnv({ ...base, WHATSAPP_ENABLED: 'yes' })).toThrow(/WHATSAPP_ENABLED/);
     });
+    const cloud = { WHATSAPP_DRIVER: 'cloud', WHATSAPP_PHONE_NUMBER_ID: '123456789', WHATSAPP_ACCESS_TOKEN: 't'.repeat(30), WHATSAPP_APP_SECRET: 's'.repeat(20), WHATSAPP_VERIFY_TOKEN: 'v'.repeat(20) };
     it('does not make the storage settings mandatory: it stores no file', () => {
-      expect(parseEnv({ ...prod, WHATSAPP_ENABLED: 'true' }).WHATSAPP_ENABLED).toBe(true);
+      expect(parseEnv({ ...prod, WHATSAPP_ENABLED: 'true', ...cloud }).WHATSAPP_ENABLED).toBe(true);
+    });
+    it('in production needs the cloud driver once on: the stub sends nothing', () => {
+      expect(() => parseEnv({ ...prod, WHATSAPP_ENABLED: 'true' })).toThrow(/WHATSAPP_DRIVER/);
+      expect(parseEnv({ ...prod, WHATSAPP_ENABLED: 'false' }).WHATSAPP_DRIVER).toBe('stub');
+    });
+    it('the cloud driver needs all four settings and never echoes a value', () => {
+      for (const key of ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'] as const) {
+        expect(() => parseEnv({ ...base, ...cloud, [key]: undefined })).toThrow(new RegExp(key));
+      }
+      expect(() => parseEnv({ ...base, ...cloud, WHATSAPP_APP_SECRET: 'short' })).toThrow(/WHATSAPP_APP_SECRET/);
+      expect(() => parseEnv({ ...base, ...cloud, WHATSAPP_API_VERSION: 'latest' })).toThrow(/WHATSAPP_API_VERSION/);
+      try {
+        parseEnv({ ...base, ...cloud, WHATSAPP_ACCESS_TOKEN: 'too-short' });
+      } catch (e) {
+        expect(String(e)).not.toContain('too-short');
+      }
     });
   });
 

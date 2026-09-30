@@ -1,5 +1,5 @@
 import { ShareResourceType } from '@prisma/client';
-import { IsEnum, IsInt, IsUUID, Matches, Max, Min, ValidateIf } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 import { Text } from '../checkin/dto';
 
 /**
@@ -31,4 +31,10 @@ export class CreateShareDto {
   /** Who the link is for, as a reminder to the manager. Never shown to the recipient. */
   @Text(2, 80)
   recipientLabel!: string;
+
+  /** Also send the link by WhatsApp to this number (E.164). Used for this one message and stored nowhere. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  whatsappTo?: string;
 }

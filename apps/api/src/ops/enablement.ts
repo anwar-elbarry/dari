@@ -20,6 +20,15 @@ export interface EnablementInput {
   chromium: boolean;
   /** Phase 5: the tax estimate's rules and the disclaimer wording (`TAX_REPORTS_ENABLED`). */
   tax: { disclaimersPresent: boolean; rulesValidated: boolean };
+  /** Phase 6: WhatsApp delivery (`WHATSAPP_ENABLED`) and the licensing checklist. None of it blocks the guest feature: e-mail and the on-screen link remain. */
+  messaging: {
+    driverCloud: boolean;
+    webhookConfigured: boolean;
+    /** Kinds with an approved template, out of the three the app sends. */
+    templatesApproved: number;
+    checklistValidated: boolean;
+    licenseRetention: RecordRetentionRule;
+  };
 }
 
 /** Steps that no code can verify. Printed every time, never counted as passed. */
@@ -33,6 +42,8 @@ export const MANUAL_STEPS: readonly Check[] = [
   { id: 'infra.edge', status: 'manual', message: 'Edge proxy overwrites X-Forwarded-For (docs/deployment.md); forged header checked against the audit log' },
   { id: 'infra.ocr-network', status: 'manual', message: 'Document worker not reachable from the internet' },
   { id: 'gate.runbook', status: 'manual', message: 'Incident runbook for a personal-data leak written' },
+  { id: 'gate.meta', status: 'manual', message: 'Meta WhatsApp Business verification done; message templates approved by Meta and their names entered in RuleConfig whatsapp.templates' },
+  { id: 'gate.meta-cndp', status: 'manual', message: 'CNDP position documented for Meta receiving guest phone numbers and check-in / share links; webhook registered in Meta\'s console with the verify token' },
   { id: 'gate.police-form', status: 'manual', message: 'Official police form obtained; Fiche layout compared with it (TEMPLATE_VERSION bumped if changed)' },
 ];
 
@@ -65,6 +76,11 @@ export function evaluateEnablement(i: EnablementInput): Check[] {
       : mark('storage.round-trip', i.storageRoundTrip, 'Storage: write, read and delete of a test object succeeded', 'Storage: the round trip of a test object failed (endpoint, bucket or credentials)'),
     mark('tax.disclaimer', i.tax.disclaimersPresent, 'Tax disclaimer wording present in RuleConfig (fr, en; beta and standard)', 'Tax disclaimer wording missing from RuleConfig: tax exports are refused'),
     mark('tax.rules', i.tax.rulesValidated, 'Tax rules validated by a fiduciaire', 'Tax rules are unvalidated defaults: every tax report and export is a BETA estimate with a watermark (accepted while the fiduciaire has not validated them)', 'warn'),
+    mark('msg.driver', i.messaging.driverCloud, 'WhatsApp driver is cloud', 'WhatsApp driver is not cloud: leave WHATSAPP_ENABLED off (e-mail and the on-screen link still work)', 'warn'),
+    mark('msg.webhook', i.messaging.webhookConfigured, 'WhatsApp webhook secret and verify token set', 'WhatsApp webhook secret or verify token missing: delivery reports would be refused', 'warn'),
+    mark('msg.templates', i.messaging.templatesApproved === 3, 'All three WhatsApp templates have an approved name', `${i.messaging.templatesApproved} of 3 WhatsApp templates have an approved name: the others go by e-mail`, 'warn'),
+    mark('checklist.validated', i.messaging.checklistValidated, 'Licensing checklist validated by counsel', 'Licensing checklist missing or not validated by counsel: the screen labels it as such', 'warn'),
+    retentionCheck('retention.license-docs', 'Licence document', i.messaging.licenseRetention, 'warn'),
     mark('pdf.chromium', i.chromium, 'Chromium starts: Fiche PDFs can be generated', 'Chromium does not start (install it, or set PDF_CHROMIUM_PATH): Fiche PDFs would be unavailable'),
   );
   return [...checks, ...MANUAL_STEPS];

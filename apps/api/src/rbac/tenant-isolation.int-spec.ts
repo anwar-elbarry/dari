@@ -55,6 +55,7 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'POST', route: '/api/bookings/:id/checkin-links', call: (c, a) => c.post(`/api/bookings/${a.stayId}/checkin-links`) },
   { method: 'GET', route: '/api/bookings/:id/checkin-links', call: (c, a) => c.get(`/api/bookings/${a.stayId}/checkin-links`) },
   { method: 'DELETE', route: '/api/checkin-links/:id', call: (c, a) => c.delete(`/api/checkin-links/${a.linkId}`) },
+  { method: 'GET', route: '/api/checkin-links/:id/deliveries', call: (c, a) => c.get(`/api/checkin-links/${a.linkId}/deliveries`) },
   { method: 'POST', route: '/api/checkin-links/:id/resend', call: (c, a) => c.post(`/api/checkin-links/${a.linkId}/resend`) },
   { method: 'GET', route: '/api/properties/:id/arrivals', call: (c, a) => c.get(`/api/properties/${a.propertyId}/arrivals`) },
   { method: 'GET', route: '/api/guests/:id', call: (c, a) => c.get(`/api/guests/${a.guestId}`) },

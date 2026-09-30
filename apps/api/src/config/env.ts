@@ -70,6 +70,18 @@ const envSchema = z
      */
     WHATSAPP_ENABLED: z.enum(['true', 'false']).optional(),
     /**
+     * `stub` records messages in memory and sends nothing (development and tests only: refused in production once
+     * WhatsApp is on). `cloud` is Meta's WhatsApp Cloud API. The secrets live in the secret store, never in the repo.
+     */
+    WHATSAPP_DRIVER: z.enum(['stub', 'cloud']).default('stub'),
+    WHATSAPP_PHONE_NUMBER_ID: z.string().min(5).optional(),
+    WHATSAPP_ACCESS_TOKEN: z.string().min(20).optional(),
+    /** Signs Meta's delivery reports (X-Hub-Signature-256). Without it the webhook answers 404. */
+    WHATSAPP_APP_SECRET: z.string().min(16).optional(),
+    /** Echoed back once, when the webhook is registered in Meta's console. */
+    WHATSAPP_VERIFY_TOKEN: z.string().min(16).optional(),
+    WHATSAPP_API_VERSION: z.string().regex(/^v\d{1,2}\.\d{1,2}$/).default('v21.0'),
+    /**
      * Private object storage for ID scans and Fiche PDFs (Phase 3). `memory` is dev/test only (refused in
      * production). Everything is encrypted by the application before it reaches the store, so the provider
      * only ever holds ciphertext; S3_SSE adds provider-side encryption on top.
@@ -129,6 +141,14 @@ const envSchema = z
       if (!env.STORAGE_MASTER_KEYS) ctx.addIssue({ code: 'custom', path: ['STORAGE_MASTER_KEYS'], message: 'required in production' });
       if (!env.S3_SSE) ctx.addIssue({ code: 'custom', path: ['S3_SSE'], message: 'server-side encryption must be enabled in production' });
       if (env.S3_ENDPOINT && !env.S3_ENDPOINT.startsWith('https://')) ctx.addIssue({ code: 'custom', path: ['S3_ENDPOINT'], message: 'must be https in production' });
+    }
+    if (env.WHATSAPP_DRIVER === 'cloud') {
+      for (const key of ['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'] as const) {
+        if (!env[key]) ctx.addIssue({ code: 'custom', path: [key], message: 'required with the cloud WhatsApp driver' });
+      }
+    }
+    if (env.NODE_ENV === 'production' && env.WHATSAPP_ENABLED === 'true' && env.WHATSAPP_DRIVER !== 'cloud') {
+      ctx.addIssue({ code: 'custom', path: ['WHATSAPP_DRIVER'], message: 'must be cloud in production when WhatsApp is enabled' });
     }
     if (env.MAIL_DRIVER === 'resend' && !env.MAIL_API_KEY) {
       ctx.addIssue({ code: 'custom', path: ['MAIL_API_KEY'], message: `required with the ${env.MAIL_DRIVER} mail driver` });

@@ -9,6 +9,9 @@ import { MemoryObjectStore } from '../storage/memory-object-store';
 import { OBJECT_STORE } from '../storage/object-store';
 import { StorageService } from '../storage/storage.service';
 import { seedTaxRules } from '../test/tax-fixtures';
+import { MessagingService } from '../messaging/messaging.service';
+import { sign } from '../messaging/signature';
+import { StubWhatsAppProvider, WHATSAPP_PROVIDER } from '../messaging/whatsapp.provider';
 import { createTestApp, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 import { mapWorkerResponse, OcrClient } from './ocr.client';
 import { PdfRenderer } from './pdf-renderer';
@@ -42,7 +45,7 @@ describe('no personal data in logs or audit rows (integration)', () => {
   let store: MemoryObjectStore;
 
   beforeAll(async () => {
-    t = await createTestApp({ logger: new RedactingLogger(), env: { OPS_ALERT_EMAIL: 'ops@dari.test' } });
+    t = await createTestApp({ logger: new RedactingLogger(), env: { OPS_ALERT_EMAIL: 'ops@dari.test', WHATSAPP_APP_SECRET: 'app-secret-for-logging-0123456789', WHATSAPP_VERIFY_TOKEN: 'verify-token-for-logging-0123456789' } });
     store = t.app.get<MemoryObjectStore>(OBJECT_STORE);
   });
   afterAll(async () => {
@@ -319,5 +322,45 @@ describe('no personal data in logs or audit rows (integration)', () => {
     expect(output).not.toContain(marker);
     expect(JSON.stringify(await t.prisma.auditLog.findMany())).not.toContain(marker);
     await expectClean([marker]);
+  });
+
+  it('WhatsApp delivery, including provider and network failures that quote the number, the link and the message, leaves no number, token or body in the logs, the deliveries or the audit trail', async () => {
+    const phone = '+212611223344';
+    const secret = 'app-secret-for-logging-0123456789';
+    await t.prisma.ruleConfig.upsert({ where: { key: 'whatsapp.templates' }, update: {}, create: { key: 'whatsapp.templates', value: { checkin_link: { name: 'checkin_link_v1', language: 'fr' }, day_counter_alert: { name: 'alert_v1', language: 'fr' } }, validatedBy: 'Founder' } });
+    await t.prisma.ruleConfig.upsert({ where: { key: 'messaging.quiet_hours' }, update: {}, create: { key: 'messaging.quiet_hours', value: { start: '00:00', end: '00:00', timezone: 'Africa/Casablanca' }, validatedBy: 'Founder' } });
+    const provider = t.app.get<StubWhatsAppProvider>(WHATSAPP_PROVIDER);
+    const link = `/api/bookings/${bookingId}/checkin-links`;
+
+    const ok = (await a.as.OWNER_MANAGER.post(link, { whatsappTo: phone }).expect(201)).body as { token: string; url: string; id: string };
+    await a.as.OWNER_MANAGER.post(link, { whatsappTo: `${PII.name} ${phone}` }).expect(400);
+    await a.as.OWNER_MANAGER.post(`/api/checkin-links/${ok.id}/resend`, { whatsappTo: '0611223344' }).expect(400);
+    await a.as.OWNER_MANAGER.get(`/api/checkin-links/${ok.id}/deliveries`).expect(200);
+    await a.as.OWNER_MANAGER.put('/api/me/phone', { phone }).expect(200);
+    await a.as.OWNER_MANAGER.put('/api/me/phone', { phone: `${PII.name} ${phone}` }).expect(400);
+    await a.as.OWNER_MANAGER.put('/api/me/notification-preferences', { alertType: 'day_counter.red', channel: 'WHATSAPP' }).expect(200);
+    await a.as.OWNER_MANAGER.get('/api/me/notification-preferences').expect(200);
+
+    // The provider fails with messages that quote the number, the link and the message text: only a fixed code is kept.
+    const quoting = `send to ${phone} failed: ${ok.url} body "${PII.name}" token ${ok.token}`;
+    jest.spyOn(provider, 'send').mockRejectedValueOnce(new Error(quoting));
+    expect((await a.as.OWNER_MANAGER.post(link, { whatsappTo: phone }).expect(201)).body.delivery.status).toBe('FAILED');
+    jest.spyOn(t.app.get(MessagingService), 'send').mockRejectedValueOnce(new Error(quoting));
+    expect((await a.as.OWNER_MANAGER.post(link, { whatsappTo: phone })).status).toBe(500);
+
+    // The webhook: unsigned, wrongly signed, and signed reports, with an inbound message full of personal data.
+    const body = JSON.stringify({ entry: [{ changes: [{ value: { statuses: [{ id: 'wamid.X', status: 'delivered', recipient_id: phone }], messages: [{ from: phone, text: { body: PII.name } }] } }] }] });
+    const hook = (sig?: string) => request(t.app.getHttpServer()).post('/api/webhooks/whatsapp').set('content-type', 'application/json').set('x-hub-signature-256', sig ?? '').send(body);
+    expect((await hook()).status).toBe(404);
+    expect((await hook(`sha256=${'1'.repeat(64)}`)).status).toBe(404);
+    expect((await hook(sign(Buffer.from(body), secret))).status).toBe(200);
+    expect((await request(t.app.getHttpServer()).get('/api/webhooks/whatsapp').query({ 'hub.mode': 'subscribe', 'hub.verify_token': 'wrong-verify-token-0123456789', 'hub.challenge': '1' })).status).toBe(404);
+
+    const everything = JSON.stringify([await t.prisma.messageDelivery.findMany(), await t.prisma.auditLog.findMany(), await t.prisma.checkInLink.findMany()]);
+    for (const value of [phone.slice(1), ok.token, 'token=', PII.name, 'wamid.X', secret]) {
+      expect({ value, inLogs: output.includes(value) }).toEqual({ value, inLogs: false });
+      expect({ value, inStored: everything.includes(value) }).toEqual({ value, inStored: false });
+    }
+    await expectClean([phone]);
   });
 });

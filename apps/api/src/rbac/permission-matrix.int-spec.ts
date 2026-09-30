@@ -38,7 +38,7 @@ export interface Fixtures {
 }
 
 interface Row {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   /** Send `csv` as an uploaded file instead of a JSON body. */
   csv?: string;
   /** Same, for a document upload. */
@@ -71,6 +71,11 @@ export const MATRIX: Row[] = [
   { method: 'POST', route: '/api/properties/:id/checklist/:itemId/document', url: async (f) => `/api/properties/${f.propertyId}/checklist/${await f.checklistItemId()}/document`, file: '%PDF-1.4\nsynthetic licence document\n%%EOF', expect: MANAGER_ONLY(200) },
   { method: 'GET', route: '/api/properties/:id/checklist/:itemId/document', url: async (f) => `/api/properties/${f.propertyId}/checklist/${await f.checklistItemId(true)}/document`, expect: MANAGER_ONLY(200) },
   { method: 'DELETE', route: '/api/properties/:id/checklist/:itemId/document', url: async (f) => `/api/properties/${f.propertyId}/checklist/${await f.checklistItemId(true)}/document`, expect: MANAGER_ONLY(204) },
+
+  // A user's own alert channels and WhatsApp number: any signed-in role, only ever the caller's own rows
+  { method: 'GET', route: '/api/me/notification-preferences', url: () => '/api/me/notification-preferences', expect: ALL_SIGNED_IN },
+  { method: 'PUT', route: '/api/me/notification-preferences', url: () => '/api/me/notification-preferences', body: () => ({ alertType: 'day_counter.red', channel: 'EMAIL' }), expect: ALL_SIGNED_IN },
+  { method: 'PUT', route: '/api/me/phone', url: () => '/api/me/phone', body: () => ({ phone: '+212612345678' }), expect: ALL_SIGNED_IN },
 
   // Team management (team:manage)
   { method: 'GET', route: '/api/users', url: () => '/api/users', expect: MANAGER_ONLY(200) },
@@ -121,6 +126,7 @@ export const MATRIX: Row[] = [
   { method: 'POST', route: '/api/bookings/:id/checkin-links', url: (f) => `/api/bookings/${f.stayId}/checkin-links`, body: () => ({}), expect: { ANON: 401, ACCOUNTANT: 403, STAFF: 201, OWNER_MANAGER: 201 } },
   { method: 'GET', route: '/api/bookings/:id/checkin-links', url: (f) => `/api/bookings/${f.stayId}/checkin-links`, expect: STAFF_READ },
   { method: 'DELETE', route: '/api/checkin-links/:id', url: async (f) => `/api/checkin-links/${await f.linkId()}`, expect: { ANON: 401, ACCOUNTANT: 403, STAFF: 204, OWNER_MANAGER: 204 } },
+  { method: 'GET', route: '/api/checkin-links/:id/deliveries', url: async (f) => `/api/checkin-links/${await f.linkId()}/deliveries`, expect: { ANON: 401, ACCOUNTANT: 403, STAFF: 200, OWNER_MANAGER: 200 } },
   { method: 'POST', route: '/api/checkin-links/:id/resend', url: async (f) => `/api/checkin-links/${await f.linkId()}/resend`, body: () => ({}), expect: { ANON: 401, ACCOUNTANT: 403, STAFF: 201, OWNER_MANAGER: 201 } },
   { method: 'GET', route: '/api/properties/:id/arrivals', url: (f) => `/api/properties/${f.propertyId}/arrivals`, expect: STAFF_READ },
   { method: 'GET', route: '/api/guests/:id', url: (f) => `/api/guests/${f.guestId}`, expect: STAFF_READ },
@@ -247,7 +253,7 @@ describe('permission matrix (integration)', () => {
         const body = row.body?.(f);
         const req = (row.csv ?? row.file)
           ? c.upload(url, (row.csv ?? row.file)!, {}, row.file ? 'document.pdf' : 'import.csv')
-          : row.method === 'GET' ? c.get(url) : row.method === 'POST' ? c.post(url, body) : row.method === 'PATCH' ? c.patch(url, body) : c.delete(url);
+          : row.method === 'GET' ? c.get(url) : row.method === 'POST' ? c.post(url, body) : row.method === 'PUT' ? c.put(url, body) : row.method === 'PATCH' ? c.patch(url, body) : c.delete(url);
         const res = await req;
         expect({ who, status: res.status }).toEqual({ who, status: row.expect[who] });
       }

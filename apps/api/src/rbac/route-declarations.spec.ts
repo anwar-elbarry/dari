@@ -12,4 +12,13 @@ describe('route access declarations', () => {
     const undeclared = routes.filter((r) => !r.isPublic && r.requires === undefined);
     expect(undeclared.map((r) => `${r.method} ${r.path} (${r.controller}.${r.handler})`)).toEqual([]);
   });
+
+  it('@SkipCsrf() is on nothing but the signed WhatsApp delivery webhook, and only on a public route', async () => {
+    const { app } = await createTestApp({ extra: [DiscoveryModule] });
+    const skipping = listRoutes(app).filter((r) => r.skipsCsrf);
+    await app.close();
+
+    expect(skipping.map((r) => `${r.method} ${r.path}`)).toEqual(['POST /api/webhooks/whatsapp']);
+    expect(skipping.every((r) => r.isPublic)).toBe(true);
+  });
 });

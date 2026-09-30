@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MemoryWindowCounter, RedisWindowCounter, WindowCounter } from '../common/window-counter';
 import { ComplianceModule } from '../compliance/compliance.module';
+import { MessagingModule } from '../messaging/messaging.module';
 import { REDIS, RedisClient } from '../redis/redis.module';
 import { CheckInEnabledGuard } from './checkin-enabled.guard';
 import { ConsentService } from './consent.service';
@@ -16,7 +17,7 @@ import { PublicCheckInService, WINDOW_COUNTER } from './public.service';
 
 /** Guest check-in (Phase 3): links, the public guest flow, and the team's guest views. Fiche PDF arrives in 3.5. */
 @Module({
-  imports: [ComplianceModule],
+  imports: [ComplianceModule, MessagingModule],
   controllers: [LinksController, PublicCheckInController, GuestsController],
   providers: [
     {

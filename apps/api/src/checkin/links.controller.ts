@@ -5,7 +5,7 @@ import { AuthUser, clientMeta } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators';
 import { Requires } from '../rbac/requires.decorator';
 import { CheckInEnabledGuard } from './checkin-enabled.guard';
-import { CreateLinkDto } from './dto';
+import { CreateLinkDto, ResendLinkDto } from './dto';
 import { LinksService } from './links.service';
 import { NoStore } from './no-store.decorator';
 
@@ -20,7 +20,7 @@ export class LinksController {
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('bookings/:id/checkin-links')
   create(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) bookingId: string, @Body() dto: CreateLinkDto, @Req() req: Request) {
-    return this.links.create(user, bookingId, dto.maxGuests, clientMeta(req));
+    return this.links.create(user, bookingId, dto.maxGuests, dto.whatsappTo, clientMeta(req));
   }
 
   @Requires('checkin:manage')
@@ -39,7 +39,14 @@ export class LinksController {
   @Requires('checkin:manage')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('checkin-links/:id/resend')
-  resend(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
-    return this.links.resend(user, id, clientMeta(req));
+  resend(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ResendLinkDto, @Req() req: Request) {
+    return this.links.resend(user, id, dto.whatsappTo, clientMeta(req));
+  }
+
+  /** How a link was delivered: channel, status, a fixed failure code. Never the number, the message or the link. */
+  @Requires('checkin:manage')
+  @Get('checkin-links/:id/deliveries')
+  deliveries(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.links.deliveries(user, id);
   }
 }

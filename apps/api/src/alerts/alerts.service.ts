@@ -6,7 +6,7 @@ import { PropertyEvents } from '../common/property-events';
 import { BookingsService, currentYear } from '../compliance/bookings.service';
 import { DayCounterRule, RulesService } from '../compliance/rules.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
-import { MailService } from '../mail/mail.service';
+import { MessagingService } from '../messaging/messaging.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export const ALERT_AMBER = 'day_counter.amber';
@@ -27,7 +27,7 @@ export class AlertsService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly bookings: BookingsService,
     private readonly rules: RulesService,
-    private readonly mail: MailService,
+    private readonly messaging: MessagingService,
     private readonly audit: AuditService,
     private readonly events: PropertyEvents,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
@@ -102,30 +102,48 @@ export class AlertsService implements OnModuleInit {
   }
 
   private async notify(accountId: string, propertyId: string, propertyName: string, type: string, nights: number, rule: DayCounterRule, year: number) {
-    const managers = await this.prisma.user.findMany({ where: { accountId, role: 'OWNER_MANAGER', disabledAt: null }, select: { email: true } });
+    const managers = await this.prisma.user.findMany({ where: { accountId, role: 'OWNER_MANAGER', disabledAt: null }, select: { id: true, email: true, phone: true } });
+    const prefs = await this.prisma.notificationPreference.findMany({ where: { accountId, alertType: type, userId: { in: managers.map((m) => m.id) } }, select: { userId: true, channel: true } });
+    const choice = new Map(prefs.map((p) => [p.userId, p.channel]));
+    const notification = await this.prisma.notification.findFirst({ where: { accountId, propertyId, type, year }, select: { id: true } });
     const red = type === ALERT_RED;
     const link = `${this.config.APP_URL}/properties`;
     const notice = rule.validated ? '' : '\n\nLes seuils sont ceux de vos règles ; ils n\'ont pas encore été confirmés par un professionnel. / The thresholds come from your rules and have not yet been confirmed by a professional.';
-    let sent = 0;
+    const emailFor = (to: string) => ({
+      to,
+      subject: red ? `Alerte critique — ${propertyName} (${nights} nuits) / Critical alert` : `Alerte préventive — ${propertyName} (${nights} nuits) / Early warning`,
+      text:
+        `${propertyName} : ${nights} nuits comptées en ${year}. Seuil ${red ? 'critique' : 'préventif'} atteint.\n` +
+        `Vérifiez le détail des nuits et les événements à confirmer : ${link}\n\n` +
+        `${propertyName}: ${nights} nights counted in ${year}. ${red ? 'Critical' : 'Early-warning'} threshold reached.\n` +
+        `Check the nights and any events waiting for review: ${link}` +
+        notice +
+        `\n\nCe message est une aide à la décision, pas un avis juridique. / This message is decision support, not legal advice.`,
+    });
+    const subject = { type: 'ALERT' as const, id: notification?.id ?? propertyId };
+    // A critical alert is urgent: it may go out by WhatsApp during quiet hours.
+    const base = { accountId, kind: 'day_counter_alert' as const, subject, variables: [propertyName, String(nights), red ? 'critique' : 'préventive'], urgent: red };
+    const channels = new Set<string>();
+    const run = async (input: Parameters<MessagingService['send']>[0]) => {
+      try {
+        const r = await this.messaging.send(input);
+        if (r.channel && (r.status === 'SENT' || r.status === 'DELIVERED' || r.status === 'READ')) channels.add(r.channel === 'WHATSAPP' ? 'whatsapp' : 'email');
+      } catch (e) {
+        // Type only: an error from a provider can quote the number or the message.
+        this.logger.error(`alert delivery failed (${e instanceof Error ? e.name : 'error'})`);
+      }
+    };
     for (const m of managers) {
-      await this.mail
-        .send({
-          to: m.email,
-          subject: red ? `Alerte critique — ${propertyName} (${nights} nuits) / Critical alert` : `Alerte préventive — ${propertyName} (${nights} nuits) / Early warning`,
-          text:
-            `${propertyName} : ${nights} nuits comptées en ${year}. Seuil ${red ? 'critique' : 'préventif'} atteint.\n` +
-            `Vérifiez le détail des nuits et les événements à confirmer : ${link}\n\n` +
-            `${propertyName}: ${nights} nights counted in ${year}. ${red ? 'Critical' : 'Early-warning'} threshold reached.\n` +
-            `Check the nights and any events waiting for review: ${link}` +
-            notice +
-            `\n\nCe message est une aide à la décision, pas un avis juridique. / This message is decision support, not legal advice.`,
-        })
-        .then(() => {
-          sent++;
-        })
-        .catch((e: unknown) => this.logger.error(`alert mail failed: ${e instanceof Error ? e.message : String(e)}`));
+      const pick = choice.get(m.id) ?? 'EMAIL';
+      if (pick === 'NONE') continue;
+      if (pick === 'EMAIL') await run({ ...base, email: emailFor(m.email) });
+      else if (pick === 'WHATSAPP') await run({ ...base, whatsappTo: m.phone, email: emailFor(m.email) });
+      else {
+        await run({ ...base, whatsappTo: m.phone });
+        await run({ ...base, email: emailFor(m.email) });
+      }
     }
-    // Recorded as emailed only if a message really went out, and only for this property's alerts.
-    if (sent > 0) await this.prisma.notification.updateMany({ where: { accountId, propertyId, year, type: { in: [ALERT_AMBER, ALERT_RED] }, sentVia: { equals: ['dashboard'] } }, data: { sentVia: ['dashboard', 'email'] } });
+    // Recorded only for the channels that really carried a message, and only for this property's alerts.
+    if (channels.size > 0) await this.prisma.notification.updateMany({ where: { accountId, propertyId, year, type: { in: [ALERT_AMBER, ALERT_RED] }, sentVia: { equals: ['dashboard'] } }, data: { sentVia: ['dashboard', ...[...channels].sort()] } });
   }
 }

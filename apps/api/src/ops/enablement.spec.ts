@@ -11,6 +11,7 @@ const ready: EnablementInput = {
   storageRoundTrip: true,
   chromium: true,
   tax: { disclaimersPresent: true, rulesValidated: true },
+  messaging: { driverCloud: true, webhookConfigured: true, templatesApproved: 3, checklistValidated: true, licenseRetention: { days: 1825, validated: true, enforceable: 1825 } },
 };
 const statusOf = (i: EnablementInput, id: string) => evaluateEnablement(i).find((c) => c.id === id)?.status;
 
@@ -39,6 +40,14 @@ describe('evaluateEnablement', () => {
     const checks = evaluateEnablement({ ...ready, ...change });
     expect(checks.find((c) => c.id === id)?.status).toBe('fail');
     expect(summarize(checks).blocked).toBe(true);
+  });
+
+  it('the WhatsApp and checklist gaps only warn: they never block the guest feature', () => {
+    const gaps = { driverCloud: false, webhookConfigured: false, templatesApproved: 1, checklistValidated: false, licenseRetention: unset };
+    const checks = evaluateEnablement({ ...ready, messaging: gaps });
+    expect(checks.filter((c) => ['msg.driver', 'msg.webhook', 'msg.templates', 'checklist.validated', 'retention.license-docs'].includes(c.id)).map((c) => c.status)).toEqual(['warn', 'warn', 'warn', 'warn', 'warn']);
+    expect(checks.find((c) => c.id === 'msg.templates')?.message).toContain('1 of 3');
+    expect(summarize(checks).blocked).toBe(false);
   });
 
   it('only warns while the tax rules are unvalidated defaults (beta exports)', () => {

@@ -2,6 +2,7 @@ import { INestApplication, RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import { IS_PUBLIC } from '../auth/decorators';
+import { SKIP_CSRF } from '../common/csrf.guard';
 import { REQUIRES } from '../rbac/requires.decorator';
 
 export interface RouteInfo {
@@ -10,6 +11,7 @@ export interface RouteInfo {
   controller: string;
   handler: string;
   isPublic: boolean;
+  skipsCsrf: boolean;
   requires: string[] | undefined;
 }
 
@@ -40,6 +42,7 @@ export function listRoutes(app: INestApplication): RouteInfo[] {
         controller: metatype.name,
         handler: name,
         isPublic: !!reflector.getAllAndOverride<boolean>(IS_PUBLIC, targets),
+        skipsCsrf: !!reflector.getAllAndOverride<boolean>(SKIP_CSRF, targets),
         requires: reflector.getAllAndOverride<string[] | undefined>(REQUIRES, targets),
       });
     }
