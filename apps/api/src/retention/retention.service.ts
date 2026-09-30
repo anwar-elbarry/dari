@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { AuditService } from '../audit/audit.service';
 import { MailService } from '../mail/mail.service';
 import { RulesService } from '../compliance/rules.service';
 import { APP_CONFIG, AppConfig } from '../config/env';
@@ -50,6 +51,7 @@ export class RetentionService {
     private readonly storage: StorageService,
     private readonly rules: RulesService,
     private readonly mail: MailService,
+    private readonly audit: AuditService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -90,7 +92,7 @@ export class RetentionService {
         ? []
         : await this.prisma.ficheDePolice.findMany({
             where: { pdf: { is: { deletedAt: null } }, guestCheckIn: { is: { booking: { checkOut: { lte: new Date(now.getTime() - fiche * DAY) } } } } },
-            select: { pdfObjectId: true, accountId: true },
+            select: { id: true, pdfObjectId: true, accountId: true },
             take: BATCH,
           });
     const targets = new Map<string, string>();
@@ -99,6 +101,11 @@ export class RetentionService {
     for (const g of byRule) if (g.docImageId) targets.set(g.docImageId, g.accountId);
 
     for (const [id, accountId] of targets) await this.remove(accountId, id, purgeAudit('StoredObject', id), result);
+
+    // 5b. A share link must not outlive its file: revoke the links that pointed at a purged Fiche.
+    const purgedFiches = ficheDue.filter((f) => targets.has(f.pdfObjectId)).map((f) => ({ accountId: f.accountId, id: f.id }));
+    const deletedFiches = await this.prisma.ficheDePolice.findMany({ where: { id: { in: purgedFiches.map((f) => f.id) }, pdf: { is: { deletedAt: { not: null } } } }, select: { id: true, accountId: true } });
+    await this.revokeShares('FICHE_DE_POLICE', deletedFiches, now);
 
     // 6. Monthly registers past the rule (counted from the last day of the month), once counsel has validated a period.
     await this.purgeRegisters(now, result);
@@ -118,7 +125,19 @@ export class RetentionService {
       take: BATCH,
     });
     for (const r of due) {
-      if (await this.remove(r.accountId, r.pdfObjectId, purgeAudit('PoliceRegister', r.id), result)) await this.prisma.policeRegister.deleteMany({ where: { id: r.id } });
+      if (!(await this.remove(r.accountId, r.pdfObjectId, purgeAudit('PoliceRegister', r.id), result))) continue;
+      await this.revokeShares('POLICE_REGISTER', [r], now);
+      await this.prisma.policeRegister.deleteMany({ where: { id: r.id } });
+    }
+  }
+
+  /** Revokes the live share links of purged records, each audited (`share.revoked`, no actor). */
+  private async revokeShares(resourceType: 'FICHE_DE_POLICE' | 'POLICE_REGISTER', records: { id: string; accountId: string }[], now: Date) {
+    if (records.length === 0) return;
+    const links = await this.prisma.shareLink.findMany({ where: { resourceType, resourceId: { in: records.map((r) => r.id) }, revokedAt: null }, select: { id: true, accountId: true } });
+    for (const l of links) {
+      await this.prisma.shareLink.updateMany({ where: { id: l.id, revokedAt: null }, data: { revokedAt: now } });
+      await this.audit.record({ accountId: l.accountId, actorId: null, action: 'share.revoked', resourceType: 'ShareLink', resourceId: l.id });
     }
   }
 

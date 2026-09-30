@@ -12,6 +12,7 @@ import { Client, createTestApp, requireDatabase, resetDatabase, SeededAccount, s
 requireDatabase();
 
 interface Ids {
+  shareId: string;
   ownerId: string;
   propertyId: string;
   invitationId: string;
@@ -54,6 +55,8 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'GET', route: '/api/properties/:id/registers/:month/validation', call: (c, a) => c.get(`/api/properties/${a.propertyId}/registers/2026-03/validation`) },
   { method: 'POST', route: '/api/properties/:id/registers/:month', call: (c, a) => c.post(`/api/properties/${a.propertyId}/registers/2026-03`) },
   { method: 'GET', route: '/api/properties/:id/registers/:month/pdf', call: (c, a) => c.get(`/api/properties/${a.propertyId}/registers/2026-03/pdf`) },
+  { method: 'DELETE', route: '/api/shares/:id', call: (c, a) => c.delete(`/api/shares/${a.shareId}`) },
+  { method: 'GET', route: '/api/shares/:id/access', call: (c, a) => c.get(`/api/shares/${a.shareId}/access`) },
 ];
 
 describe('tenant isolation (integration)', () => {
@@ -94,7 +97,9 @@ describe('tenant isolation (integration)', () => {
     await t.prisma.ficheDePolice.create({ data: { accountId: a.accountId, guestCheckInId: guest.id, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64) } });
     const registerPdf = await t.app.get(StorageService).put(a.accountId, 'POLICE_REGISTER_PDF', Buffer.from('%PDF-1.4 stub'));
     await t.prisma.policeRegister.create({ data: { accountId: a.accountId, propertyId: property.id, month: '2026-03', pdfObjectId: registerPdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64), inputDigest: 'd', guestCount: 0, validation: {}, generatedBy: a.users.OWNER_MANAGER.id } });
-    idsA = { ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id, bookingId: booking.id, alertId: alert.id, stayId: stay.id, linkId: link.id, guestId: guest.id };
+    const share = await t.prisma.shareLink.create({ data: { accountId: a.accountId, resourceType: 'POLICE_REGISTER', resourceId: 'r', tokenHash: 'iso-share-a', recipientLabel: 'Police', expiresAt: new Date(Date.now() + 86_400_000), createdBy: a.users.OWNER_MANAGER.id } });
+    idsA = {
+      shareId: share.id, ownerId: owner.id, propertyId: property.id, invitationId: invitation.id, feedId: feed.id, bookingId: booking.id, alertId: alert.id, stayId: stay.id, linkId: link.id, guestId: guest.id };
   });
 
   afterAll(async () => {
@@ -115,7 +120,7 @@ describe('tenant isolation (integration)', () => {
   }
 
   it('lists show nothing from the other account', async () => {
-    for (const url of ['/api/properties', '/api/property-owners', '/api/invitations', '/api/alerts']) {
+    for (const url of ['/api/properties', '/api/property-owners', '/api/invitations', '/api/alerts', '/api/shares']) {
       expect((await b.as.OWNER_MANAGER.get(url).expect(200)).body).toEqual([]);
     }
     const dash = (await b.as.OWNER_MANAGER.get('/api/dashboard').expect(200)).body;

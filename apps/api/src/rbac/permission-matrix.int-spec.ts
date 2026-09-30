@@ -28,6 +28,7 @@ export interface Fixtures {
   linkId: () => Promise<string>;
   /** A submitted guest with an encrypted ID image. */
   guestId: string;
+  shareId: () => Promise<string>;
 }
 
 interface Row {
@@ -111,6 +112,12 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/properties/:id/registers/:month/validation', url: (f) => `/api/properties/${f.propertyId}/registers/2026-03/validation`, expect: MANAGER_ONLY(200) },
   { method: 'POST', route: '/api/properties/:id/registers/:month', url: (f) => `/api/properties/${f.propertyId}/registers/2026-03`, body: () => ({}), expect: MANAGER_ONLY(200) },
   { method: 'GET', route: '/api/properties/:id/registers/:month/pdf', url: (f) => `/api/properties/${f.propertyId}/registers/2026-03/pdf`, expect: MANAGER_ONLY(200) },
+
+  // Secure Share (Phase 4): Owner/Manager only. The public route /api/share is @Public and has its own abuse suite.
+  { method: 'POST', route: '/api/shares', url: () => '/api/shares', body: (f) => ({ resourceType: 'FICHE_DE_POLICE', guestId: f.guestId, expiresInHours: 24, recipientLabel: 'Préfecture' }), expect: MANAGER_ONLY(201) },
+  { method: 'GET', route: '/api/shares', url: () => '/api/shares', expect: MANAGER_ONLY(200) },
+  { method: 'DELETE', route: '/api/shares/:id', url: async (f) => `/api/shares/${await f.shareId()}`, expect: MANAGER_ONLY(204) },
+  { method: 'GET', route: '/api/shares/:id/access', url: async (f) => `/api/shares/${await f.shareId()}/access`, expect: MANAGER_ONLY(200) },
 ];
 
 describe('permission matrix (integration)', () => {
@@ -147,6 +154,8 @@ describe('permission matrix (integration)', () => {
     await t.prisma.policeRegister.create({ data: { accountId: acc.accountId, propertyId: property.id, month: '2026-03', pdfObjectId: registerPdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64), inputDigest: 'd', guestCount: 0, validation: {}, generatedBy: acc.users.OWNER_MANAGER.id } });
     let n = 0;
     f = {
+      shareId: async () =>
+        (await t.prisma.shareLink.create({ data: { accountId: acc.accountId, resourceType: 'POLICE_REGISTER', resourceId: 'r', tokenHash: `matrix-share-${n++}`, recipientLabel: 'Police', expiresAt: new Date(Date.now() + 86_400_000), createdBy: acc.users.OWNER_MANAGER.id } })).id,
       stayId: stay.id,
       guestId: guest.id,
       linkId: async () =>

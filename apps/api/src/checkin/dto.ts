@@ -12,7 +12,7 @@ const NAME = /^[\p{L}\p{M}][\p{L}\p{M} '.-]*$/u;
 const FREE_TEXT = /^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}<>]+$/u;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-const Text = (min: number, max: number, pattern: RegExp = FREE_TEXT) => applyDecorators(Transform(clean), IsString(), Length(min, max), Matches(pattern));
+export const Text = (min: number, max: number, pattern: RegExp = FREE_TEXT) => applyDecorators(Transform(clean), IsString(), Length(min, max), Matches(pattern));
 const OptionalText = (min: number, max: number, pattern?: RegExp) => applyDecorators(IsOptional(), Text(min, max, pattern));
 
 /** Strict `YYYY-MM-DD` that is a real calendar date, or null. */

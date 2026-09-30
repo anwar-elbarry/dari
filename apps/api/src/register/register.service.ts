@@ -109,6 +109,12 @@ export class RegisterService {
     return { months: out };
   }
 
+  /** Whether a generated register still matches the data (used before sharing it). */
+  async isCurrent(accountId: string, propertyId: string, month: string, inputDigest: string): Promise<boolean> {
+    const { built } = await this.build(accountId, propertyId, month);
+    return built.digest === inputDigest;
+  }
+
   async validation(user: AuthUser, propertyId: string, month: string): Promise<{ month: string; summary: Summary; problems: Problem[] }> {
     this.assertStarted(month);
     const { built } = await this.build(user.accountId, propertyId, month);

@@ -226,4 +226,36 @@ describe('no personal data in logs or audit rows (integration)', () => {
 
     await expectClean();
   });
+  it('the share routes leave no token, recipient label or personal data in the logs or the audit trail', async () => {
+    const property = await t.prisma.property.findFirstOrThrow();
+    const stay = await t.prisma.booking.create({ data: { accountId: a.accountId, propertyId: property.id, checkIn: new Date('2025-10-04'), checkOut: new Date('2025-10-06'), source: 'DIRECT' } });
+    const link = await t.prisma.checkInLink.create({ data: { accountId: a.accountId, bookingId: stay.id, tokenHash: 'share-log', expiresAt: new Date(Date.now() + DAY), createdBy: 'u', maxGuests: 1 } });
+    const guest = await t.prisma.guestCheckIn.create({
+      data: { accountId: a.accountId, bookingId: stay.id, propertyId: property.id, linkId: link.id, guestIndex: 1, status: 'SUBMITTED', fullName: PII.name, docNumber: PII.docNumber, profession: PII.job, submittedAt: new Date() },
+    });
+    const pdf = await t.app.get(StorageService).put(a.accountId, 'FICHE_PDF', Buffer.from('%PDF-1.4 stub'));
+    await t.prisma.ficheDePolice.create({ data: { accountId: a.accountId, guestCheckInId: guest.id, pdfObjectId: pdf.id, templateVersion: 'draft-1', sha256: 'a'.repeat(64) } });
+    const label = `Commissaire ${PII.surname}`;
+    const server = t.app.getHttpServer();
+
+    const created = (await a.as.OWNER_MANAGER.post('/api/shares', { resourceType: 'FICHE_DE_POLICE', guestId: guest.id, expiresInHours: 24, recipientLabel: label }).expect(201)).body as { id: string; token: string };
+    await a.as.OWNER_MANAGER.post('/api/shares', { resourceType: 'FICHE_DE_POLICE', guestId: guest.id, expiresInHours: 24, recipientLabel: `${label}<script>` }).expect(400);
+    await a.as.OWNER_MANAGER.get('/api/shares').expect(200);
+    await request(server).get('/api/share').set('X-Share-Token', created.token).set('User-Agent', `UA ${PII.name}`).expect(200);
+    // The token in every wrong place: query, path, cookie. All refused, none logged.
+    await request(server).get(`/api/share?token=${created.token}`).expect(404);
+    await request(server).get(`/api/share/${created.token}`).expect(404);
+    await request(server).get('/api/share').set('Cookie', `t=${created.token}`).expect(404);
+    await a.as.OWNER_MANAGER.get(`/api/shares/${created.id}/access`).expect(200);
+    await a.as.OWNER_MANAGER.delete(`/api/shares/${created.id}`).expect(204);
+    await request(server).get('/api/share').set('X-Share-Token', created.token).expect(404);
+    // A storage failure whose message quotes the guest: a 500, only the type is logged.
+    const again = (await a.as.OWNER_MANAGER.post('/api/shares', { resourceType: 'FICHE_DE_POLICE', guestId: guest.id, expiresInHours: 24, recipientLabel: label }).expect(201)).body as { token: string };
+    jest.spyOn(t.app.get(StorageService), 'read').mockRejectedValueOnce(new Error(`read failed for ${PII.name} ${PII.docNumber}`));
+    expect((await request(server).get('/api/share').set('X-Share-Token', again.token)).status).toBe(500);
+
+    expect(output).not.toContain(label);
+    expect(JSON.stringify(await t.prisma.auditLog.findMany())).not.toContain(PII.surname);
+    await expectClean([created.token, again.token]);
+  });
 });

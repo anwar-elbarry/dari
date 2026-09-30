@@ -112,12 +112,22 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 4.0 | Carry-overs that need code: retention rows for the Fiche and register, the production enablement check, the pilot manual-test list — **done** (see below) | fast |
 | 4.1 | Data model, migration, capabilities, RuleConfig rows, feature flags — **done** (see below) | fast |
 | 4.2 | **Register generator**: month query, validation report, versioned template, PDF, encrypted storage, regenerate, audit — **done** (see below) | strong |
-| 4.3 | **Secure Share API**: create, list, revoke, access log, the public route with fail-closed access recording | strong |
+| 4.3 | **Secure Share API**: create, list, revoke, access log, the public route with fail-closed access recording — **done** (see below) | strong |
 | 4.4 | Web: registers, validation report, share dialog, shares list | fast |
 | 4.5 | Web: public viewer page | fast |
 | 4.6 | Hardening: abuse and logging tests for the public route, security review, phone e2e, docs, Phase 5 plan | strong |
 
 Steps 4.2 and 4.3 carry the risk.
+
+### Step 4.3 outcome
+- `src/share`: `ShareService`, `SharesController` (`/shares`, `share:manage`) and `PublicShareController` (`GET /share`, `@Public`), both behind `SecureShareEnabledGuard` and `no-store`/`noindex`/`no-referrer`.
+- **Create** `POST /shares` with `{ resourceType: 'FICHE_DE_POLICE', guestId }` or `{ resourceType: 'POLICE_REGISTER', propertyId, month }`, `expiresInHours` and `recipientLabel` (2–80 characters, no markup or control characters; line breaks folded). The resource is found through the account-scoped client (another account's id, a missing or purged file: 404). The expiry must fall within `RulesService.shareLifetime()` (422 `EXPIRY_OUT_OF_BOUNDS`). An **outdated register is refused** (409 `REGISTER_OUTDATED`): it must be regenerated before it goes to an authority. The token (256 bits) and the URL `${APP_URL}/s#token=…` are returned once; only the hash is stored.
+- A link points at the Fiche or register **record**, not at one PDF: after a regeneration the same link serves the new file.
+- **List** `GET /shares` (status ACTIVE / EXPIRED / REVOKED, views, last access, resource by ids only; never the token or its hash). **Revoke** `DELETE /shares/:id` (idempotent, audited). **Access log** `GET /shares/:id/access` (time and trimmed user agent only).
+- **Public read** `GET /share` with `X-Share-Token`: unknown, malformed, expired, revoked links and links whose file is gone all give the same 404 `LINK_UNAVAILABLE`. Order, fail closed: live link and file → per-link cap (20 views per 10 minutes, 429 `TOO_MANY_VIEWS`) → decrypt with the `share.accessed` audit row written first → one transaction that re-checks the link is still live and records the `ShareAccess` → bytes. A revocation that lands during the read wins. Per-address limit 30 a minute. No cookie, no CORS, `Content-Disposition: inline`.
+- **Retention:** purging a Fiche PDF or a register revokes the live links that point at it (`share.revoked`, no actor).
+- Tests: unit (`shareStatus`, `trimUserAgent`), integration (creation and bounds, label validation, cross-account and purged resources, outdated register, one-time token, identical neutral answers, revocation on the next request, fail-closed audit and access recording, revocation during a read, token refused outside the header, per-link and per-address caps, flag off, retention revocation), permission matrix, tenant isolation, and the log-redaction suite (token and recipient label never in logs or audit rows).
+- Not done, as planned: view limits and watermarks; the viewer's IP is not stored (open decision 3).
 
 ### Step 4.2 outcome
 - `src/register`: `register-month.ts` (UTC month bounds), `register-build.ts` (pure: rows, problems, summary, digest), `register-template.ts` (pure, `REGISTER_TEMPLATE_VERSION = 'draft-1'`, A4 landscape, escaped, "indicative layout", no compliance wording), `RegisterService`, `RegisterController` (behind `PoliceRegisterEnabledGuard`, `no-store`), `RegisterModule` (reuses the Fiche's `PdfRenderer`).

@@ -9,5 +9,6 @@ import { RegisterService } from './register.service';
   imports: [CheckInModule],
   controllers: [RegisterController],
   providers: [RegisterService, PoliceRegisterEnabledGuard],
+  exports: [RegisterService],
 })
 export class RegisterModule {}
