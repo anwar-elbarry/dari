@@ -154,6 +154,72 @@ describe('Secure Share (integration)', () => {
       expect(await t.prisma.storedObject.count({ where: { kind: 'FICHE_PDF', deletedAt: null } })).toBe(1);
     });
 
+    describe('renewing a link (the first token can never be shown again)', () => {
+      const renew = (id: string, body: Record<string, unknown> = { expiresInHours: 24 }, as = a.as.OWNER_MANAGER) => as.post(`/api/shares/${id}/renew`, body);
+
+      it('mints a new token for the same document and label; the old link keeps working unless asked otherwise', async () => {
+        const first = (await shareFiche().expect(201)).body;
+        const res = await renew(first.id).expect(201);
+        expect(res.body.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+        expect(res.body.token).not.toBe(first.token);
+        expect(res.body).toMatchObject({ resourceType: 'FICHE_DE_POLICE', resource: { guestId }, recipientLabel: 'Préfecture de Marrakech', status: 'ACTIVE', viewCount: 0 });
+        expect(res.body.id).not.toBe(first.id);
+        await open(first.token).expect(200);
+        await open(res.body.token).expect(200);
+        // Only the hash is stored, and the old token or hash is never returned.
+        expect(JSON.stringify(res.body)).not.toContain(first.token);
+        expect(await t.prisma.shareLink.count({ where: { tokenHash: res.body.token } })).toBe(0);
+        expect(await t.prisma.auditLog.count({ where: { action: 'share.created' } })).toBe(2);
+      });
+
+      it('can revoke the previous link in the same request, and can change the label and the duration', async () => {
+        const first = (await shareFiche().expect(201)).body;
+        const res = await renew(first.id, { expiresInHours: 24, recipientLabel: 'Police de Guéliz', revokeOld: true }).expect(201);
+        expect(res.body.recipientLabel).toBe('Police de Guéliz');
+        await open(first.token).expect(404);
+        await open(res.body.token).expect(200);
+        expect(await t.prisma.auditLog.count({ where: { action: 'share.revoked' } })).toBe(1);
+      });
+
+      it('works from a revoked or expired link, and revokeOld on a link that is already dead does not write a second revocation', async () => {
+        const revoked = (await shareFiche().expect(201)).body;
+        await a.as.OWNER_MANAGER.delete(`/api/shares/${revoked.id}`).expect(204);
+        await renew(revoked.id, { expiresInHours: 24, revokeOld: true }).expect(201);
+        const expired = (await shareFiche().expect(201)).body;
+        await t.prisma.shareLink.update({ where: { id: expired.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+        const res = await renew(expired.id).expect(201);
+        await open(res.body.token).expect(200);
+        expect(await t.prisma.auditLog.count({ where: { action: 'share.revoked' } })).toBe(1); // the manual one only
+      });
+
+      it('applies the same bounds, label and phone rules as a first share', async () => {
+        const first = (await shareFiche().expect(201)).body;
+        await renew(first.id, { expiresInHours: 1 }).expect(422);
+        await renew(first.id, { expiresInHours: 500 }).expect(400);
+        await renew(first.id, { expiresInHours: 24, recipientLabel: '<b>x</b>' }).expect(400);
+        await renew(first.id, { expiresInHours: 24, extra: true }).expect(400);
+        await renew(first.id, { expiresInHours: 24, whatsappTo: 'nope' }).expect(400);
+        expect(await t.prisma.shareLink.count()).toBe(1);
+      });
+
+      it('refuses when the document is gone', async () => {
+        const first = (await shareFiche().expect(201)).body;
+        await t.prisma.storedObject.updateMany({ where: { kind: 'FICHE_PDF' }, data: { deletedAt: new Date() } });
+        await renew(first.id).expect(404);
+        expect(await t.prisma.shareLink.count()).toBe(1);
+      });
+
+      it("is another account's business: unknown and foreign ids are 404, and other roles are refused", async () => {
+        const first = (await shareFiche().expect(201)).body;
+        await renew(first.id, { expiresInHours: 24 }, b.as.OWNER_MANAGER).expect(404);
+        await renew('11111111-1111-4111-8111-111111111111').expect(404);
+        await renew(first.id, { expiresInHours: 24 }, a.as.STAFF).expect(403);
+        await renew(first.id, { expiresInHours: 24 }, a.as.ACCOUNTANT).expect(403);
+        await renew(first.id, { expiresInHours: 24 }, a.as.ANON).expect(401);
+        expect(await t.prisma.shareLink.count()).toBe(1);
+      });
+    });
+
     it('is Owner/Manager only', async () => {
       await shareFiche({}, a.as.STAFF).expect(403);
       await shareFiche({}, a.as.ACCOUNTANT).expect(403);

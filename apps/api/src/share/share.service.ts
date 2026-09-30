@@ -11,7 +11,7 @@ import { nameVariable, normalizePhone } from '../messaging/phone';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterService } from '../register/register.service';
 import { StorageService } from '../storage/storage.service';
-import { CreateShareDto } from './dto';
+import { CreateShareDto, RenewShareDto } from './dto';
 
 export const SHARE_COUNTER = Symbol('SHARE_COUNTER');
 
@@ -77,25 +77,63 @@ export class ShareService {
     return this.rules.shareLifetime();
   }
 
-  async create(user: AuthUser, dto: CreateShareDto, meta: ClientMeta) {
-    const bounds = await this.rules.shareLifetime();
-    if (dto.expiresInHours < bounds.minHours || dto.expiresInHours > bounds.maxHours) {
+  private checkLifetime(hours: number, bounds: { minHours: number; maxHours: number }) {
+    if (hours < bounds.minHours || hours > bounds.maxHours) {
       throw new UnprocessableEntityException({ code: 'EXPIRY_OUT_OF_BOUNDS', message: `The link must expire between ${bounds.minHours} and ${bounds.maxHours} hours from now.` });
     }
-    const phone = dto.whatsappTo === undefined ? null : normalizePhone(dto.whatsappTo);
-    if (dto.whatsappTo !== undefined && !phone) throw new BadRequestException({ code: 'INVALID_PHONE', message: 'Enter the number with its country code, for example +212 6 12 34 56 78.' });
-    const resourceId = await this.resolveResource(user, dto);
+  }
+
+  private parsePhone(whatsappTo: string | undefined): string | null {
+    const phone = whatsappTo === undefined ? null : normalizePhone(whatsappTo);
+    if (whatsappTo !== undefined && !phone) throw new BadRequestException({ code: 'INVALID_PHONE', message: 'Enter the number with its country code, for example +212 6 12 34 56 78.' });
+    return phone;
+  }
+
+  /** Mints the token, stores its hash and audits. The only place a share token is created. */
+  private async issue(user: AuthUser, meta: ClientMeta, resourceType: ShareResourceType, resourceId: string, recipientLabel: string, expiresInHours: number, phone: string | null) {
     const token = randomToken(); // 256 bits
     const link = await this.prisma.forAccount(user.accountId).shareLink.create({
-      data: {
-        accountId: user.accountId, resourceType: dto.resourceType, resourceId, tokenHash: hashToken(token), recipientLabel: dto.recipientLabel,
-        expiresAt: new Date(Date.now() + dto.expiresInHours * HOUR), createdBy: user.id,
-      },
+      data: { accountId: user.accountId, resourceType, resourceId, tokenHash: hashToken(token), recipientLabel, expiresAt: new Date(Date.now() + expiresInHours * HOUR), createdBy: user.id },
     });
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'share.created', resourceType: 'ShareLink', resourceId: link.id, ip: meta.ip });
     // The only time the token is ever returned.
     const url = this.urlFor(token);
     return { ...(await this.views(user.accountId, [link]))[0], token, url, delivery: await this.deliver(user, link.id, url, phone) };
+  }
+
+  async create(user: AuthUser, dto: CreateShareDto, meta: ClientMeta) {
+    this.checkLifetime(dto.expiresInHours, await this.rules.shareLifetime());
+    const phone = this.parsePhone(dto.whatsappTo);
+    const resourceId = await this.resolveResource(user, dto);
+    return this.issue(user, meta, dto.resourceType, resourceId, dto.recipientLabel, dto.expiresInHours, phone);
+  }
+
+  /**
+   * A new link to the same document as `id` (whatever its status), because a token is never shown twice. The document
+   * must still exist, and a register must still be current, exactly as for a first share. With `revokeOld` the previous
+   * link, if still live, is revoked once the new one exists. The previous token is never touched or returned.
+   */
+  async renew(user: AuthUser, id: string, dto: RenewShareDto, meta: ClientMeta) {
+    const db = this.prisma.forAccount(user.accountId);
+    const old = await db.shareLink.findFirst({ where: { id } });
+    if (!old) throw notFound();
+    this.checkLifetime(dto.expiresInHours, await this.rules.shareLifetime());
+    const phone = this.parsePhone(dto.whatsappTo);
+
+    // The same checks as a first share, on the record the old link pointed at.
+    if (old.resourceType === 'FICHE_DE_POLICE') {
+      if (!(await db.ficheDePolice.findFirst({ where: { id: old.resourceId, pdf: { is: { deletedAt: null } } }, select: { id: true } }))) throw notFound();
+    } else {
+      const reg = await db.policeRegister.findFirst({ where: { id: old.resourceId, pdf: { is: { deletedAt: null } } }, select: { id: true, propertyId: true, month: true, inputDigest: true } });
+      if (!reg) throw notFound();
+      if (!(await this.registers.isCurrent(user.accountId, reg.propertyId, reg.month, reg.inputDigest))) {
+        throw new ConflictException({ code: 'REGISTER_OUTDATED', message: 'The register has changed since it was generated. Generate it again before sharing it.' });
+      }
+    }
+
+    const created = await this.issue(user, meta, old.resourceType, old.resourceId, dto.recipientLabel ?? old.recipientLabel, dto.expiresInHours, phone);
+    if (dto.revokeOld && shareStatus(old) === 'ACTIVE') await this.revoke(user, old.id, meta);
+    return created;
   }
 
   /**

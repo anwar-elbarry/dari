@@ -11,12 +11,20 @@ import { fillTemplate, whatsappUrl } from '../checkin/share';
 import { DeliveryNote, WhatsappNumberField } from '../delivery';
 import { Alert, Button, buttonClass, Dialog, Field, fieldAria, Input } from '../ui';
 
+/** An existing link to make a new one from (its token cannot be shown again): same document, new token. */
+export interface RenewSource {
+  id: string;
+  label: string;
+  /** Still usable: offer to revoke it once the new one exists. */
+  active: boolean;
+}
+
 /**
  * Creates a Secure Share link for one Fiche or one register and shows it ONCE. The token exists only in this
  * component's state while the dialog is open; closing it drops it. The allowed durations come from the API
  * (RuleConfig), never from this file.
  */
-export function ShareDialog({ target, title, onClose, onChanged }: { target: ShareTarget | null; title: string; onClose: () => void; onChanged?: () => void }) {
+export function ShareDialog({ target, renew, title, onClose, onChanged }: { target: ShareTarget | null; renew?: RenewSource | null; title: string; onClose: () => void; onChanged?: () => void }) {
   const t = useTranslations('share.dialog');
   const tc = useTranslations('common');
   const tw = useTranslations('delivery');
@@ -30,12 +38,20 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
   const [copied, setCopied] = useState(false);
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState<string | undefined>();
-  const open = target !== null;
+  const [revokeOld, setRevokeOld] = useState(true);
+  const open = target !== null || (renew ?? null) !== null;
+  const renewId = renew?.id;
+  const renewLabel = renew?.label;
+  const renewActive = renew?.active;
   // When ready, Dari sends the link itself; otherwise the manager copies it or uses the manual WhatsApp button.
   const ready = useWhatsappReady('shareLink', open);
 
   useEffect(() => {
     if (!open) return;
+    if (renewId) {
+      setLabel(renewLabel ?? '');
+      setRevokeOld(renewActive ?? false);
+    }
     let cancelled = false;
     setBoundsFailed(false);
     api<ShareLifetime>('GET', '/shares/lifetime')
@@ -48,7 +64,7 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, renewId, renewLabel, renewActive]);
 
   function close() {
     setCreated(null); // the token is gone from memory
@@ -62,7 +78,7 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    if (!target) return;
+    if (!target && !renew) return;
     let whatsappTo: string | undefined;
     if (ready && phone.trim() !== '') {
       const valid = normalizePhone(phone);
@@ -70,13 +86,13 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
       whatsappTo = valid;
     }
     setPhoneError(undefined);
-    const body = {
-      ...(target.type === 'FICHE_DE_POLICE' ? { resourceType: target.type, guestId: target.guestId } : { resourceType: target.type, propertyId: target.propertyId, month: target.month }),
-      expiresInHours: Number(hours),
-      recipientLabel: label,
-      ...(whatsappTo ? { whatsappTo } : {}),
-    };
-    const share = await submit.run(() => api<CreatedShare>('POST', '/shares', body));
+    const common = { expiresInHours: Number(hours), recipientLabel: label, ...(whatsappTo ? { whatsappTo } : {}) };
+    const share = await submit.run(() => {
+      if (renew) return api<CreatedShare>('POST', `/shares/${renew.id}/renew`, { ...common, ...(renew.active ? { revokeOld } : {}) });
+      const t0 = target!;
+      const body = { ...(t0.type === 'FICHE_DE_POLICE' ? { resourceType: t0.type, guestId: t0.guestId } : { resourceType: t0.type, propertyId: t0.propertyId, month: t0.month }), ...common };
+      return api<CreatedShare>('POST', '/shares', body);
+    });
     setPhone(''); // the number is not kept once it has been sent
     if (share) {
       setCreated(share);
@@ -113,6 +129,12 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
             <Field id="share-label" label={t('label')} hint={t('labelHint')} error={submit.fieldErrors.recipientLabel}>
               <Input {...fieldAria('share-label', submit.fieldErrors.recipientLabel, t('labelHint'))} required minLength={2} maxLength={80} value={label} onChange={(e) => setLabel(e.target.value)} autoComplete="off" />
             </Field>
+            {renew?.active && (
+              <label className="flex items-start gap-3 text-sm">
+                <input type="checkbox" checked={revokeOld} onChange={(e) => setRevokeOld(e.target.checked)} className="mt-0.5 size-5 flex-none accent-[var(--link)]" />
+                <span>{t('revokeOld')}</span>
+              </label>
+            )}
             {ready && <WhatsappNumberField id="share-whatsapp-to" value={phone} onChange={setPhone} error={phoneError ?? submit.fieldErrors.whatsappTo} />}
             <Button type="submit" disabled={submit.pending || !bounds || label.trim().length < 2}>
               {t('create')}
