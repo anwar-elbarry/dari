@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Browser, BrowserContext, expect, PlaywrightWorkerArgs, test } from '@playwright/test';
 
 /**
  * Phase 4, manager side, on a phone: a guest has checked in, the manager sees the incomplete record before
@@ -14,12 +14,23 @@ const DAY = 86_400_000;
 const iso = (offsetDays: number) => new Date(Date.now() + offsetDays * DAY).toISOString().slice(0, 10);
 const PASSPORT = readFileSync(join(__dirname, 'fixtures', 'synthetic-passport.jpg'));
 
-async function login(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('E-mail').fill(email);
-  await page.getByLabel('Mot de passe').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Se connecter' }).click();
-  await expect(page).not.toHaveURL(/\/login/);
+/**
+ * Sign-in is limited to 5 a minute per address and the whole suite shares one address, so each role signs in ONCE
+ * through the API (waiting out the limit if the earlier specs used it up) and the browser reuses that session.
+ */
+async function signIn(playwright: PlaywrightWorkerArgs['playwright'], email: string): Promise<APIRequestContext> {
+  const api = await playwright.request.newContext({ baseURL: 'http://localhost:3000', extraHTTPHeaders: { 'X-Requested-With': 'dari' } });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await api.post('/api/auth/login', { data: { email, password: PASSWORD } });
+    if (res.ok()) return api;
+    if (res.status() !== 429) break;
+    await new Promise((r) => setTimeout(r, (Number(res.headers()['retry-after']) || 60) * 1000 + 500));
+  }
+  throw new Error(`could not sign in ${email}`);
+}
+
+async function browserAs(browser: Browser, api: APIRequestContext): Promise<BrowserContext> {
+  return browser.newContext({ ...test.info().project.use, storageState: await api.storageState() });
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -31,8 +42,12 @@ let monthLabel: string;
 let guestName: string;
 let shareUrl = '';
 
-test('the manager sees the incomplete record, fixes it, generates the register and shares it once', async ({ page, context, playwright, browser }) => {
+test('the manager sees the incomplete record, fixes it, generates the register and shares it once', async ({ playwright, browser }) => {
+  test.setTimeout(180_000); // may wait out the sign-in limit once
+  const api = await signIn(playwright, 'manager@demo.dari.test');
+  const context = await browserAs(browser, api);
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const page = await context.newPage();
   const runId = Date.now().toString(36);
   propertyName = `Riad Registre ${runId}`;
   guestName = `Anna Test ${runId.replace(/\d/g, (d) => 'abcdefghij'[Number(d)])}`;
@@ -40,8 +55,6 @@ test('the manager sees the incomplete record, fixes it, generates the register a
   monthLabel = new Intl.DateTimeFormat('fr', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${month}-01`));
 
   await test.step('a property, a stay that began yesterday, and one guest who has checked in (through the API)', async () => {
-    const api: APIRequestContext = await playwright.request.newContext({ baseURL: 'http://localhost:3000', extraHTTPHeaders: { 'X-Requested-With': 'dari' } });
-    await api.post('/api/auth/login', { data: { email: 'manager@demo.dari.test', password: PASSWORD } });
     const owners = (await (await api.get('/api/property-owners')).json()) as { id: string }[];
     const created = await api.post('/api/properties', {
       data: { name: propertyName, address: '3 Derb Registre', commune: 'Marrakech', licenseStatus: 'LICENSED', licenseType: 'RIAD', taxRegime: 'PROPERTY_INCOME', taxeSejourMode: 'COLLECTED', ownerId: owners[0].id },
@@ -64,11 +77,9 @@ test('the manager sees the incomplete record, fixes it, generates the register a
       },
     });
     expect(submit.status()).toBe(200);
-    await api.dispose();
   });
 
   await test.step('the property page leads to the registers; the month shows one guest and one incomplete record', async () => {
-    await login(page, 'manager@demo.dari.test');
     await page.goto(`/properties/${propertyId}`);
     await page.getByRole('link', { name: 'Registre de police' }).click();
     await expect(page.getByRole('heading', { name: 'Registre de police mensuel', level: 1 })).toBeVisible();
@@ -106,7 +117,6 @@ test('the manager sees the incomplete record, fixes it, generates the register a
   });
 
   await test.step('a correction makes the register out of date, and it cannot be shared until regenerated', async () => {
-    const api = await page.context().request;
     const arrivals = (await (await api.get(`/api/properties/${propertyId}/arrivals?days=30`)).json()) as { guests: { id: string }[] }[];
     const patch = await api.patch(`/api/guests/${arrivals[0].guests[0].id}`, { data: { profession: 'Architecte' }, headers: { 'X-Requested-With': 'dari' } });
     expect(patch.status()).toBe(200);
@@ -149,7 +159,7 @@ test('the manager sees the incomplete record, fixes it, generates the register a
     await page.getByRole('dialog').getByRole('button', { name: 'Terminé' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(await page.content()).not.toContain(token);
-    const list = await page.context().request.get('/api/shares');
+    const list = await api.get('/api/shares');
     expect(await list.text()).not.toContain(token);
     expect(await list.text()).not.toMatch(/"token"/);
   });
@@ -224,8 +234,10 @@ test('the manager sees the incomplete record, fixes it, generates the register a
   });
 });
 
-test('Staff see which months have a register and nothing else; the Accountant has no access', async ({ page, browser }) => {
-  await login(page, 'staff@demo.dari.test');
+test('Staff see which months have a register and nothing else; the Accountant has no access', async ({ playwright, browser }) => {
+  test.setTimeout(180_000);
+  const staff = await browserAs(browser, await signIn(playwright, 'staff@demo.dari.test'));
+  const page = await staff.newPage();
   await page.goto(`/properties/${propertyId}/registers`);
   await expect(page.getByText('Le registre lui-même est visible par le gestionnaire uniquement.')).toBeVisible();
   const card = page.locator('li', { has: page.getByRole('heading', { name: monthLabel }) });
@@ -236,8 +248,7 @@ test('Staff see which months have a register and nothing else; the Accountant ha
   await page.goto('/shares');
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  const accountant = await (await browser.newContext({ ...test.info().project.use })).newPage();
-  await login(accountant, 'accountant@demo.dari.test');
+  const accountant = await (await browserAs(browser, await signIn(playwright, 'accountant@demo.dari.test'))).newPage();
   await accountant.goto(`/properties/${propertyId}/registers`);
   await expect(accountant).toHaveURL(/\/reports$/);
   await accountant.context().close();
