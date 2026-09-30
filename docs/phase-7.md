@@ -62,7 +62,7 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 
 | Step | Work | Model |
 |---|---|---|
-| 7.0 | Gate tracker for this phase, the consolidated list of open decisions, staging environment | fast |
+| 7.0 ✅ | Gate tracker for this phase, the consolidated list of open decisions, staging environment | fast |
 | 7.1 | `/security-review` on the diff since Phase 3; fix or accept each finding with a test | strong |
 | 7.2 | Independent read-only pass on storage, tokens, RBAC and tenancy, logging, public routes, webhook; fix or accept | strong |
 | 7.3 | Pen-test checklist on the public routes, run against staging; findings fixed with regression tests | strong |
@@ -123,3 +123,122 @@ Steps 7.1 to 7.3 carry the risk.
 4. The Enterprise seat figure, and who changes a customer's seat limit before billing exists?
 5. A second Owner/Manager per account: yes, and with what rule for the last one?
 6. Are WhatsApp delivery failures worth an e-mail to the manager (which needs the recipient's e-mail kept for the send)?
+
+---
+
+## 7.0 — Gate tracker, open decisions, staging
+
+One list for every gate that is not code, taken from the trackers of Phases 3 to 6 (which stay the detailed record, with their wording). Nothing is **Closed**: none of those trackers records evidence of a closed gate, so this list does not either. A gate is Closed only when its evidence (document, date, who) is written in the last column, in the same commit as any flag or rule it unlocks. A verbal yes is *In progress*. **Dates are proposals carried from Phases 3 to 6 or set 2026-09-30: confirm or change them**; for a third party (CNDP, prefecture, Meta) the date is when *we* act, not when they answer.
+
+### What each group unlocks
+
+| Group | Unlocks | Until then |
+|---|---|---|
+| **G** (guest data) | `GUEST_CHECKIN_ENABLED=true` in production, then `POLICE_REGISTER_ENABLED` and `SECURE_SHARE_ENABLED` (plus **R**) | Synthetic data only; the pilot uses the counter, the calendars and the tax estimate |
+| **R** (register and sharing) | `POLICE_REGISTER_ENABLED`, `SECURE_SHARE_ENABLED` | Flags off |
+| **T** (tax) | Removing the BETA watermark and letting a customer rely on a report | Reports are labelled BETA, rules `validatedBy` empty |
+| **M** (messaging, checklist) | `WHATSAPP_ENABLED`; presenting the checklist as more than a working list | Manual `wa.me` button; checklist labelled "not validated" |
+| **P** (pilot and operations) | The first pilot customer; widening after the pilot | No customer |
+
+### G: before any real guest data
+
+| # | Gate | Owner | Proposed date | Status | Evidence |
+|---|---|---|---|---|---|
+| G1 | Hosting region and object-storage provider (Morocco or EU), cross-border position | Founder + counsel | 2026-10-10 | Open | |
+| G2 | CNDP declaration filed (and the authorization it may require); acceptance date recorded. Describes Secure Share (recipients: authorities) and Meta as a recipient of numbers and links | Founder + counsel | file by 2026-10-15; acceptance date unknown | Open | |
+| G3 | Consent wording FR/EN approved and inserted (`ConsentText` with `approvedBy`, `approvedAt`); the guest form refuses to start without it | Counsel | 2026-10-20 | Open | |
+| G4 | Retention confirmed and validated in `RuleConfig`: `retention.id_images_days` (30 default), `retention.fiche_days`, `retention.police_register_days`, and of the structured guest record (kept today after the image is purged). Until `retention.fiche_days` is validated every Fiche PDF is kept and the enablement check fails on it | Counsel | 2026-10-20 | Open | |
+| G5 | Official police form (fields, layout; PDF or paper) from the prefecture / DGSN; whether a Moroccan national needs an entry stamp | Founder + prefecture | 2026-10-13 | Open | |
+| G6 | Real CIN / CNIE cards tested for an MRZ, with their owners' permission (never committed); decides the OCR approach | Founder | 2026-10-20 | Open | |
+| G7 | Mail: Resend chosen; sender domain verified (SPF, DKIM); a US processor covered by G1 | Founder + counsel | 2026-10-10 | In progress (provider chosen, domain open) | |
+| G8 | Incident runbook for a personal-data leak written and read by everyone with production access (who decides, who tells the CNDP, what is revoked first) | Founder | 2026-10-31 | Open | |
+| G9 | Staff access to the Fiche PDF: status only (today) or download | Founder + counsel | with G3 | Open | |
+| G10 | Enablement run: `npm run check:enablement -w apps/api` on the production environment with no `FAIL`, then sections 1 and 2 of [`pilot-checklist.md`](pilot-checklist.md) ticked on the real deployment | Founder | after G1 to G9 and S1 to S4 | Open | |
+
+### R: register and Secure Share (on top of G)
+
+| # | Gate | Owner | Proposed date | Status | Evidence |
+|---|---|---|---|---|---|
+| R1 | Official register form and whether the prefecture accepts a PDF | Founder | 2026-10-13 (with G5) | Open | |
+| R2 | An authority's access: attributable (store the IP) or minimised (time and browser only, today) | Counsel | 2026-10-20 | Open | |
+| R3 | Share lifetime bounds (24 h minimum, 72 h maximum today, unvalidated) | Founder + counsel | 2026-10-20 | Open | |
+| R4 | Who may create a share link (Owner/Manager only today) | Founder + counsel | with G3 | Open | |
+| R5 | Real-phone check of the viewer, pilot checklist section 2 | Founder | before the pilot | Open | |
+
+### T: tax estimate (BETA)
+
+| # | Gate | Owner | Proposed date | Status | Evidence |
+|---|---|---|---|---|---|
+| T1 | Fiduciaire confirms or replaces each default: income-tax rates and threshold, year-to-date rule, VAT rate and basis, rounding, which stays belong to a month, Taxe de séjour and platform commission | Founder + fiduciaire | 2026-10-20 | Open | |
+| T2 | Three worked examples per regime, to become golden-file tests | Fiduciaire | 2026-10-20 | Open | |
+| T3 | Income-tax rule for the professional and company regimes; local-tax `TaxRule` rows | Fiduciaire | 2026-10-20 | Open | |
+| T4 | Beta and standard disclaimer wording approved (FR, EN) | Counsel or fiduciaire | 2026-10-20 | Open | |
+| T5 | Decision on whether reports may back a real customer's declaration once T1 to T4 are closed | Founder | after T1 to T4 | Open | |
+| T6 | Night thresholds 90 / 110 / 120 confirmed (placeholders in `RuleConfig`); counter compared with one real Airbnb and one real Booking.com export per property | Counsel + founder | 2026-10-20 | Open | |
+
+### M: messaging and checklist
+
+| # | Gate | Owner | Proposed date | Status | Evidence |
+|---|---|---|---|---|---|
+| M1 | Meta WhatsApp Business verification started (business account, number, display name) | Founder | 2026-10-07 | Open | |
+| M2 | WhatsApp templates written and approved (check-in link, day-counter alert, share link; FR first); names in `whatsapp.templates` | Founder | 2026-10-31 | Open | |
+| M3 | Marrakech checklist content (steps per licence type, FR and EN, conditions), loaded with `validatedBy` and `validatedAt`; the founder's references (Décret 2-23-441, Loi 80-14) checked by counsel | Counsel or local advisor | 2026-10-31 | Open | |
+| M4 | Retention of licence documents (`retention.license_documents_days`) | Counsel | 2026-10-31 | Open | |
+| M5 | Marital flow (Art. 490): lawyer review and CNDP check; stays off until then | Counsel | not scheduled | Open | |
+
+### P: pilot and operations (new in this phase)
+
+| # | Gate | Owner | Proposed date | Status | Evidence |
+|---|---|---|---|---|---|
+| P1 | Terms of use, privacy policy | Founder + counsel | 2026-11-15 | Open | |
+| P2 | Professional liability insurance (RC Pro): check that a SaaS giving compliance and tax estimates is covered, and the exclusions for personal-data incidents | Founder + insurer | 2026-11-15 | Open | |
+| P3 | Production domain fixed (needed for `__Host-` cookies, the G7 sender domain, link URLs) | Founder | 2026-10-10 | Open | |
+| P4 | A second person with production access, named in the runbook; no shared account | Founder | with G8 | Open | |
+| P5 | Flags and their order for the first pilot customers (recommended: counter and alerts, then check-in and Fiche, then register and Secure Share, then WhatsApp, then tax) | Founder | before the first customer | Open | |
+
+### S: staging (step 7.0 deliverable)
+
+Staging is a copy of the production settings with synthetic data. It is where the pen-test (7.3), the restore drill and the key-rotation drill (7.5) run, because they must hit the real edge, not `localhost`. It is **not built**: it needs a host, a domain and a budget, which are decisions, not code.
+
+| # | Item | Owner | Proposed date | Status | Evidence |
+|---|---|---|---|---|---|
+| S1 | Where it runs and who pays (same region as production, G1) | Founder | 2026-10-10 | Open | |
+| S2 | Reachable through the same edge as production (overwrites `X-Forwarded-For`; passes the webhook body through unchanged), Redis required, private bucket, synthetic data, `npm run check:enablement` run against it | Founder, then Claude for the script run | after S1 | Open | |
+| S3 | Mail and WhatsApp in test mode only (no real recipient) | Founder | after S1 | Open | |
+| S4 | Backups of staging and of its `STORAGE_MASTER_KEYS`, stored apart from the data | Founder | after S1 | Open | |
+
+### Accepted limits to re-read at each gate review
+
+Each stops being acceptable under the condition in the right-hand column.
+
+| Limit | Source | Stops being acceptable when |
+|---|---|---|
+| The manager's "Send by WhatsApp" button sends the token to `wa.me` | `phase-3.md` | Counsel objects, or once M1 to M2 close and the Business API replaces it |
+| Signup and invitations reveal that an email is registered (409) | `phase-1.md` | Public signup opens beyond the pilot |
+| Access token valid up to 15 minutes after logout | `phase-1.md` | A customer needs instant revocation |
+| CSP allows inline scripts (Next.js) | `phase-1.md` | Nonces are planned, see 7.1 |
+| Malformed calendar dates are shifted, not rejected | `phase-2.md` | A wrong count is traced to it |
+| Sync every 2 hours (`ICAL_SYNC_INTERVAL_HOURS`) | `phase-2.md` | A customer needs faster alerts |
+| OCR accuracy on real photos unmeasured; CIN / CNIE by hand | `phase-3.md` | First 20 real check-ins (log the share of corrected fields) |
+| Whether WhatsApp delivery failures justify an e-mail; soft daily WhatsApp cap; owners cannot be re-roled from the team screen | `phase-6.md` | Pilot managers miss messages, or the bill matters |
+| Enterprise seat figure undecided; who changes a seat limit before billing | `phase-6.md` | The first Enterprise customer, or billing (Phase 8) |
+
+### Decisions to take, all in one place
+
+These are the open decisions of this plan and of the Phase 3 to 6 plans that are still yours. Each points at the gate that waits on it.
+
+1. Staging: where, who pays (S1).
+2. The second person with production access (P4).
+3. Which flags go on for the first pilot customers and in what order (P5).
+4. The Enterprise seat figure; who changes a customer's seat limit before billing exists.
+5. A second Owner/Manager per account, and the rule for the last one.
+6. Whether a WhatsApp delivery failure deserves an e-mail (which needs the recipient's address kept for the send).
+7. Staff and the Fiche PDF (G9); who may create a share link (R4); attributable or minimised authority access (R2); share bounds (R3).
+8. Retention: a number of years for the Fiche, the register, the structured guest record and licence documents (G4, M4).
+9. Whether a report may back a real declaration (T5).
+
+### Rules for this tracker
+
+1. The Evidence column is filled in the commit that closes the gate; a row past its proposed date is raised at the start of the next session.
+2. Each session of this phase starts by reading this table and ends by updating it.
+3. The per-phase trackers keep the detail; when they disagree with this table, the most recently edited one wins and the other is corrected in the same commit.
