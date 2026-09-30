@@ -1,5 +1,5 @@
 import { createTestApp, requireDatabase, resetDatabase, TestApp } from '../test/test-app';
-import { CHECKIN_GRACE_RULE_KEY, DAILY_CAP_RULE_KEY, LICENSE_DOCUMENT_RETENTION_RULE_KEY, QUIET_HOURS_RULE_KEY, WHATSAPP_TEMPLATES_RULE_KEY, FICHE_RETENTION_RULE_KEY, ID_RETENTION_RULE_KEY, REGISTER_RETENTION_RULE_KEY, RulesService, SHARE_MAX_HOURS_RULE_KEY, SHARE_MIN_HOURS_RULE_KEY } from './rules.service';
+import { SEAT_LIMITS_RULE_KEY, CHECKIN_GRACE_RULE_KEY, DAILY_CAP_RULE_KEY, LICENSE_DOCUMENT_RETENTION_RULE_KEY, QUIET_HOURS_RULE_KEY, WHATSAPP_TEMPLATES_RULE_KEY, FICHE_RETENTION_RULE_KEY, ID_RETENTION_RULE_KEY, REGISTER_RETENTION_RULE_KEY, RulesService, SHARE_MAX_HOURS_RULE_KEY, SHARE_MIN_HOURS_RULE_KEY } from './rules.service';
 
 requireDatabase();
 
@@ -90,6 +90,18 @@ describe('retention and link-lifetime rules (integration)', () => {
   });
 
   describe('Phase 6 rules', () => {
+    it('reads the seat policy: the founder figures, the Accountant not counted', async () => {
+      await set(SEAT_LIMITS_RULE_KEY, { limits: { STARTER: 1, GROWTH: 3, CONCIERGERIE: 6 }, countedRoles: ['OWNER_MANAGER', 'STAFF'] });
+      expect(await rules.seatPolicy()).toEqual({ limits: { STARTER: 1, GROWTH: 3, CONCIERGERIE: 6 }, countedRoles: ['OWNER_MANAGER', 'STAFF'], validated: false });
+    });
+
+    it('drops malformed seat figures and never counts the Accountant by default', async () => {
+      await set(SEAT_LIMITS_RULE_KEY, { limits: { STARTER: 0, GROWTH: '3', CONCIERGERIE: 6, OTHER: 9 }, countedRoles: ['BOSS'] });
+      expect(await rules.seatPolicy()).toEqual({ limits: { CONCIERGERIE: 6 }, countedRoles: ['OWNER_MANAGER', 'STAFF'], validated: false });
+      await t.prisma.ruleConfig.deleteMany({ where: { key: SEAT_LIMITS_RULE_KEY } });
+      expect(await rules.seatPolicy()).toEqual({ limits: {}, countedRoles: ['OWNER_MANAGER', 'STAFF'], validated: false });
+    });
+
     it('applies a licence-document retention only when it is a valid, validated number (no default exists)', async () => {
       expect(await rules.licenseDocumentRetention()).toEqual({ days: null, validated: false, enforceable: null });
       await set(LICENSE_DOCUMENT_RETENTION_RULE_KEY, { days: 1825 });

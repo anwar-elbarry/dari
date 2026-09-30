@@ -20,6 +20,17 @@ export const LICENSE_DOCUMENT_RETENTION_RULE_KEY = 'retention.license_documents_
 export const WHATSAPP_TEMPLATES_RULE_KEY = 'whatsapp.templates';
 export const QUIET_HOURS_RULE_KEY = 'messaging.quiet_hours';
 export const DAILY_CAP_RULE_KEY = 'messaging.daily_cap';
+export const SEAT_LIMITS_RULE_KEY = 'plan.seat_limits';
+
+export interface SeatPolicyRule {
+  /** Seats per plan; a plan without a figure is absent (the account's own `seatLimit` applies). */
+  limits: Partial<Record<'STARTER' | 'GROWTH' | 'CONCIERGERIE' | 'ENTERPRISE', number>>;
+  /** Roles that use a seat. The Accountant is not listed by default: a read-only external reader. */
+  countedRoles: ('OWNER_MANAGER' | 'STAFF' | 'ACCOUNTANT')[];
+  validated: boolean;
+}
+const SEAT_TIERS = ['STARTER', 'GROWTH', 'CONCIERGERIE', 'ENTERPRISE'] as const;
+const SEAT_ROLES = ['OWNER_MANAGER', 'STAFF', 'ACCOUNTANT'] as const;
 
 /** The messages the app can send by WhatsApp. Each maps to a template approved by Meta. */
 export const WHATSAPP_TEMPLATE_KINDS = ['checkin_link', 'day_counter_alert', 'share_link'] as const;
@@ -199,6 +210,20 @@ export class RulesService {
       return { messages: DEFAULT_DAILY_CAP, validated: false };
     }
     return { messages, validated: !!row.validatedBy };
+  }
+
+  /** Malformed figures are dropped; a malformed role list falls back to Owner/Manager and Staff (the Accountant never uses a seat by mistake). */
+  async seatPolicy(): Promise<SeatPolicyRule> {
+    const row = await this.prisma.ruleConfig.findUnique({ where: { key: SEAT_LIMITS_RULE_KEY } });
+    const v = (row?.value ?? {}) as { limits?: Record<string, unknown>; countedRoles?: unknown };
+    const limits: SeatPolicyRule['limits'] = {};
+    for (const tier of SEAT_TIERS) {
+      const n = boundedInt(v.limits?.[tier], 1, 1000);
+      if (n !== null) limits[tier] = n;
+    }
+    const roles = Array.isArray(v.countedRoles) ? v.countedRoles.filter((r): r is SeatPolicyRule['countedRoles'][number] => (SEAT_ROLES as readonly unknown[]).includes(r)) : [];
+    if (!row || roles.length === 0) this.logger.error(`RuleConfig "${SEAT_LIMITS_RULE_KEY}" missing or without roles; counting Owner/Manager and Staff`);
+    return { limits, countedRoles: roles.length > 0 ? roles : ['OWNER_MANAGER', 'STAFF'], validated: !!row?.validatedBy };
   }
 }
 

@@ -128,6 +128,11 @@ Steps 6.2 and 6.4 carry the risk.
 - Flag `WHATSAPP_ENABLED` (on outside production, off in production) with `WhatsAppEnabledGuard` in `messaging/`. It needs no storage settings; the provider settings arrive with the driver in 6.4.
 - Tests: env, capabilities, guard, rules, and the composite tenant keys of the new tables.
 
+### Decisions taken (2026-09-30)
+
+- **Seat limits** (`RuleConfig` `plan.seat_limits`, migration `20260930140000`): Starter 1 seat (1 Admin), Growth 3 (1 Admin + 2 Staff), Conciergerie 6 (1 Admin + 5 Staff). The same row lists `countedRoles`: Owner/Manager and Staff use a seat; **the Accountant does not** (a read-only external reader), so the seat count in 6.2 is active Owner/Manager + Staff users + pending invitations for those roles. Read through `RulesService.seatPolicy()`. Existing Growth and Conciergerie accounts still on the column default were raised to 3 and 6. **Enterprise has no figure**: its accounts keep the `Account.seatLimit` set by the operator. Not a legal validation: `validatedBy` stays empty. Note that a Starter account has one seat, so it cannot invite Staff; it can still invite the Accountant.
+- **Staff and the checklist:** status only, read-only (`checklist:read`, no write, no notes, no documents). Rationale given by the founder: the manager or owner carries the legal responsibility for compliance, and the checklist holds high-stakes items (documentary audit, technical safety). The references to the Moroccan texts (Décret 2-23-441, Loi 80-14) come from the founder and have not been checked by us; counsel should confirm them and the wording of the checklist before it is presented as anything but a working list.
+
 ### Hard gates: tracker
 
 **Dates are proposals (set 2026-09-30): confirm or change them.**
@@ -139,8 +144,8 @@ Steps 6.2 and 6.4 carry the risk.
 | CNDP position on Meta as a recipient of guest phone numbers and check-in links (mentioned in the Phase 3 tracker) | Founder + counsel | before 6.4 goes live | Open |
 | Marrakech licensing checklist: the steps per licence type, in French and English, with the conditions (such as meals) | Counsel or local advisor | 2026-10-31 | Open |
 | Retention of uploaded licence documents (`retention.license_documents_days`) | Counsel | 2026-10-31 | Open |
-| Seat limits per plan (`plan` values for `Account.seatLimit`; who changes one before billing exists) | Founder | before 6.2 | Open |
-| Staff access to the checklist and documents (status only is built in) | Founder | before 6.3 | Open |
+| Seat limits per plan | Founder | 2026-09-30 | **Decided**: Starter 1, Growth 3, Conciergerie 6; Enterprise has no figure yet (see below). Who changes a limit before billing exists is still open |
+| Staff access to the checklist and documents | Founder | 2026-09-30 | **Decided**: status only, read-only, in 6.3 |
 
 ---
 
@@ -190,6 +195,6 @@ Steps 6.2 and 6.4 carry the risk.
 1. Who provides and validates the Marrakech checklist (counsel, a local advisor, the prefecture's own list), and by when?
 2. Retention of the uploaded licence documents?
 3. Guest phone numbers: may the platform store the number entered for a booking (for how long), and is Meta an acceptable recipient in the CNDP file?
-4. Seat limits per plan (Starter, Growth, Pro), and who changes a limit before billing exists?
-5. Should Staff be able to read the checklist and see documents, or status only?
+4. ~~Seat limits per plan~~ decided (see above); still open: who changes a limit before billing exists, and the Enterprise figure.
+5. ~~Staff and the checklist~~ decided: status only.
 6. Is e-mail enough as the fallback, or is SMS wanted too?

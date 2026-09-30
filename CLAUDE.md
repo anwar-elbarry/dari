@@ -85,6 +85,7 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 
 ## Phase 6 foundations (data model only until 6.2 to 6.4)
 - Licensing checklist: `ChecklistTemplateStep` is global reference data with `validatedBy`, seeded only from counsel's list (none is seeded: never write steps from memory). `ChecklistItem` is a tenant table (composite keys, one per property and step); its document is a `LICENSE_DOCUMENT` `StoredObject` under the storage rules above. Capabilities `checklist:read` (Staff: status only), `checklist:write`, `license_document:read`.
+- Seats: `plan.seat_limits` RuleConfig (per plan, plus `countedRoles`: Owner/Manager and Staff; the Accountant uses no seat), read through `RulesService.seatPolicy()`. Never hard-code seat numbers. Staff see the checklist as status only.
 - Messaging: `MessageDelivery` holds ids, template name, status and a fixed `failureCode` only, never a body, link, token or phone number. Flag `WHATSAPP_ENABLED` (`WhatsAppEnabledGuard` in `messaging/`, 404 when off, off by default in production). Templates, quiet hours, the daily cap and licence-document retention are `RuleConfig` rows read through `RulesService`.
 
 ## Imports (apps/api/src/imports)
