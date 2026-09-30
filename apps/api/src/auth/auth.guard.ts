@@ -10,6 +10,8 @@ import { IS_PUBLIC } from './decorators';
 export interface AccessPayload {
   sub: string;
   acc: string;
+  /** Issued-at, seconds (added by the JWT library). */
+  iat?: number;
 }
 
 const unauthorized = () => new UnauthorizedException({ code: 'UNAUTHENTICATED', message: 'Authentication required.' });
@@ -44,9 +46,11 @@ export class AuthGuard implements CanActivate {
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, accountId: true, role: true, disabledAt: true },
+      select: { id: true, accountId: true, role: true, disabledAt: true, sessionsRevokedAt: true },
     });
     if (!user || user.disabledAt || user.accountId !== payload.acc) throw unauthorized();
+    // Password reset, reuse detection and logout cut off access tokens issued before them (whole seconds: `iat` has no fraction).
+    if (user.sessionsRevokedAt && (typeof payload.iat !== 'number' || payload.iat < Math.floor(user.sessionsRevokedAt.getTime() / 1000))) throw unauthorized();
 
     req.user = { id: user.id, accountId: user.accountId, role: user.role };
     return true;

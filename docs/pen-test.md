@@ -51,7 +51,9 @@ Tick each one; write what you saw next to any failure.
 **Accounts**
 - [ ] Sign in with a wrong password 10 times: lockout; the message for a locked and for an unknown address is the same.
 - [ ] Password reset and invitation links: the token is in the fragment; used once, the second use fails with the same error as an unknown token.
-- [ ] Stolen cookie test: after logout, the refresh cookie no longer works; the access cookie works until it expires (15 minutes, accepted in 7.2).
+- [ ] Stolen cookie test: copy both cookies, log out (or reset the password) in the browser: wait one second, then `GET /api/me` with the copied cookies is 401.
+- [ ] `POST /api/auth/signup` answers 404 on staging and production (`SIGNUP_ENABLED` off).
+- [ ] Ask for a password reset three times in a row: one e-mail arrives, the answer is 204 each time.
 - [ ] Forged `X-Forwarded-For` sent to the edge: the audit row shows your real address (pilot checklist section 1).
 
 **Web**

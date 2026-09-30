@@ -1,4 +1,5 @@
 import { hashToken } from '../auth/tokens';
+import { INVITE_PROBES_PER_HOUR } from './invitations.service';
 import { client, createTestApp, PASSWORD, requireDatabase, resetDatabase, SeededAccount, seedAccount, TestApp } from '../test/test-app';
 
 requireDatabase();
@@ -45,6 +46,16 @@ describe('invitations (integration)', () => {
   it('refuses an email that already has an account', async () => {
     const res = await invite(b.users.STAFF.email).expect(409);
     expect(res.body.error.code).toBe('EMAIL_IN_USE');
+  });
+
+  it('cannot be used to test which addresses are registered: the "already used" answer is capped per account and hour', async () => {
+    const taken = a.users.STAFF.email;
+    for (let i = 0; i < INVITE_PROBES_PER_HOUR; i++) expect((await invite(taken).expect(409)).body.error.code).toBe('EMAIL_IN_USE');
+    const capped = await invite(taken).expect(429);
+    expect(capped.body.error.code).toBe('INVITATION_QUOTA');
+    // The cap is per account, and does not stop legitimate invitations.
+    await b.as.OWNER_MANAGER.post('/api/invitations', { email: taken, role: 'STAFF' }).expect(409);
+    await invite('fresh.address@x.test').expect(201);
   });
 
   it('previews and accepts: the role comes from the invitation, and a session starts', async () => {

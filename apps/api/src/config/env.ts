@@ -59,6 +59,13 @@ const envSchema = z
     POLICE_REGISTER_ENABLED: z.enum(['true', 'false']).optional(),
     SECURE_SHARE_ENABLED: z.enum(['true', 'false']).optional(),
     /**
+     * Public signup (`POST /auth/signup`). On in development and test, OFF by default in production: the pilot accounts
+     * are created by hand, and an open signup lets anyone invite arbitrary addresses under Dari's sender domain (Phase 7.2).
+     */
+    SIGNUP_ENABLED: z.enum(['true', 'false']).optional(),
+    /** Longest a session may last across refresh rotations, whatever its rotation history (days). */
+    REFRESH_MAX_LIFETIME_DAYS: z.coerce.number().int().positive().default(90),
+    /**
      * Phase 5: monthly tax estimates, PDF and Excel exports, Accountant reports. Same rule: on outside production,
      * off in production. Reports are stored as encrypted files, so turning it on in production needs the storage settings.
      */
@@ -181,12 +188,13 @@ const envSchema = z
       ctx.addIssue({ code: 'custom', path: ['COOKIE_SECURE'], message: 'cookies must be secure in production' });
     }
   })
-  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, POLICE_REGISTER_ENABLED, SECURE_SHARE_ENABLED, TAX_REPORTS_ENABLED, WHATSAPP_ENABLED, ...env }) => ({
+  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, POLICE_REGISTER_ENABLED, SECURE_SHARE_ENABLED, SIGNUP_ENABLED, TAX_REPORTS_ENABLED, WHATSAPP_ENABLED, ...env }) => ({
     ...env,
     COOKIE_SECURE: COOKIE_SECURE === undefined ? env.NODE_ENV === 'production' : COOKIE_SECURE === 'true',
     GUEST_CHECKIN_ENABLED: GUEST_CHECKIN_ENABLED === undefined ? env.NODE_ENV !== 'production' : GUEST_CHECKIN_ENABLED === 'true',
     POLICE_REGISTER_ENABLED: POLICE_REGISTER_ENABLED === undefined ? env.NODE_ENV !== 'production' : POLICE_REGISTER_ENABLED === 'true',
     SECURE_SHARE_ENABLED: SECURE_SHARE_ENABLED === undefined ? env.NODE_ENV !== 'production' : SECURE_SHARE_ENABLED === 'true',
+    SIGNUP_ENABLED: SIGNUP_ENABLED === undefined ? env.NODE_ENV !== 'production' : SIGNUP_ENABLED === 'true',
     TAX_REPORTS_ENABLED: TAX_REPORTS_ENABLED === undefined ? env.NODE_ENV !== 'production' : TAX_REPORTS_ENABLED === 'true',
     WHATSAPP_ENABLED: WHATSAPP_ENABLED === undefined ? env.NODE_ENV !== 'production' : WHATSAPP_ENABLED === 'true',
   }));
