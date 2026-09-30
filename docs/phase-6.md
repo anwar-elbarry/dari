@@ -108,7 +108,7 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 |---|---|---|
 | 6.0 ✅ | Carry-overs that need code (none blocking) and the gate tracker for this phase; start the Meta verification | fast |
 | 6.1 ✅ | Data model, migration, capabilities, RuleConfig rows, feature flag `WHATSAPP_ENABLED` | fast |
-| 6.2 | **Team management API**: list, role change, disable/enable, seat limit, last-manager protection, resend; tests on session termination | strong |
+| 6.2 ✅ | **Team management API**: list, role change, disable/enable, seat limit, last-manager protection, resend; tests on session termination | strong |
 | 6.3 | Checklist API and template loading; document upload, audited read, shred, retention | fast |
 | 6.4 | **Messaging service**: provider interface, WhatsApp Cloud driver, e-mail fallback, templates from RuleConfig, quiet hours, caps, delivery log, signed webhook | strong |
 | 6.5 | Web: team, checklist, preferences, delivery status | fast |
@@ -127,6 +127,18 @@ Steps 6.2 and 6.4 carry the risk.
 - `RuleConfig` rows, all unvalidated: `retention.license_documents_days` (no default: nothing is deleted until counsel sets a period), `whatsapp.templates` (names empty until Meta approves them; a kind without a template goes by e-mail), `messaging.quiet_hours` (22:00 to 07:00 Africa/Casablanca) and `messaging.daily_cap` (200 a day per account). The daily cap row is an addition to the plan's list: the plan asks for a cap and rule 1 makes it data. Read through `RulesService.licenseDocumentRetention()`, `whatsappTemplates()`, `quietHours()`, `dailyCap()`.
 - Flag `WHATSAPP_ENABLED` (on outside production, off in production) with `WhatsAppEnabledGuard` in `messaging/`. It needs no storage settings; the provider settings arrive with the driver in 6.4.
 - Tests: env, capabilities, guard, rules, and the composite tenant keys of the new tables.
+
+### Step 6.2 as built
+
+**Team management API** in `apps/api/src/invitations` (`team.service.ts`, `team.controller.ts`, `seats.ts`, `team.dto.ts`):
+- `GET /users` (`team:manage`): members (active and disabled) with role, status, last login, and `seats: { used, limit }`. Used counts active Owner/Manager and Staff plus pending Staff invitations; the Accountant is never counted (`countedRoles` from `plan.seat_limits`). Pending invitations themselves stay on `GET /invitations`.
+- `PATCH /users/:id` (`team:manage`): `{ role?, disabled? }`. The role can only be set to Staff or Accountant — promoting to Owner/Manager is out of scope (open decision). The caller can never change their own row (`CANNOT_MODIFY_SELF`), which is what protects the last owner: only owners reach this route and they cannot touch themselves, so a peer owner can be demoted or disabled only while the acting owner remains, and the account always keeps an owner. Re-enabling a member, or moving one into a counted role (Accountant → Staff), needs a free seat. Disabling or changing a role revokes the member's refresh tokens in the same transaction; a disable is refused immediately by the auth guard (it re-reads `disabledAt`), while a role change takes effect on the next request (the guard re-reads the role) and forces re-authentication within the access-token lifetime.
+- `POST /invitations/:id/resend` (`team:manage`): re-issues a pending invitation. Only the hash is stored, so a new token is minted (the old link dies) and the expiry is refreshed; capped at `MAX_INVITATION_RESENDS` (3) → 429 `RESEND_CAP_REACHED`. The seat is unchanged.
+- **Seat enforcement on invitation** (`invitations.service.ts`): counted-role invitations need a free seat, checked and written in one transaction under a row lock on the account (`lockAccountSeats`), so parallel invitations cannot both take the last seat. Re-inviting the same email revokes the old pending row first, so it never double-counts. Accountant invitations skip the seat check.
+- Audit: `user.role_changed`, `user.disabled`, `user.enabled`, `invitation.resent`, all ids only.
+- Tests: `team.int-spec.ts` (overview, seat limits incl. Starter and the parallel-race, role/disable/enable, self-refusal, last-owner, resend), extended permission matrix and tenant-isolation rows, and the seat helper reused by `invitations.service`. `Account.seatLimit` in the test seed is 50 so the RBAC suites are not constrained by seats.
+
+**Note on `Account.seatLimit`:** enforcement uses the per-account `Account.seatLimit` column (the authoritative value the operator sets; billing is Phase 8). The `plan.seat_limits` rule supplies the per-plan figures (used by the retro-migration and the future billing/plan-change path) and, more importantly here, `countedRoles`. Signup still uses the column default (1 = Starter); wiring signup to the policy waits for the plan picker, to keep the auth path untouched.
 
 ### Decisions taken (2026-09-30)
 
