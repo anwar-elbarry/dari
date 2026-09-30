@@ -17,6 +17,8 @@ export const TENANT_MODELS = new Set<string>([
   'CheckInLink',
   'GuestCheckIn',
   'FicheDePolice',
+  'PoliceRegister',
+  'ShareAccess',
 ]);
 
 const WHERE_OPS = new Set([

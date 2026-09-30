@@ -22,6 +22,8 @@ export const CAPABILITIES = [
   'id:read', // read an ID image (Owner/Manager only; every read is audited)
   'guest:write', // correct a guest's fields and mark them verified (Owner/Manager only)
   'police:read', // guest fields on the Fiche and its PDF (Owner/Manager only until counsel confirms Staff access)
+  'register:read', // generate, validate and read the monthly police register (Owner/Manager only)
+  'share:manage', // create, list and revoke Secure Share links, read their access log (Owner/Manager only)
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];

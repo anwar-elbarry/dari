@@ -25,6 +25,11 @@ describe('role capabilities', () => {
     for (const c of ['checkin:manage', 'guest:read_meta', 'id:read', 'police:read', 'guest:write'] as const) expect(can('ACCOUNTANT', c)).toBe(false);
   });
 
+  it('keeps registers and Secure Share to Owner/Manager: Staff and Accountant get neither', () => {
+    for (const role of ['STAFF', 'ACCOUNTANT'] as const) for (const c of ['register:read', 'share:manage'] as const) expect(can(role, c)).toBe(false);
+    for (const c of ['register:read', 'share:manage'] as const) expect(can('OWNER_MANAGER', c)).toBe(true);
+  });
+
   it('gives Accountant nothing in Phase 1 (reports arrive in Phase 5)', () => {
     expect(ROLE_CAPABILITIES.ACCOUNTANT).toEqual([]);
   });

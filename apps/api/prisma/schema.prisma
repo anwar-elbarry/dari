@@ -146,21 +146,23 @@ model Account {
   seatLimit        Int              @default(1)
   createdAt        DateTime         @default(now())
 
-  users         User[]
-  invitations   Invitation[]
-  owners        PropertyOwner[]
-  properties    Property[]
-  bookings      Booking[]
-  icalFeeds     IcalFeed[]
-  importBatches ImportBatch[]
-  shareLinks    ShareLink[]
-  notifications Notification[]
-  auditLogs     AuditLog[]
-  vendors       Vendor[]
-  storedObjects StoredObject[]
-  checkInLinks  CheckInLink[]
-  guestCheckIns GuestCheckIn[]
-  fiches        FicheDePolice[]
+  users           User[]
+  invitations     Invitation[]
+  owners          PropertyOwner[]
+  properties      Property[]
+  bookings        Booking[]
+  icalFeeds       IcalFeed[]
+  importBatches   ImportBatch[]
+  shareLinks      ShareLink[]
+  shareAccesses   ShareAccess[]
+  policeRegisters PoliceRegister[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  vendors         Vendor[]
+  storedObjects   StoredObject[]
+  checkInLinks    CheckInLink[]
+  guestCheckIns   GuestCheckIn[]
+  fiches          FicheDePolice[]
 }
 
 model User {
@@ -487,35 +489,68 @@ model FicheDePolice {
   @@index([accountId])
 }
 
+// One register per property and month (Phase 4). Regenerating replaces the row and shreds the previous PDF.
+// `validation` holds counts by problem, never names or document numbers.
 model PoliceRegister {
-  id          String   @id @default(uuid())
-  propertyId  String
-  month       String // YYYY-MM
-  pdfUrl      String
-  generatedBy String
-  generatedAt DateTime @default(now())
+  id              String   @id @default(uuid())
+  accountId       String
+  propertyId      String
+  month           String // YYYY-MM
+  pdfObjectId     String
+  templateVersion String
+  sha256          String // of the PDF
+  guestCount      Int
+  validation      Json
+  generatedBy     String // user id
+  generatedAt     DateTime @default(now())
 
-  property Property @relation(fields: [propertyId], references: [id])
+  account  Account      @relation(fields: [accountId], references: [id])
+  property Property     @relation(fields: [propertyId, accountId], references: [id, accountId])
+  pdf      StoredObject @relation(fields: [pdfObjectId, accountId], references: [id, accountId])
 
-  @@index([propertyId, month])
+  @@unique([propertyId, month])
+  @@unique([id, accountId])
+  @@index([accountId])
+  @@index([pdfObjectId])
 }
 
+// A time-limited link to one Fiche or one register. `resourceId` is polymorphic, so no foreign key can hold it:
+// the service checks it against the account and a test guards that. Only the hash of the token is stored.
 model ShareLink {
   id             String            @id @default(uuid())
   accountId      String
   resourceType   ShareResourceType
   resourceId     String
   tokenHash      String            @unique // only the hash of the 256-bit token is stored
-  recipientLabel String
+  recipientLabel String // manager-only, never shown to the recipient
   expiresAt      DateTime
   revokedAt      DateTime?
-  maxViews       Int?
+  maxViews       Int? // unused: view limits are out of scope for Phase 4
   viewCount      Int               @default(0)
   createdBy      String
   createdAt      DateTime          @default(now())
 
-  account Account @relation(fields: [accountId], references: [id])
+  account  Account       @relation(fields: [accountId], references: [id])
+  accesses ShareAccess[]
 
+  @@unique([id, accountId])
+  @@index([accountId])
+  @@index([resourceType, resourceId])
+}
+
+// One row per successful view. Failed attempts store nothing, so attacker-supplied input never lands here.
+// No IP address: whether an authority's access must be attributable is an open decision for counsel.
+model ShareAccess {
+  id          String   @id @default(uuid())
+  accountId   String
+  shareLinkId String
+  at          DateTime @default(now())
+  userAgent   String // trimmed
+
+  account Account   @relation(fields: [accountId], references: [id])
+  share   ShareLink @relation(fields: [shareLinkId, accountId], references: [id, accountId])
+
+  @@index([shareLinkId, at])
   @@index([accountId])
 }
 
@@ -624,6 +659,7 @@ model AuditLog {
 enum StoredObjectKind {
   ID_IMAGE
   FICHE_PDF
+  POLICE_REGISTER_PDF
 }
 
 model StoredObject {
@@ -638,9 +674,10 @@ model StoredObject {
   expiresAt  DateTime? // retention purge date
   deletedAt  DateTime?
 
-  account   Account         @relation(fields: [accountId], references: [id])
+  account   Account          @relation(fields: [accountId], references: [id])
   guestDocs GuestCheckIn[]
   fiches    FicheDePolice[]
+  registers PoliceRegister[]
 
   @@unique([id, accountId])
   @@index([accountId])

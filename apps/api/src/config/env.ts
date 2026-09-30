@@ -52,6 +52,13 @@ const envSchema = z
      */
     GUEST_CHECKIN_ENABLED: z.enum(['true', 'false']).optional(),
     /**
+     * Phase 4: the monthly police register and Secure Share. Same rule as the guest feature: on by default
+     * outside production, off in production until the legal gates are closed. Both store or read encrypted
+     * PDFs, so turning either on in production requires the storage settings.
+     */
+    POLICE_REGISTER_ENABLED: z.enum(['true', 'false']).optional(),
+    SECURE_SHARE_ENABLED: z.enum(['true', 'false']).optional(),
+    /**
      * Private object storage for ID scans and Fiche PDFs (Phase 3). `memory` is dev/test only (refused in
      * production). Everything is encrypted by the application before it reaches the store, so the provider
      * only ever holds ciphertext; S3_SSE adds provider-side encryption on top.
@@ -106,7 +113,7 @@ const envSchema = z
       }
     }
     // The guest feature is the only user of storage: production requires it only when the feature is on.
-    if (env.NODE_ENV === 'production' && env.GUEST_CHECKIN_ENABLED === 'true') {
+    if (env.NODE_ENV === 'production' && (env.GUEST_CHECKIN_ENABLED === 'true' || env.POLICE_REGISTER_ENABLED === 'true' || env.SECURE_SHARE_ENABLED === 'true')) {
       if (env.STORAGE_DRIVER !== 's3') ctx.addIssue({ code: 'custom', path: ['STORAGE_DRIVER'], message: 'must be s3 in production (private, encrypted object storage)' });
       if (!env.STORAGE_MASTER_KEYS) ctx.addIssue({ code: 'custom', path: ['STORAGE_MASTER_KEYS'], message: 'required in production' });
       if (!env.S3_SSE) ctx.addIssue({ code: 'custom', path: ['S3_SSE'], message: 'server-side encryption must be enabled in production' });
@@ -139,10 +146,12 @@ const envSchema = z
       ctx.addIssue({ code: 'custom', path: ['COOKIE_SECURE'], message: 'cookies must be secure in production' });
     }
   })
-  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, ...env }) => ({
+  .transform(({ COOKIE_SECURE, GUEST_CHECKIN_ENABLED, POLICE_REGISTER_ENABLED, SECURE_SHARE_ENABLED, ...env }) => ({
     ...env,
     COOKIE_SECURE: COOKIE_SECURE === undefined ? env.NODE_ENV === 'production' : COOKIE_SECURE === 'true',
     GUEST_CHECKIN_ENABLED: GUEST_CHECKIN_ENABLED === undefined ? env.NODE_ENV !== 'production' : GUEST_CHECKIN_ENABLED === 'true',
+    POLICE_REGISTER_ENABLED: POLICE_REGISTER_ENABLED === undefined ? env.NODE_ENV !== 'production' : POLICE_REGISTER_ENABLED === 'true',
+    SECURE_SHARE_ENABLED: SECURE_SHARE_ENABLED === undefined ? env.NODE_ENV !== 'production' : SECURE_SHARE_ENABLED === 'true',
   }));
 
 export type AppConfig = z.infer<typeof envSchema>;

@@ -12,6 +12,8 @@ export interface DayCounterRule extends DayCounterThresholds {
 export const DAY_COUNTER_RULE_KEY = 'day_counter.thresholds';
 export const ID_RETENTION_RULE_KEY = 'retention.id_images_days';
 export const CHECKIN_GRACE_RULE_KEY = 'checkin.link_grace_hours';
+export const SHARE_MIN_HOURS_RULE_KEY = 'share.min_hours';
+export const SHARE_MAX_HOURS_RULE_KEY = 'share.max_hours';
 export const FICHE_RETENTION_RULE_KEY = 'retention.fiche_days';
 export const REGISTER_RETENTION_RULE_KEY = 'retention.police_register_days';
 
@@ -28,6 +30,12 @@ export interface RecordRetentionRule {
   /** The period to apply: only a valid number that counsel has validated. Deleting is irreversible, so a guess is never applied. */
   enforceable: number | null;
 }
+export interface ShareLifetimeRule {
+  /** Bounds, in hours, for the expiry a manager may choose on a Secure Share link. */
+  minHours: number;
+  maxHours: number;
+  validated: boolean;
+}
 export interface CheckinGraceRule {
   /** Hours after the booked checkout during which a check-in link still works. */
   hours: number;
@@ -37,6 +45,10 @@ export interface CheckinGraceRule {
 /** Fallbacks when the row is missing or malformed: the plan's defaults, reported as not validated. */
 export const DEFAULT_ID_RETENTION_DAYS = 30;
 export const DEFAULT_CHECKIN_GRACE_HOURS = 48;
+export const DEFAULT_SHARE_MIN_HOURS = 24;
+export const DEFAULT_SHARE_MAX_HOURS = 72;
+/** A share link never lives longer than this, whatever the row says: a typo in RuleConfig must not create a permanent link. */
+export const SHARE_HARD_MAX_HOURS = 168;
 
 /** Ten years: an upper bound that catches a typo, not a legal position. */
 export const MAX_RECORD_RETENTION_DAYS = 3650;
@@ -82,6 +94,21 @@ export class RulesService {
       return { hours: DEFAULT_CHECKIN_GRACE_HOURS, validated: false };
     }
     return { hours, validated: !!row.validatedBy };
+  }
+
+  /** Both bounds must be valid and min <= max, otherwise both fall back to the plan's 24 and 72 hours, reported as not validated. */
+  async shareLifetime(): Promise<ShareLifetimeRule> {
+    const [min, max] = await Promise.all([
+      this.prisma.ruleConfig.findUnique({ where: { key: SHARE_MIN_HOURS_RULE_KEY } }),
+      this.prisma.ruleConfig.findUnique({ where: { key: SHARE_MAX_HOURS_RULE_KEY } }),
+    ]);
+    const minHours = boundedInt((min?.value as { hours?: unknown } | null)?.hours, 1, SHARE_HARD_MAX_HOURS);
+    const maxHours = boundedInt((max?.value as { hours?: unknown } | null)?.hours, 1, SHARE_HARD_MAX_HOURS);
+    if (!min || !max || minHours === null || maxHours === null || minHours > maxHours) {
+      this.logger.error(`RuleConfig "${SHARE_MIN_HOURS_RULE_KEY}" / "${SHARE_MAX_HOURS_RULE_KEY}" missing or invalid; using ${DEFAULT_SHARE_MIN_HOURS} to ${DEFAULT_SHARE_MAX_HOURS} hours`);
+      return { minHours: DEFAULT_SHARE_MIN_HOURS, maxHours: DEFAULT_SHARE_MAX_HOURS, validated: false };
+    }
+    return { minHours, maxHours, validated: !!min.validatedBy && !!max.validatedBy };
   }
 
   async ficheRetention(): Promise<RecordRetentionRule> {

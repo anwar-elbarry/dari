@@ -62,6 +62,12 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 - Guest routes for the team: `arrivals` (Staff: no names), `GET/PATCH /guests/:id`, `GET /guests/:id/document` (decrypt, audit first, `no-store`). Drafts are invisible to the team.
 - Retention length and link grace period are `RuleConfig` rows (`retention.id_images_days`, `checkin.link_grace_hours`), read through `RulesService.idRetention()` / `checkinGrace()`. Do not hard-code 30 or 48.
 
+## Police register and Secure Share (Phase 4, data model in place; see docs/phase-4.md)
+- Flags `POLICE_REGISTER_ENABLED` and `SECURE_SHARE_ENABLED` (own guards in `register/` and `share/`, 404 when off, off by default in production). Never branch on them elsewhere.
+- Capabilities `register:read`, `share:manage`: Owner/Manager only. Share lifetime bounds are `RuleConfig` rows `share.min_hours` / `share.max_hours`, read through `RulesService.shareLifetime()`; do not hard-code 24 or 72.
+- `ShareAccess` stores time and a trimmed user agent only, never an IP or a token. `ShareLink.resourceId` is polymorphic (no foreign key): the service must check it against the account.
+- Fiche and register retention: `retention.fiche_days`, `retention.police_register_days`; a period counts only once counsel has validated it (`RecordRetentionRule.enforceable`). `npm run check:enablement -w apps/api` before enabling anything in production.
+
 ## Alerts (apps/api/src/alerts)
 - Threshold alerts are `Notification` rows of type `day_counter.amber|red`, unique per (account, type, property, year), so evaluation is idempotent. Thresholds come from `RuleConfig` via `RulesService`; the email says when they are not yet validated.
 - Anything that can change the nights of a property calls `PropertyEvents.nightsChanged(accountId, propertyId)` (sync, import, reclassification); `AlertsService` listens. Do the same for new sources of stays. An hourly job re-checks everything (Redis only).

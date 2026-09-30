@@ -110,7 +110,7 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | Step | Work | Model |
 |---|---|---|
 | 4.0 | Carry-overs that need code: retention rows for the Fiche and register, the production enablement check, the pilot manual-test list — **done** (see below) | fast |
-| 4.1 | Data model, migration, capabilities, RuleConfig rows, feature flags | fast |
+| 4.1 | Data model, migration, capabilities, RuleConfig rows, feature flags — **done** (see below) | fast |
 | 4.2 | **Register generator**: month query, validation report, versioned template, PDF, encrypted storage, regenerate, audit | strong |
 | 4.3 | **Secure Share API**: create, list, revoke, access log, the public route with fail-closed access recording | strong |
 | 4.4 | Web: registers, validation report, share dialog, shares list | fast |
@@ -118,6 +118,13 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 4.6 | Hardening: abuse and logging tests for the public route, security review, phone e2e, docs, Phase 5 plan | strong |
 
 Steps 4.2 and 4.3 carry the risk.
+
+### Step 4.1 outcome
+- Migration `20260930100000`: `PoliceRegister` rebuilt (`accountId`, `pdfObjectId`, `templateVersion`, `sha256`, `guestCount`, `validation`, unique `(propertyId, month)`, composite keys to `Property` and `StoredObject`); `ShareAccess` added (composite key to `ShareLink`, no IP column); `ShareLink` gets `(id, accountId)` unique and an index on the polymorphic `(resourceType, resourceId)`; `StoredObjectKind.POLICE_REGISTER_PDF`. The old `PoliceRegister` table was never written, so it is cleared in the migration.
+- `RuleConfig` `share.min_hours` (24) and `share.max_hours` (72), unvalidated, read by `RulesService.shareLifetime()`. Invalid, missing or inverted bounds fall back to 24/72; a value above 168 h is refused whatever the row says, so a typo cannot make a permanent link.
+- Capabilities `register:read` and `share:manage` (Owner/Manager only); audit actions `register.generated`, `register.read`, `share.created`, `share.revoked`, `share.accessed`; `PoliceRegister` and `ShareAccess` added to the tenant-scoped models.
+- Flags `POLICE_REGISTER_ENABLED` and `SECURE_SHARE_ENABLED`: on when unset outside production, off in production, independent of `GUEST_CHECKIN_ENABLED` and of each other; turning either on in production requires the storage settings. Guards `PoliceRegisterEnabledGuard` (`src/register`) and `SecureShareEnabledGuard` (`src/share`) answer 404 when off; no route uses them yet (4.2 and 4.3).
+- Left for later steps: the retention job applies `retention.police_register_days` to register PDFs in 4.2; `ShareLink.resourceId` is validated in the service in 4.3. `maxViews` stays unused (view limits are out of scope).
 
 ### Step 4.0 outcome
 - `retention.fiche_days` and `retention.police_register_days` seeded with `{"days": null}` (migration `20260930090000`), read by `RulesService.ficheRetention()` / `policeRegisterRetention()`. **No default and no guess:** a period is applied only when it is a whole number of 1 to 3650 days *and* `validatedBy` is set. Otherwise nothing is deleted.

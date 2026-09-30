@@ -34,7 +34,13 @@ export type AuditAction =
   | 'checkin.link.revoked'
   | 'checkin.submitted'
   | 'guest.updated'
-  | 'retention.purged';
+  | 'retention.purged'
+  // Phase 4: the monthly register and Secure Share. Identifiers only, never a token.
+  | 'register.generated'
+  | 'register.read'
+  | 'share.created'
+  | 'share.revoked'
+  | 'share.accessed';
 
 export interface AuditEntry {
   accountId: string;

@@ -1,5 +1,5 @@
 import { createTestApp, requireDatabase, resetDatabase, TestApp } from '../test/test-app';
-import { CHECKIN_GRACE_RULE_KEY, FICHE_RETENTION_RULE_KEY, ID_RETENTION_RULE_KEY, REGISTER_RETENTION_RULE_KEY, RulesService } from './rules.service';
+import { CHECKIN_GRACE_RULE_KEY, FICHE_RETENTION_RULE_KEY, ID_RETENTION_RULE_KEY, REGISTER_RETENTION_RULE_KEY, RulesService, SHARE_MAX_HOURS_RULE_KEY, SHARE_MIN_HOURS_RULE_KEY } from './rules.service';
 
 requireDatabase();
 
@@ -65,6 +65,27 @@ describe('retention and link-lifetime rules (integration)', () => {
     it.each([[{ days: 0 }], [{ days: 3651 }], [{ days: '30' }], [{ days: 2.5 }], [{}]])('refuses a malformed value %j', async (value) => {
       await set(FICHE_RETENTION_RULE_KEY, value, 'Counsel');
       expect(await rules.ficheRetention()).toEqual({ days: null, validated: true, enforceable: null });
+    });
+  });
+
+  describe('Secure Share lifetime bounds', () => {
+    it('reads both bounds; validated only when counsel validated both', async () => {
+      await set(SHARE_MIN_HOURS_RULE_KEY, { hours: 12 }, 'Counsel');
+      await set(SHARE_MAX_HOURS_RULE_KEY, { hours: 48 });
+      expect(await rules.shareLifetime()).toEqual({ minHours: 12, maxHours: 48, validated: false });
+      await set(SHARE_MAX_HOURS_RULE_KEY, { hours: 48 }, 'Counsel');
+      expect(await rules.shareLifetime()).toEqual({ minHours: 12, maxHours: 48, validated: true });
+    });
+
+    it('falls back to 24 and 72 hours, unvalidated, when a row is missing', async () => {
+      await set(SHARE_MIN_HOURS_RULE_KEY, { hours: 12 }, 'Counsel');
+      expect(await rules.shareLifetime()).toEqual({ minHours: 24, maxHours: 72, validated: false });
+    });
+
+    it.each([[{ hours: 0 }, { hours: 72 }], [{ hours: 24 }, { hours: 169 }], [{ hours: 24 }, { hours: 'x' }], [{ hours: 80 }, { hours: 72 }], [{ hours: 24 }, {}]])('refuses %j / %j (never a permanent or inverted range)', async (min, max) => {
+      await set(SHARE_MIN_HOURS_RULE_KEY, min, 'Counsel');
+      await set(SHARE_MAX_HOURS_RULE_KEY, max, 'Counsel');
+      expect(await rules.shareLifetime()).toEqual({ minHours: 24, maxHours: 72, validated: false });
     });
   });
 });

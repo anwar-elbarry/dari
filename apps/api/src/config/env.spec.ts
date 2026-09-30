@@ -99,6 +99,23 @@ describe('parseEnv', () => {
     });
   });
 
+  describe.each(['POLICE_REGISTER_ENABLED', 'SECURE_SHARE_ENABLED'] as const)('%s', (flag) => {
+    const prod = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
+    it('is on in development and test, off by default in production, and independent of the check-in flag', () => {
+      expect(parseEnv(base)[flag]).toBe(true);
+      expect(parseEnv({ ...base, NODE_ENV: 'test' })[flag]).toBe(true);
+      expect(parseEnv(prod)[flag]).toBe(false);
+      expect(parseEnv({ ...prod, GUEST_CHECKIN_ENABLED: 'false', [flag]: 'false' })[flag]).toBe(false);
+    });
+    it('can be switched explicitly and refuses other values', () => {
+      expect(parseEnv({ ...base, [flag]: 'false' })[flag]).toBe(false);
+      expect(() => parseEnv({ ...base, [flag]: 'yes' })).toThrow(new RegExp(flag));
+    });
+    it('in production needs the storage settings once on, even with the guest feature off', () => {
+      expect(() => parseEnv({ ...prod, [flag]: 'true' })).toThrow(/STORAGE_DRIVER/);
+    });
+  });
+
   it('requires a long JWT secret', () => {
     expect(() => parseEnv({ ...base, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
   });

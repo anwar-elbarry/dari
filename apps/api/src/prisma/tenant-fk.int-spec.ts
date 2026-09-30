@@ -61,4 +61,34 @@ describe('composite tenant foreign keys (integration)', () => {
     await t.prisma.property.delete({ where: { id: propertyB } });
     expect(await t.prisma.icalFeed.count()).toBe(0);
   });
+
+  describe('police registers and share links (Phase 4)', () => {
+    const stored = (accountId: string) => t.prisma.storedObject.create({ data: { accountId, key: `k-${Math.random()}`, kind: 'POLICE_REGISTER_PDF', sizeBytes: 1, sha256: 'a'.repeat(64), wrappedKey: 'w' } });
+    const register = (accountId: string, propertyId: string, pdfObjectId: string, month = '2026-10') =>
+      t.prisma.policeRegister.create({ data: { accountId, propertyId, month, pdfObjectId, templateVersion: 'draft-1', sha256: 'a'.repeat(64), guestCount: 0, validation: {}, generatedBy: 'u' } });
+
+    it('refuses a register on a property or a PDF of another account, accepts its own', async () => {
+      const propertyA = (await property(a, ownerA)).id;
+      const pdfA = (await stored(a)).id;
+      const pdfB = (await stored(b)).id;
+      await expect(register(a, propertyB, pdfA)).rejects.toMatchObject({ code: 'P2003' });
+      await expect(register(a, propertyA, pdfB)).rejects.toMatchObject({ code: 'P2003' });
+      await expect(register(a, propertyA, pdfA)).resolves.toBeDefined();
+    });
+
+    it('allows one register per property and month', async () => {
+      const propertyA = (await property(a, ownerA)).id;
+      await register(a, propertyA, (await stored(a)).id);
+      await expect(register(a, propertyA, (await stored(a)).id)).rejects.toMatchObject({ code: 'P2002' });
+      await expect(register(a, propertyA, (await stored(a)).id, '2026-11')).resolves.toBeDefined();
+    });
+
+    it('refuses an access row that points at a share link of another account', async () => {
+      const link = (accountId: string) =>
+        t.prisma.shareLink.create({ data: { accountId, resourceType: 'POLICE_REGISTER', resourceId: 'r', tokenHash: `h-${Math.random()}`, recipientLabel: 'Prefecture', expiresAt: new Date(Date.now() + 86_400_000), createdBy: 'u' } });
+      const linkB = await link(b);
+      await expect(t.prisma.shareAccess.create({ data: { accountId: a, shareLinkId: linkB.id, userAgent: 'x' } })).rejects.toMatchObject({ code: 'P2003' });
+      await expect(t.prisma.shareAccess.create({ data: { accountId: b, shareLinkId: linkB.id, userAgent: 'x' } })).resolves.toBeDefined();
+    });
+  });
 });
