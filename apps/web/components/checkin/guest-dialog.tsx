@@ -7,6 +7,7 @@ import { useSession } from '../../lib/session';
 import type { DocType, GuestDetail, GuestFields } from '../../lib/types';
 import { useSubmit } from '../../lib/use-submit';
 import { Alert, Button, Dialog, Field, fieldAria, Input, Select, StatusPill } from '../ui';
+import { ShareDialog } from '../share/share-dialog';
 import { downloadBlob, openBlob } from './share';
 
 const FIELD_ORDER = ['fullName', 'docType', 'docNumber', 'nationality', 'dob', 'docExpiryDate', 'declaredMoroccanNationality', 'entryStampNumber', 'cityOfOrigin', 'nextDestination', 'profession'] as const;
@@ -23,6 +24,7 @@ export function GuestDialog({ guestId, onClose, onChanged }: { guestId: string |
   const tk = useTranslations('checkin');
   const tc = useTranslations('common');
   const te = useTranslations('errors');
+  const ts = useTranslations('share');
   const format = useFormatter();
   const { can } = useSession();
   const [guest, setGuest] = useState<GuestDetail | null>(null);
@@ -30,6 +32,7 @@ export function GuestDialog({ guestId, onClose, onChanged }: { guestId: string |
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
   const [image, setImage] = useState<{ url: string } | 'loading' | null>(null);
   const save = useSubmit();
   const action = useSubmit();
@@ -260,6 +263,11 @@ export function GuestDialog({ guestId, onClose, onChanged }: { guestId: string |
                             <Button variant="ghost" onClick={() => ficheFile('download')} disabled={action.pending}>
                               {t('downloadFiche')}
                             </Button>
+                            {can('share:manage') && (
+                              <Button variant="ghost" onClick={() => setSharing(true)}>
+                                {t('shareFiche')}
+                              </Button>
+                            )}
                           </>
                         )}
                         <Button variant="ghost" onClick={regenerate} disabled={action.pending}>
@@ -275,6 +283,8 @@ export function GuestDialog({ guestId, onClose, onChanged }: { guestId: string |
           )}
         </div>
       </Dialog>
+
+      <ShareDialog target={sharing && guestId ? { type: 'FICHE_DE_POLICE', guestId } : null} title={ts('dialog.titleFiche')} onClose={() => setSharing(false)} />
 
       {/* The ID image, in its own dialog. The object URL is revoked as soon as it closes. */}
       <Dialog open={image !== null} onClose={() => setImage(null)} title={t('viewId')} closeLabel={t('closeImage')}>

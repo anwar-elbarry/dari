@@ -228,3 +228,78 @@ export interface GuestDetail {
   consent?: { at: string | null; textId: string | null };
   ocr?: { confidence: number | null; flagged: string[]; edited: string[] };
 }
+
+/* ---- Police register and Secure Share (Phase 4) ---- */
+export type RegisterStatus = 'none' | 'generated' | 'outdated';
+export type ProblemKind = 'NO_CHECKIN' | 'PARTY_INCOMPLETE' | 'DRAFT' | 'MISSING_FIELD' | 'UNVERIFIED';
+export type MandatoryField = 'docNumber' | 'entryStampNumber' | 'cityOfOrigin' | 'nextDestination' | 'profession';
+
+export interface RegisterSummary {
+  stays: number;
+  guests: number;
+  problems: number;
+  byKind: Record<ProblemKind, number>;
+}
+
+/** Staff get `month` and `status` only; Owner/Manager get the rest. */
+export interface RegisterMonth extends Partial<RegisterSummary> {
+  month: string;
+  status: RegisterStatus;
+  generatedAt?: string | null;
+}
+
+export interface RegisterProblem {
+  kind: ProblemKind;
+  bookingId: string;
+  guestId?: string;
+  fields?: MandatoryField[];
+}
+
+export interface ValidationReport {
+  month: string;
+  summary: RegisterSummary;
+  problems: RegisterProblem[];
+  stays: Record<string, { checkIn: string; checkOut: string }>;
+}
+
+export interface GeneratedRegister {
+  month: string;
+  templateVersion: string;
+  generatedAt: string;
+  summary: RegisterSummary;
+  problems: RegisterProblem[];
+}
+
+export type ShareStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+export type ShareResourceType = 'FICHE_DE_POLICE' | 'POLICE_REGISTER';
+export type ShareTarget = { type: 'FICHE_DE_POLICE'; guestId: string } | { type: 'POLICE_REGISTER'; propertyId: string; month: string };
+
+export interface ShareLifetime {
+  minHours: number;
+  maxHours: number;
+  validated: boolean;
+}
+
+export interface ShareRow {
+  id: string;
+  resourceType: ShareResourceType;
+  resource: { guestId?: string | null; propertyId?: string | null; month?: string | null };
+  recipientLabel: string;
+  status: ShareStatus;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  viewCount: number;
+  lastAccessAt: string | null;
+}
+
+/** Returned once, when a link is created. The token is never available again. */
+export interface CreatedShare extends ShareRow {
+  token: string;
+  url: string;
+}
+
+export interface ShareAccessRow {
+  at: string;
+  userAgent: string;
+}

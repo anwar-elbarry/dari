@@ -27,7 +27,12 @@
     "LINK_WINDOW_CLOSED": "Ce séjour est trop ancien pour un lien d'enregistrement.",
     "BOOKING_NOT_ELIGIBLE": "Les liens d'enregistrement ne concernent que les séjours confirmés.",
     "PARTY_COMPLETE": "Tous les voyageurs attendus se sont déjà enregistrés.",
-    "PDF_UNAVAILABLE": "La fiche n'a pas pu être générée. Réessayez plus tard."
+    "PDF_UNAVAILABLE": "La fiche n'a pas pu être générée. Réessayez plus tard.",
+    "INVALID_MONTH": "Le mois n'est pas valide.",
+    "MONTH_NOT_STARTED": "Ce mois n'a pas encore commencé.",
+    "REGISTER_TOO_LARGE": "Ce mois compte trop de séjours pour générer un registre.",
+    "REGISTER_OUTDATED": "Le registre a changé depuis sa génération. Générez-le à nouveau avant de le partager.",
+    "EXPIRY_OUT_OF_BOUNDS": "La durée choisie n'est pas dans la plage autorisée."
   },
   "auth": {
     "login": {
@@ -85,7 +90,8 @@
     "team": "Équipe",
     "reports": "Rapports",
     "menu": "Menu",
-    "dashboard": "Tableau de bord"
+    "dashboard": "Tableau de bord",
+    "shares": "Liens partagés"
   },
   "properties": {
     "title": "Biens",
@@ -236,7 +242,8 @@
     },
     "calendars": "Calendriers",
     "importTitle": "Importer des séjours",
-    "year": "Année"
+    "year": "Année",
+    "openRegisters": "Registre de police"
   },
   "feeds": {
     "intro": "Collez le lien iCal de chaque plateforme. Le lien est confidentiel : quiconque le possède peut lire le calendrier.",
@@ -415,7 +422,8 @@
       "saved": "Enregistré. Régénérez la fiche pour qu'elle intègre vos corrections.",
       "verify": "Marquer comme vérifié",
       "verified": "Marqué comme vérifié.",
-      "loadFailed": "Le voyageur n'a pas pu être chargé."
+      "loadFailed": "Le voyageur n'a pas pu être chargé.",
+      "shareFiche": "Partager la fiche"
     }
   },
   "guest": {
@@ -529,6 +537,108 @@
       "CONSENT_INVALID": "Le texte de consentement a changé. Relisez-le et confirmez.",
       "ALREADY_SUBMITTED": "Ce formulaire a déjà été envoyé.",
       "VALIDATION_FAILED": "Certains champs demandent votre attention."
+    }
+  },
+  "register": {
+    "title": "Registre de police mensuel",
+    "intro": "Un registre par mois, construit à partir des fiches voyageurs déjà collectées. Vérifiez les enregistrements incomplets avant de le générer.",
+    "back": "Retour au bien",
+    "staffNote": "Vous voyez les mois pour lesquels un registre existe. Le registre lui-même est visible par le gestionnaire uniquement.",
+    "unavailable": "Cette fonctionnalité n'est pas encore disponible.",
+    "loadFailed": "Les registres n'ont pas pu être chargés.",
+    "empty": "Aucun séjour à lister pour ce bien.",
+    "layoutNote": "Mise en forme indicative, à comparer au modèle officiel. Établi à partir des déclarations des voyageurs : à vérifier avant usage.",
+    "monthRule": "Un séjour est listé une seule fois, sous le mois d'arrivée. Un séjour qui se poursuit le mois suivant est signalé sur le registre.",
+    "status": {
+      "none": "Non généré",
+      "generated": "Généré",
+      "outdated": "À régénérer"
+    },
+    "counts": "{guests, plural, one {# voyageur} other {# voyageurs}} · {stays, plural, one {# séjour} other {# séjours}}",
+    "generatedOn": "Généré le {date}",
+    "noProblem": "Aucun enregistrement incomplet trouvé",
+    "problems": "{count, plural, one {# enregistrement incomplet} other {# enregistrements incomplets}}",
+    "report": "Voir les enregistrements incomplets",
+    "generate": "Générer le registre",
+    "regenerate": "Générer à nouveau",
+    "openPdf": "Ouvrir le PDF",
+    "share": "Partager",
+    "shareBlocked": "Générez à nouveau le registre avant de le partager.",
+    "generated": "Le registre de {month} a été généré.",
+    "generatedWithProblems": "Le registre de {month} a été généré avec {count, plural, one {# enregistrement incomplet} other {# enregistrements incomplets}}. Cela est indiqué sur la page.",
+    "outdatedHint": "Les données ont changé après la génération de ce registre.",
+    "pdfNotice": "Chaque ouverture d'un registre est enregistrée.",
+    "validation": {
+      "title": "Enregistrements incomplets, {month}",
+      "none": "Rien d'incomplet trouvé pour ce mois.",
+      "intro": "Il manque quelque chose à ces enregistrements. Corrigez-les, puis générez à nouveau le registre.",
+      "stay": "Séjour du {checkIn} au {checkOut}",
+      "kind": {
+        "NO_CHECKIN": "Aucun voyageur ne s'est enregistré pour ce séjour.",
+        "PARTY_INCOMPLETE": "Moins de voyageurs se sont enregistrés que prévu.",
+        "DRAFT": "Un voyageur a commencé le formulaire sans l'envoyer. Il n'est pas sur le registre.",
+        "MISSING_FIELD": "Manque : {fields}.",
+        "UNVERIFIED": "Envoyé par le voyageur, pas encore marqué comme vérifié."
+      },
+      "field": {
+        "docNumber": "numéro de la pièce",
+        "entryStampNumber": "numéro du cachet d'entrée",
+        "cityOfOrigin": "ville de provenance",
+        "nextDestination": "prochaine destination",
+        "profession": "profession"
+      },
+      "openGuest": "Ouvrir le voyageur",
+      "close": "Fermer"
+    },
+    "generating": "Génération…",
+    "shareTitle": "Partager le registre {month}"
+  },
+  "share": {
+    "title": "Liens partagés",
+    "intro": "Les liens que vous avez remis à une autorité. Chacun ouvre un seul document, pour une durée limitée, et peut être révoqué à tout moment.",
+    "unavailable": "Cette fonctionnalité n'est pas encore disponible.",
+    "loadFailed": "Les liens n'ont pas pu être chargés.",
+    "empty": "Vous n'avez rien partagé pour l'instant. Utilisez « Partager » sur un registre ou sur la fiche d'un voyageur.",
+    "resource": {
+      "POLICE_REGISTER": "Registre de police {month}",
+      "FICHE_DE_POLICE": "Fiche de police"
+    },
+    "recipient": "Pour : {label}",
+    "status": {
+      "ACTIVE": "Actif jusqu'au {date}",
+      "EXPIRED": "Expiré",
+      "REVOKED": "Révoqué"
+    },
+    "views": "{count, plural, =0 {Pas encore ouvert} one {Ouvert # fois} other {Ouvert # fois}}",
+    "lastAccess": "Dernière ouverture : {date}",
+    "accessLog": "Journal d'accès",
+    "accessTitle": "Qui a ouvert ce lien",
+    "accessNote": "Heure et navigateur seulement. L'adresse de la personne n'est pas enregistrée.",
+    "accessEmpty": "Ce lien n'a pas été ouvert.",
+    "revoke": "Révoquer",
+    "revokeTitle": "Révoquer ce lien ?",
+    "revokeBody": "Le lien cesse de fonctionner immédiatement. Vous pouvez en créer un nouveau.",
+    "revokeConfirm": "Révoquer le lien",
+    "revoked": "Lien révoqué.",
+    "close": "Fermer",
+    "dialog": {
+      "titleFiche": "Partager la fiche",
+      "notice": "Ce lien donne accès à des données personnelles de voyageurs à toute personne qui le détient. Ne le remettez qu'à la personne concernée, gardez une durée courte et révoquez-le quand il n'est plus utile.",
+      "hours": "Durée du lien, en heures",
+      "hoursHint": "Entre {min} et {max} heures. Passé ce délai, le lien ne fonctionne plus.",
+      "label": "Pour qui ?",
+      "labelHint": "Un rappel pour vous seul. Le destinataire ne le voit jamais.",
+      "create": "Créer le lien",
+      "once": "Copiez ce lien maintenant : pour des raisons de sécurité, il n'est affiché qu'une seule fois. Vous pouvez le révoquer, ou en créer un autre, à tout moment.",
+      "linkLabel": "Lien",
+      "expires": "Valable jusqu'au {date}.",
+      "copy": "Copier le lien",
+      "copied": "Copié",
+      "whatsapp": "Envoyer par WhatsApp",
+      "whatsappNote": "WhatsApp reçoit le texte du message, lien compris.",
+      "message": "Document confidentiel, ouvrez le lien avant le {date} : {url}",
+      "done": "Terminé",
+      "loadFailed": "Les durées autorisées n'ont pas pu être chargées."
     }
   }
 }

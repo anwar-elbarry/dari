@@ -116,6 +116,7 @@ export const MATRIX: Row[] = [
   // Secure Share (Phase 4): Owner/Manager only. The public route /api/share is @Public and has its own abuse suite.
   { method: 'POST', route: '/api/shares', url: () => '/api/shares', body: (f) => ({ resourceType: 'FICHE_DE_POLICE', guestId: f.guestId, expiresInHours: 24, recipientLabel: 'Préfecture' }), expect: MANAGER_ONLY(201) },
   { method: 'GET', route: '/api/shares', url: () => '/api/shares', expect: MANAGER_ONLY(200) },
+  { method: 'GET', route: '/api/shares/lifetime', url: () => '/api/shares/lifetime', expect: MANAGER_ONLY(200) },
   { method: 'DELETE', route: '/api/shares/:id', url: async (f) => `/api/shares/${await f.shareId()}`, expect: MANAGER_ONLY(204) },
   { method: 'GET', route: '/api/shares/:id/access', url: async (f) => `/api/shares/${await f.shareId()}/access`, expect: MANAGER_ONLY(200) },
 ];

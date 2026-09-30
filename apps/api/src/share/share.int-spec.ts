@@ -253,6 +253,15 @@ describe('Secure Share (integration)', () => {
     });
   });
 
+  describe('lifetime bounds', () => {
+    it('are served to the manager, from RuleConfig, and to nobody else', async () => {
+      expect((await a.as.OWNER_MANAGER.get('/api/shares/lifetime').expect(200)).body).toEqual({ minHours: 24, maxHours: 72, validated: false });
+      await t.prisma.ruleConfig.createMany({ data: [{ key: 'share.min_hours', value: { hours: 2 }, validatedBy: 'Counsel' }, { key: 'share.max_hours', value: { hours: 36 }, validatedBy: 'Counsel' }] });
+      expect((await a.as.OWNER_MANAGER.get('/api/shares/lifetime').expect(200)).body).toEqual({ minHours: 2, maxHours: 36, validated: true });
+      await a.as.STAFF.get('/api/shares/lifetime').expect(403);
+    });
+  });
+
   describe('list and access log', () => {
     it('lists the links with status, views and last access; another account sees none of it', async () => {
       const { id, token } = (await shareFiche().expect(201)).body;

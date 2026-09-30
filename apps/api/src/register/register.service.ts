@@ -70,7 +70,7 @@ export class RegisterService {
   private async build(accountId: string, propertyId: string, month: string) {
     const property = await this.property(accountId, propertyId);
     const stays = await this.stays(accountId, propertyId, month);
-    return { property, built: buildRegister(stays, property, parseMonth(month)!.end) };
+    return { property, stays, built: buildRegister(stays, property, parseMonth(month)!.end) };
   }
 
   /** Months with their status. Owner/Manager also get the counts of incomplete records; Staff get the status only. */
@@ -115,10 +115,12 @@ export class RegisterService {
     return built.digest === inputDigest;
   }
 
-  async validation(user: AuthUser, propertyId: string, month: string): Promise<{ month: string; summary: Summary; problems: Problem[] }> {
+  /** `stays` carries the dates of the stays named in the problems, so a screen can say which stay without another call. */
+  async validation(user: AuthUser, propertyId: string, month: string): Promise<{ month: string; summary: Summary; problems: Problem[]; stays: Record<string, { checkIn: Date; checkOut: Date }> }> {
     this.assertStarted(month);
-    const { built } = await this.build(user.accountId, propertyId, month);
-    return { month, summary: built.summary, problems: built.problems };
+    const { built, stays } = await this.build(user.accountId, propertyId, month);
+    const named = new Set(built.problems.map((p) => p.bookingId));
+    return { month, summary: built.summary, problems: built.problems, stays: Object.fromEntries(stays.filter((s) => named.has(s.id)).map((s) => [s.id, { checkIn: s.checkIn, checkOut: s.checkOut }])) };
   }
 
   /** Renders, encrypts and stores the register; replaces (and shreds) the previous PDF of that month. */

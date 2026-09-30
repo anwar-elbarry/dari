@@ -150,6 +150,8 @@ suite('Police register (integration, real Chromium)', () => {
         { kind: 'UNVERIFIED', bookingId: unverified.booking.id, guestId: unverified.guest!.id },
       ]);
       expect(res.body.summary).toMatchObject({ stays: 5, guests: 3, problems: 4 });
+      expect(res.body.stays[none.booking.id]).toEqual({ checkIn: '2025-10-03T00:00:00.000Z', checkOut: '2025-10-05T00:00:00.000Z' });
+      expect(Object.keys(res.body.stays).sort()).toEqual([none.booking.id, missing.booking.id, draft.booking.id, unverified.booking.id].sort()); // only stays named in a problem
       expect(JSON.stringify(res.body)).not.toMatch(/Guest|Stockholm|Engineer|N-/);
       expect(ok.guest).not.toBeNull();
       expect(res.headers['cache-control']).toBe('no-store');

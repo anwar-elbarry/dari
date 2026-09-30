@@ -26,6 +26,13 @@ export class SharesController {
     return this.shares.create(user, dto, clientMeta(req));
   }
 
+  /** The bounds a manager may choose an expiry within, so the screen never hard-codes them. */
+  @Requires('share:manage')
+  @Get('lifetime')
+  lifetime() {
+    return this.shares.lifetime();
+  }
+
   @Requires('share:manage')
   @Get()
   list(@CurrentUser() user: AuthUser) {

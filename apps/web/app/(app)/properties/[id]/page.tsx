@@ -129,6 +129,11 @@ function Detail() {
                 {tci('openArrivals')}
               </LinkButton>
             )}
+            {can('booking:read') && (
+              <LinkButton href={`/properties/${id}/registers`} variant="ghost">
+                {t('openRegisters')}
+              </LinkButton>
+            )}
             {canImport && (
               <LinkButton href={`/properties/${id}/import`} variant="ghost">
                 {t('importTitle')}

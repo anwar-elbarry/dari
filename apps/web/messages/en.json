@@ -27,7 +27,12 @@
     "LINK_WINDOW_CLOSED": "This stay is too far in the past for a check-in link.",
     "BOOKING_NOT_ELIGIBLE": "Check-in links are only for confirmed stays.",
     "PARTY_COMPLETE": "Every expected guest has already checked in.",
-    "PDF_UNAVAILABLE": "The Fiche could not be generated. Try again later."
+    "PDF_UNAVAILABLE": "The Fiche could not be generated. Try again later.",
+    "INVALID_MONTH": "The month is not valid.",
+    "MONTH_NOT_STARTED": "This month has not started yet.",
+    "REGISTER_TOO_LARGE": "This month has too many stays to generate a register.",
+    "REGISTER_OUTDATED": "The register has changed since it was generated. Generate it again before sharing it.",
+    "EXPIRY_OUT_OF_BOUNDS": "The chosen duration is outside the allowed range."
   },
   "auth": {
     "login": {
@@ -85,7 +90,8 @@
     "team": "Team",
     "reports": "Reports",
     "menu": "Menu",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "shares": "Shared links"
   },
   "properties": {
     "title": "Properties",
@@ -236,7 +242,8 @@
     },
     "calendars": "Calendars",
     "importTitle": "Import stays",
-    "year": "Year"
+    "year": "Year",
+    "openRegisters": "Police register"
   },
   "feeds": {
     "intro": "Paste the iCal link of each platform. The link is confidential: anyone who has it can read the calendar.",
@@ -415,7 +422,8 @@
       "saved": "Saved. Regenerate the Fiche so that it includes your corrections.",
       "verify": "Mark as verified",
       "verified": "Marked as verified.",
-      "loadFailed": "The guest could not be loaded."
+      "loadFailed": "The guest could not be loaded.",
+      "shareFiche": "Share the Fiche"
     }
   },
   "guest": {
@@ -529,6 +537,108 @@
       "CONSENT_INVALID": "The consent text has changed. Read it again and confirm.",
       "ALREADY_SUBMITTED": "This form was already sent.",
       "VALIDATION_FAILED": "Some fields need your attention."
+    }
+  },
+  "register": {
+    "title": "Monthly police register",
+    "intro": "One register per month, built from the guest forms already collected. Check the incomplete records before you generate it.",
+    "back": "Back to the property",
+    "staffNote": "You can see which months have a register. The register itself is visible to the manager only.",
+    "unavailable": "This feature is not available yet.",
+    "loadFailed": "The registers could not be loaded.",
+    "empty": "No stay to list yet for this property.",
+    "layoutNote": "Indicative layout, to compare with the official form. Built from the travellers' declarations: check it before use.",
+    "monthRule": "A stay is listed under the month of arrival, once. A stay that continues into the next month is marked on the register.",
+    "status": {
+      "none": "Not generated",
+      "generated": "Generated",
+      "outdated": "Out of date"
+    },
+    "counts": "{guests, plural, one {# guest} other {# guests}} · {stays, plural, one {# stay} other {# stays}}",
+    "generatedOn": "Generated on {date}",
+    "noProblem": "No incomplete record found",
+    "problems": "{count, plural, one {# incomplete record} other {# incomplete records}}",
+    "report": "View the incomplete records",
+    "generate": "Generate the register",
+    "regenerate": "Generate again",
+    "openPdf": "Open the PDF",
+    "share": "Share",
+    "shareBlocked": "Generate the register again before sharing it.",
+    "generated": "The register for {month} was generated.",
+    "generatedWithProblems": "The register for {month} was generated with {count, plural, one {# incomplete record} other {# incomplete records}}. It says so on the page.",
+    "outdatedHint": "The data changed after this register was generated.",
+    "pdfNotice": "Every opening of a register is recorded.",
+    "validation": {
+      "title": "Incomplete records, {month}",
+      "none": "Nothing incomplete found for this month.",
+      "intro": "These records are missing something. Fix them, then generate the register again.",
+      "stay": "Stay {checkIn} → {checkOut}",
+      "kind": {
+        "NO_CHECKIN": "No guest has checked in for this stay.",
+        "PARTY_INCOMPLETE": "Fewer guests have checked in than expected.",
+        "DRAFT": "A guest started the form and did not send it. It is not on the register.",
+        "MISSING_FIELD": "Missing: {fields}.",
+        "UNVERIFIED": "Sent by the guest, not yet marked as verified."
+      },
+      "field": {
+        "docNumber": "document number",
+        "entryStampNumber": "entry stamp number",
+        "cityOfOrigin": "city of origin",
+        "nextDestination": "next destination",
+        "profession": "profession"
+      },
+      "openGuest": "Open the guest",
+      "close": "Close"
+    },
+    "generating": "Generating…",
+    "shareTitle": "Share the register {month}"
+  },
+  "share": {
+    "title": "Shared links",
+    "intro": "Links you gave to an authority. Each one opens a single document, for a limited time, and can be revoked at any moment.",
+    "unavailable": "This feature is not available yet.",
+    "loadFailed": "The links could not be loaded.",
+    "empty": "You have not shared anything yet. Use \"Share\" on a register or on a guest's Fiche.",
+    "resource": {
+      "POLICE_REGISTER": "Police register {month}",
+      "FICHE_DE_POLICE": "Fiche de police"
+    },
+    "recipient": "For: {label}",
+    "status": {
+      "ACTIVE": "Active until {date}",
+      "EXPIRED": "Expired",
+      "REVOKED": "Revoked"
+    },
+    "views": "{count, plural, =0 {Not opened yet} one {Opened # time} other {Opened # times}}",
+    "lastAccess": "Last opened {date}",
+    "accessLog": "Access log",
+    "accessTitle": "Who opened this link",
+    "accessNote": "Time and browser only. The person's address is not recorded.",
+    "accessEmpty": "This link has not been opened.",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke this link?",
+    "revokeBody": "The link stops working at once. You can create a new one.",
+    "revokeConfirm": "Revoke the link",
+    "revoked": "Link revoked.",
+    "close": "Close",
+    "dialog": {
+      "titleFiche": "Share the Fiche",
+      "notice": "This link gives access to personal data of travellers to anyone who holds it. Give it only to the person concerned, keep the duration short, and revoke it when it is no longer needed.",
+      "hours": "Duration of the link, in hours",
+      "hoursHint": "Between {min} and {max} hours. After that the link stops working.",
+      "label": "Who is it for?",
+      "labelHint": "A reminder for you only. The recipient never sees it.",
+      "create": "Create the link",
+      "once": "Copy this link now: for security it is shown only once. You can revoke it, or create another, at any time.",
+      "linkLabel": "Link",
+      "expires": "Valid until {date}.",
+      "copy": "Copy the link",
+      "copied": "Copied",
+      "whatsapp": "Send by WhatsApp",
+      "whatsappNote": "WhatsApp receives the text of the message, link included.",
+      "message": "Confidential document, open the link before {date}: {url}",
+      "done": "Done",
+      "loadFailed": "The allowed durations could not be loaded."
     }
   }
 }

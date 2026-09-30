@@ -113,11 +113,22 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 4.1 | Data model, migration, capabilities, RuleConfig rows, feature flags — **done** (see below) | fast |
 | 4.2 | **Register generator**: month query, validation report, versioned template, PDF, encrypted storage, regenerate, audit — **done** (see below) | strong |
 | 4.3 | **Secure Share API**: create, list, revoke, access log, the public route with fail-closed access recording — **done** (see below) | strong |
-| 4.4 | Web: registers, validation report, share dialog, shares list | fast |
+| 4.4 | Web: registers, validation report, share dialog, shares list — **done** (see below) | fast |
 | 4.5 | Web: public viewer page | fast |
 | 4.6 | Hardening: abuse and logging tests for the public route, security review, phone e2e, docs, Phase 5 plan | strong |
 
 Steps 4.2 and 4.3 carry the risk.
+
+### Step 4.4 outcome
+- **Screens** (RiadTax components, FR and EN, phone first):
+  - `/properties/[id]/registers` (`components/register/registers.tsx`): one card per month with status pill (not generated / generated / out of date), guest and stay counts, the count of incomplete records, Generate or Generate again, Open the PDF, Share. Staff see the month and status only (no counts, no buttons). A 404 from the API (flag off) shows a neutral "not available yet".
+  - Validation report (`validation-dialog.tsx`): the problems by stay (dates), the missing field named, "Open the guest" into the existing guest dialog (fix, mark verified). It opens before generating on request, and automatically after a generation that still has gaps.
+  - Share dialog (`components/share/share-dialog.tsx`): the allowed durations come from the API, the shortest is the default, a recipient label is required; the link is shown once with copy and WhatsApp buttons and dropped from memory when the dialog closes. The WhatsApp text never contains the label. Entry points: a generated register, and "Share the Fiche" in the guest dialog (`share:manage`).
+  - Shares list `/shares` (Owner/Manager, nav entry "Liens partagés"): resource, recipient label, status with expiry, views, last opening, access log dialog, revoke with confirmation.
+- **A register that is out of date cannot be shared from the screen** (the API refuses too): regenerate first.
+- API additions: `GET /shares/lifetime` (`share:manage`, the RuleConfig bounds, so the screen never hard-codes 24 or 72) and the dates of the stays named in the validation report (`stays` map, no personal data).
+- Property page gets a "Police register" button for everyone who can read bookings; the new nav entry is shown only with `share:manage`.
+- **E2E** `e2e/phase4.spec.ts` (phone viewport, real API and web, demo account): a guest is created through the public API on a property of its own; the manager sees the incomplete record (no name or number in the report), opens the guest and verifies, generates, sees the register go out of date after a correction and regenerates, shares (duration bounds enforced, token in the fragment, shown once, gone from the page and from every API response), revokes on the shares screen; Staff see status only and cannot reach `/shares`; the Accountant is sent away. Verified locally with a stub in place of the document worker; CI uses the real one. The recipient's side of the story (opening the link in a fresh context, then the neutral page after revocation) is added with the viewer in 4.5 and 4.6.
 
 ### Step 4.3 outcome
 - `src/share`: `ShareService`, `SharesController` (`/shares`, `share:manage`) and `PublicShareController` (`GET /share`, `@Public`), both behind `SecureShareEnabledGuard` and `no-store`/`noindex`/`no-referrer`.

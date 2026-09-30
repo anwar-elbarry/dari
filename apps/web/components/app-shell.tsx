@@ -30,6 +30,7 @@ function Frame({ children }: { children: ReactNode }) {
   const links = [
     can('booking:read') && { href: '/dashboard', label: t('nav.dashboard') },
     can('property:read') && { href: '/properties', label: t('nav.properties') },
+    can('share:manage') && { href: '/shares', label: t('nav.shares') },
     can('team:manage') && { href: '/team', label: t('nav.team') },
     me.user.role !== 'STAFF' && { href: '/reports', label: t('nav.reports') },
   ].filter(Boolean) as { href: string; label: string }[];

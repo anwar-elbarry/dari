@@ -70,6 +70,10 @@ export class ShareService {
     return reg.id;
   }
 
+  async lifetime() {
+    return this.rules.shareLifetime();
+  }
+
   async create(user: AuthUser, dto: CreateShareDto, meta: ClientMeta) {
     const bounds = await this.rules.shareLifetime();
     if (dto.expiresInHours < bounds.minHours || dto.expiresInHours > bounds.maxHours) {
