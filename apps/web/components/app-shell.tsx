@@ -32,6 +32,7 @@ function Frame({ children }: { children: ReactNode }) {
     can('property:read') && { href: '/properties', label: t('nav.properties') },
     can('share:manage') && { href: '/shares', label: t('nav.shares') },
     can('team:manage') && { href: '/team', label: t('nav.team') },
+    can('team:manage') && { href: '/notifications', label: t('nav.notifications') },
     can('report:read') && { href: '/reports', label: t('nav.reports') },
   ].filter(Boolean) as { href: string; label: string }[];
 

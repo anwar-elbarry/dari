@@ -29,6 +29,7 @@ function Detail() {
   const tp = useTranslations('properties');
   const te = useTranslations('errors');
   const tci = useTranslations('checkin');
+  const tcl = useTranslations('checklist');
   const format = useFormatter();
   const { can } = useSession();
   const [property, setProperty] = useState<PropertyReduced | PropertyFull | null>(null);
@@ -127,6 +128,11 @@ function Detail() {
             {can('checkin:manage') && (
               <LinkButton href={`/properties/${id}/arrivals`} variant="ghost">
                 {tci('openArrivals')}
+              </LinkButton>
+            )}
+            {can('checklist:read') && (
+              <LinkButton href={`/properties/${id}/checklist`} variant="ghost">
+                {tcl('open')}
               </LinkButton>
             )}
             {can('booking:read') && (

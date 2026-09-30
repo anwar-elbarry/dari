@@ -111,7 +111,7 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 6.2 ✅ | **Team management API**: list, role change, disable/enable, seat limit, last-manager protection, resend; tests on session termination | strong |
 | 6.3 ✅ | Checklist API and template loading; document upload, audited read, shred, retention | fast |
 | 6.4 ✅ | **Messaging service**: provider interface, WhatsApp Cloud driver, e-mail fallback, templates from RuleConfig, quiet hours, caps, delivery log, signed webhook | strong |
-| 6.5 | Web: team, checklist, preferences, delivery status | fast |
+| 6.5 ✅ | Web: team, checklist, preferences, delivery status | fast |
 | 6.6 | Hardening: webhook abuse and logging suites, security review, e2e, docs, Phase 7 plan | strong |
 
 Steps 6.2 and 6.4 carry the risk.
@@ -164,6 +164,17 @@ Steps 6.2 and 6.4 carry the risk.
 - Enablement check: warnings (never blockers) for the driver, webhook settings, the number of approved templates, the checklist validation and the licence-document retention; two manual steps (Meta verification and templates, the CNDP position on Meta).
 - Tests: `messaging.int-spec.ts`, `delivery.int-spec.ts`, `whatsapp-webhook.int-spec.ts`, provider, signature, phone and quiet-hours units, the CSRF guard, the permission matrix and tenant isolation rows, and a WhatsApp case in `checkin-logging.int-spec.ts` (provider errors that quote the number, the link and the message).
 - **Not done, on purpose:** a delivery report of failure does not trigger an e-mail (the send path does not keep the recipient's e-mail, and nothing personal is stored to do so); the cost of that is a WhatsApp message that Meta accepts and then fails to deliver stays "failed" on the arrivals screen, where the manager sees it and can copy the link.
+
+### Step 6.5 as built
+
+**Web** (`apps/web`), French and English, phone first:
+- **Team** (`/team`, `components/team`): seats bar ("2 places utilisées sur 3"; the accountant is not counted), members with role select (Staff or Accountant), remove and restore access, pending invitations with resend and cancel, and the invite form. An owner's row and your own row have no controls (the API refuses both anyway). A full plan shows the API's message instead of hiding the form.
+- **Checklist** (`/properties/[id]/checklist`, `components/checklist`, linked from the property page): progress bar (not-applicable steps leave the count), a warning while the list is not validated by counsel, an "no checklist for this city" state, status per step, deadline, note, and the document: attach or replace, download (fetched as a blob only on request, revoked at once), remove. Staff see the steps and their status only.
+- **Notifications** (`/notifications`, owners and managers): the manager's own WhatsApp number (masked, never returned in full, cleared from the field once saved) and the channel per alert type. WhatsApp choices appear only when the API says it is ready and a number exists.
+- **Sending from Dari:** the check-in link dialog and the Secure Share dialog offer an optional number when WhatsApp is ready for that kind of message, show how the send went in words (delivered, or why not and what to do), and drop the manual `wa.me` button once Dari sends the link itself; when WhatsApp is not ready the manual way is unchanged. The arrivals list has a "Voir l'envoi" button per link that loads its delivery history on request (no call per stay).
+- Client checks mirror the API (`lib/phone.ts`); the API decides. Strings live in `team.*`, `checklist.*`, `notifications.*`, `delivery.*` and the new `errors.*` codes. next-intl reads a dot in a key as nesting, so alert types are looked up as `alert_day_counter_red`.
+- **E2E** (`e2e/phase6.spec.ts`, phone viewport): seats and refusal of a Staff invitation on a full plan, the accountant taking no seat, resend and cancel; the checklist with a note, a deadline and a document that downloads back byte for byte, a refused file type, Staff seeing status only, the Accountant redirected; the WhatsApp choices and a link sent from Dari (number masked, manual button gone). `phase1.spec.ts` now follows the Starter plan (one seat: the owner invites the accountant; a Staff invitation is refused). The specs put back what they change (invitations, the WhatsApp rules). The checklist steps in the spec are invented and stay in the e2e database.
+- Running the whole suite locally, everything passed except the Phase 3 passport reading, which needs Tesseract (not installed in that container).
 
 ### Decisions taken (2026-09-30)
 

@@ -1,11 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { lastLink } from './mail';
 
-/** Phase 1 definition of done, on a phone: sign up → add owner + property → invite staff → staff sees the reduced view. */
-test('manager onboarding and staff invitation', async ({ page, browser }) => {
+/**
+ * Phase 1 definition of done, on a phone: sign up → add owner + property → invite → the invited person lands where
+ * their role belongs. A new account is on the Starter plan (one seat: the owner), so it invites its accountant, who
+ * uses no seat; a Staff invitation is refused until a seat is free (covered in phase6.spec.ts).
+ */
+test('manager onboarding and accountant invitation', async ({ page, browser }) => {
   const run = Date.now();
   const managerEmail = `manager-${run}@e2e.test`;
-  const staffEmail = `staff-${run}@e2e.test`;
+  const accountantEmail = `accountant-${run}@e2e.test`;
   const password = 'e2e-password-123';
 
   await test.step('sign up (French by default)', async () => {
@@ -42,20 +46,27 @@ test('manager onboarding and staff invitation', async ({ page, browser }) => {
     await expect(page.getByText('Propriétaire : Karim Benali')).toBeVisible();
   });
 
-  await test.step('invite a staff member', async () => {
+  await test.step('the Starter plan has one seat: Staff is refused, the accountant (no seat) is invited', async () => {
     await page.getByRole('link', { name: 'Équipe' }).click();
-    await page.getByLabel('E-mail').fill(staffEmail);
+    await expect(page.getByText('1 places utilisées sur 1')).toBeVisible();
+    await page.getByLabel('E-mail').fill(`staff-${run}@e2e.test`);
     await page.getByRole('button', { name: "Envoyer l'invitation" }).click();
-    await expect(page.getByText(`Invitation envoyée à ${staffEmail}.`)).toBeVisible();
-    await expect(page.getByText(staffEmail, { exact: true })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'Toutes les places de votre offre sont utilisées' })).toBeVisible();
+
+    await page.getByLabel('E-mail').fill(accountantEmail);
+    await page.getByLabel('Rôle', { exact: true }).selectOption('ACCOUNTANT');
+    await page.getByRole('button', { name: "Envoyer l'invitation" }).click();
+    await expect(page.getByText(`Invitation envoyée à ${accountantEmail}.`)).toBeVisible();
+    await expect(page.getByText(accountantEmail, { exact: true })).toBeVisible();
+    await expect(page.getByText('1 places utilisées sur 1')).toBeVisible(); // the accountant uses no seat
   });
 
-  await test.step('staff accepts and only sees the reduced property view', async () => {
-    const link = await lastLink(staffEmail);
+  await test.step('the accountant accepts and lands on the reports, with no property or team screen', async () => {
+    const link = await lastLink(accountantEmail);
     const staff = await browser.newContext({ ...test.info().project.use });
     const sp = await staff.newPage();
     await sp.goto(link);
-    await expect(sp.getByText('Conciergerie Atlas vous invite en tant que Équipe (check-in, ménage).')).toBeVisible();
+    await expect(sp.getByText('Conciergerie Atlas vous invite en tant que Comptable (lecture seule).')).toBeVisible();
     expect(sp.url()).not.toContain('token=');
     expect(link).toContain('#token=');
 
@@ -63,16 +74,15 @@ test('manager onboarding and staff invitation', async ({ page, browser }) => {
     await sp.getByLabel('Choisissez un mot de passe').fill(password);
     await sp.getByRole('button', { name: "Accepter l'invitation" }).click();
 
-    await expect(sp).toHaveURL(/\/dashboard$/);
-    await expect(sp.getByRole('heading', { name: 'Riad Yasmine' })).toBeVisible();
-    await sp.goto('/properties');
-    await expect(sp.getByRole('heading', { name: 'Riad Yasmine' })).toBeVisible();
-    await expect(sp.getByText('Karim Benali')).toHaveCount(0);
-    await expect(sp.getByRole('link', { name: 'Ajouter un bien' })).toHaveCount(0);
+    await expect(sp).toHaveURL(/\/reports$/);
+    await expect(sp.getByRole('link', { name: 'Biens' })).toHaveCount(0);
     await expect(sp.getByRole('link', { name: 'Équipe' })).toHaveCount(0);
+    await expect(sp.getByText('Karim Benali')).toHaveCount(0);
 
+    await sp.goto('/properties');
+    await expect(sp).toHaveURL(/\/reports$/);
     await sp.goto('/team');
-    await expect(sp).toHaveURL(/\/dashboard$/);
+    await expect(sp).toHaveURL(/\/reports$/);
     await staff.close();
   });
 

@@ -3,8 +3,11 @@
 import { useFormatter, useMessages, useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
+import { normalizePhone } from '../../lib/phone';
 import type { Arrival, CreatedLink } from '../../lib/types';
 import { useSubmit } from '../../lib/use-submit';
+import { useWhatsappReady } from '../../lib/use-whatsapp';
+import { DeliveryNote, WhatsappNumberField } from '../delivery';
 import { Alert, Button, buttonClass, Dialog, Field, fieldAria, Input, Tag } from '../ui';
 import { fillTemplate, whatsappUrl } from './share';
 
@@ -18,6 +21,7 @@ type Lang = 'fr' | 'en';
 export function LinkDialog({ arrival, propertyName, mode, onClose, onChanged }: { arrival: Arrival | null; propertyName: string; mode: 'create' | 'resend'; onClose: () => void; onChanged: () => void }) {
   const t = useTranslations('checkin');
   const tc = useTranslations('common');
+  const tw = useTranslations('delivery');
   const messages = useMessages() as { checkin: { share: { message: Record<Lang, string> } } };
   const format = useFormatter();
   const submit = useSubmit();
@@ -25,15 +29,27 @@ export function LinkDialog({ arrival, propertyName, mode, onClose, onChanged }: 
   const [created, setCreated] = useState<CreatedLink | null>(null);
   const [lang, setLang] = useState<Lang>('fr');
   const [copied, setCopied] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState<string | undefined>();
   const started = useRef(false);
   const open = arrival !== null;
+  // Null while asked. When ready, Dari sends the link itself; otherwise the manager keeps the manual way (copy, wa.me).
+  const ready = useWhatsappReady('checkinLink', open);
 
   async function create(a: Arrival) {
+    let whatsappTo: string | undefined;
+    if (ready && phone.trim() !== '') {
+      const valid = normalizePhone(phone);
+      if (!valid) return setPhoneError(tw('whatsappToHint'));
+      whatsappTo = valid;
+    }
+    setPhoneError(undefined);
     const link = await submit.run(() =>
       mode === 'resend' && a.link
-        ? api<CreatedLink>('POST', `/checkin-links/${a.link.id}/resend`)
-        : api<CreatedLink>('POST', `/bookings/${a.bookingId}/checkin-links`, { maxGuests: Number(maxGuests) }),
+        ? api<CreatedLink>('POST', `/checkin-links/${a.link.id}/resend`, whatsappTo ? { whatsappTo } : {})
+        : api<CreatedLink>('POST', `/bookings/${a.bookingId}/checkin-links`, { maxGuests: Number(maxGuests), ...(whatsappTo ? { whatsappTo } : {}) }),
     );
+    setPhone(''); // the number is not kept once it has been sent
     if (link) {
       setCreated(link);
       onChanged();
@@ -42,13 +58,13 @@ export function LinkDialog({ arrival, propertyName, mode, onClose, onChanged }: 
 
   // A re-issue needs no question: it keeps the party size.
   useEffect(() => {
-    if (open && mode === 'resend' && arrival && !started.current) {
+    if (open && mode === 'resend' && arrival && ready === false && !started.current) {
       started.current = true;
       void create(arrival);
     }
     if (!open) started.current = false;
     // `create` is recreated on every render on purpose; the ref guarantees the single run.
-  }, [open, mode]);
+  }, [open, mode, ready]);
 
   useEffect(() => {
     if (open) setMaxGuests(String(arrival?.partySize ?? arrival?.link?.maxGuests ?? 2));
@@ -56,6 +72,8 @@ export function LinkDialog({ arrival, propertyName, mode, onClose, onChanged }: 
 
   function close() {
     setCreated(null); // the token is gone from memory
+    setPhone('');
+    setPhoneError(undefined);
     setCopied(false);
     submit.setError(null);
     onClose();
@@ -88,7 +106,7 @@ export function LinkDialog({ arrival, propertyName, mode, onClose, onChanged }: 
       <div className="space-y-4">
         {submit.error && <Alert>{submit.error}</Alert>}
 
-        {!created && mode === 'create' && arrival && (
+        {!created && (mode === 'create' || (mode === 'resend' && ready)) && arrival && (
           <form
             className="space-y-4"
             onSubmit={(e) => {
@@ -96,19 +114,23 @@ export function LinkDialog({ arrival, propertyName, mode, onClose, onChanged }: 
               void create(arrival);
             }}
           >
-            <Field id="party" label={t('linkDialog.party')} hint={t('linkDialog.partyHint')}>
-              <Input {...fieldAria('party', submit.fieldErrors.maxGuests, t('linkDialog.partyHint'))} type="number" inputMode="numeric" min={1} max={10} required value={maxGuests} onChange={(e) => setMaxGuests(e.target.value)} className="max-w-28" />
-            </Field>
+            {mode === 'create' && (
+              <Field id="party" label={t('linkDialog.party')} hint={t('linkDialog.partyHint')}>
+                <Input {...fieldAria('party', submit.fieldErrors.maxGuests, t('linkDialog.partyHint'))} type="number" inputMode="numeric" min={1} max={10} required value={maxGuests} onChange={(e) => setMaxGuests(e.target.value)} className="max-w-28" />
+              </Field>
+            )}
+            {ready && <WhatsappNumberField id="whatsapp-to" value={phone} onChange={setPhone} error={phoneError ?? submit.fieldErrors.whatsappTo} />}
             <Button type="submit" disabled={submit.pending}>
               {t('linkDialog.create')}
             </Button>
           </form>
         )}
 
-        {!created && mode === 'resend' && submit.pending && <p className="text-sm text-slate">{tc('loading')}</p>}
+        {!created && mode === 'resend' && (ready === null || submit.pending) && <p className="text-sm text-slate">{tc('loading')}</p>}
 
         {created && (
           <div className="space-y-4">
+            <DeliveryNote delivery={created.delivery} />
             <Alert tone="warning">{t('linkDialog.once')}</Alert>
             <Field id="link-url" label={t('linkDialog.linkLabel')} hint={t('linkDialog.expires', { date: format.dateTime(new Date(created.expiresAt), { dateStyle: 'medium', timeZone: 'UTC' }) })}>
               <Input id="link-url" name="link-url" readOnly value={created.url} onFocus={(e) => e.currentTarget.select()} className="font-mono text-sm" dir="ltr" />
@@ -117,9 +139,11 @@ export function LinkDialog({ arrival, propertyName, mode, onClose, onChanged }: 
               <Button variant="dark" onClick={copy}>
                 {copied ? t('linkDialog.copied') : t('linkDialog.copy')}
               </Button>
-              <a href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer" className={buttonClass('primary')}>
-                {t('linkDialog.whatsapp')}
-              </a>
+              {!ready && (
+                <a href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer" className={buttonClass('primary')}>
+                  {t('linkDialog.whatsapp')}
+                </a>
+              )}
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">{t('linkDialog.messageLanguage')}</p>

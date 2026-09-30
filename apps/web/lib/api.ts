@@ -25,7 +25,7 @@ export class ApiError extends Error {
   }
 }
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 async function raw(method: Method, path: string, body?: unknown): Promise<Response> {
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData;

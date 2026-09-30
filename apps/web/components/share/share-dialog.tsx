@@ -3,9 +3,12 @@
 import { useFormatter, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import { normalizePhone } from '../../lib/phone';
 import type { CreatedShare, ShareLifetime, ShareTarget } from '../../lib/types';
 import { useSubmit } from '../../lib/use-submit';
+import { useWhatsappReady } from '../../lib/use-whatsapp';
 import { fillTemplate, whatsappUrl } from '../checkin/share';
+import { DeliveryNote, WhatsappNumberField } from '../delivery';
 import { Alert, Button, buttonClass, Dialog, Field, fieldAria, Input } from '../ui';
 
 /**
@@ -16,6 +19,7 @@ import { Alert, Button, buttonClass, Dialog, Field, fieldAria, Input } from '../
 export function ShareDialog({ target, title, onClose, onChanged }: { target: ShareTarget | null; title: string; onClose: () => void; onChanged?: () => void }) {
   const t = useTranslations('share.dialog');
   const tc = useTranslations('common');
+  const tw = useTranslations('delivery');
   const format = useFormatter();
   const submit = useSubmit();
   const [bounds, setBounds] = useState<ShareLifetime | null>(null);
@@ -24,7 +28,11 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
   const [label, setLabel] = useState('');
   const [created, setCreated] = useState<CreatedShare | null>(null);
   const [copied, setCopied] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState<string | undefined>();
   const open = target !== null;
+  // When ready, Dari sends the link itself; otherwise the manager copies it or uses the manual WhatsApp button.
+  const ready = useWhatsappReady('shareLink', open);
 
   useEffect(() => {
     if (!open) return;
@@ -46,6 +54,8 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
     setCreated(null); // the token is gone from memory
     setCopied(false);
     setLabel('');
+    setPhone('');
+    setPhoneError(undefined);
     submit.setError(null);
     onClose();
   }
@@ -53,11 +63,21 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
   async function create(e: React.FormEvent) {
     e.preventDefault();
     if (!target) return;
-    const body =
-      target.type === 'FICHE_DE_POLICE'
-        ? { resourceType: target.type, guestId: target.guestId, expiresInHours: Number(hours), recipientLabel: label }
-        : { resourceType: target.type, propertyId: target.propertyId, month: target.month, expiresInHours: Number(hours), recipientLabel: label };
+    let whatsappTo: string | undefined;
+    if (ready && phone.trim() !== '') {
+      const valid = normalizePhone(phone);
+      if (!valid) return setPhoneError(tw('whatsappToHint'));
+      whatsappTo = valid;
+    }
+    setPhoneError(undefined);
+    const body = {
+      ...(target.type === 'FICHE_DE_POLICE' ? { resourceType: target.type, guestId: target.guestId } : { resourceType: target.type, propertyId: target.propertyId, month: target.month }),
+      expiresInHours: Number(hours),
+      recipientLabel: label,
+      ...(whatsappTo ? { whatsappTo } : {}),
+    };
     const share = await submit.run(() => api<CreatedShare>('POST', '/shares', body));
+    setPhone(''); // the number is not kept once it has been sent
     if (share) {
       setCreated(share);
       onChanged?.();
@@ -93,6 +113,7 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
             <Field id="share-label" label={t('label')} hint={t('labelHint')} error={submit.fieldErrors.recipientLabel}>
               <Input {...fieldAria('share-label', submit.fieldErrors.recipientLabel, t('labelHint'))} required minLength={2} maxLength={80} value={label} onChange={(e) => setLabel(e.target.value)} autoComplete="off" />
             </Field>
+            {ready && <WhatsappNumberField id="share-whatsapp-to" value={phone} onChange={setPhone} error={phoneError ?? submit.fieldErrors.whatsappTo} />}
             <Button type="submit" disabled={submit.pending || !bounds || label.trim().length < 2}>
               {t('create')}
             </Button>
@@ -101,6 +122,7 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
 
         {created && (
           <div className="space-y-4">
+            <DeliveryNote delivery={created.delivery} />
             <Alert tone="warning">{t('once')}</Alert>
             <Field id="share-url" label={t('linkLabel')} hint={t('expires', { date: until })}>
               <Input id="share-url" name="share-url" readOnly value={created.url} onFocus={(e) => e.currentTarget.select()} className="font-mono text-sm" dir="ltr" />
@@ -109,11 +131,13 @@ export function ShareDialog({ target, title, onClose, onChanged }: { target: Sha
               <Button variant="dark" onClick={copy}>
                 {copied ? t('copied') : t('copy')}
               </Button>
-              <a href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer" className={buttonClass('primary')}>
-                {t('whatsapp')}
-              </a>
+              {!ready && (
+                <a href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer" className={buttonClass('primary')}>
+                  {t('whatsapp')}
+                </a>
+              )}
             </div>
-            <p className="text-sm text-slate">{t('whatsappNote')}</p>
+            {!ready && <p className="text-sm text-slate">{t('whatsappNote')}</p>}
             <Button variant="ghost" onClick={close}>
               {t('done')}
             </Button>

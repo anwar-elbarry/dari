@@ -47,6 +47,74 @@ export interface Invitation {
   createdAt: string;
 }
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  disabled: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+/** Seats in use (active Owner/Manager and Staff plus pending Staff invitations; the Accountant uses none) against the plan. */
+export interface TeamOverview {
+  members: TeamMember[];
+  seats: { used: number; limit: number };
+}
+
+export type ChecklistStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'NOT_APPLICABLE';
+
+export interface ChecklistItem {
+  id: string;
+  code: string;
+  nameFr: string;
+  nameEn: string;
+  condition: string | null;
+  position: number;
+  status: ChecklistStatus;
+  /** Owner/Manager only: Staff see the step and its status and nothing else. */
+  dueDate?: string | null;
+  note?: string | null;
+  hasDocument?: boolean;
+}
+
+export interface Checklist {
+  /** False when no checklist has been loaded for the property's city. */
+  covered: boolean;
+  /** True only when every step of the list has been validated by counsel. */
+  validated: boolean;
+  progress: { done: number; total: number };
+  items: ChecklistItem[];
+}
+
+export type PreferredChannel = 'WHATSAPP' | 'EMAIL' | 'BOTH' | 'NONE';
+
+export interface NotificationPrefs {
+  whatsapp: { enabled: boolean; ready: boolean; checkinLink: boolean; shareLink: boolean };
+  /** Masked: the full number is never sent back. */
+  phone: string | null;
+  preferences: { alertType: string; channel: PreferredChannel }[];
+}
+
+export type DeliveryStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'FELL_BACK';
+
+/** What the send did when a number was given: the channel that carried it, its status, and why WhatsApp was not used, if it was not. */
+export interface DeliveryResult {
+  channel: 'WHATSAPP' | 'EMAIL' | null;
+  status: DeliveryStatus | null;
+  skipped: 'DISABLED' | 'NO_NUMBER' | 'NO_TEMPLATE' | 'QUIET_HOURS' | 'CAP_REACHED' | null;
+}
+
+export interface Delivery {
+  id: string;
+  channel: 'WHATSAPP' | 'EMAIL';
+  status: DeliveryStatus;
+  failureCode: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type Level = 'green' | 'amber' | 'red';
 export type Platform = 'AIRBNB' | 'BOOKING' | 'DIRECT' | 'OTHER';
 export type Classification = 'BOOKING' | 'OWNER_BLOCK' | 'UNCERTAIN';
@@ -198,6 +266,8 @@ export interface CreatedLink {
   guestsSubmitted: number;
   token: string;
   url: string;
+  /** Null when no number was given. */
+  delivery: DeliveryResult | null;
 }
 
 export interface GuestFields {
@@ -299,6 +369,7 @@ export interface ShareRow {
 export interface CreatedShare extends ShareRow {
   token: string;
   url: string;
+  delivery: DeliveryResult | null;
 }
 
 export interface ShareAccessRow {

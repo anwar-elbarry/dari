@@ -161,7 +161,7 @@ describe('messaging (integration)', () => {
   describe('notification preferences and the WhatsApp number', () => {
     it('default to e-mail; the number is never returned in full', async () => {
       const r = (await a.as.OWNER_MANAGER.get('/api/me/notification-preferences').expect(200)).body;
-      expect(r).toEqual({ whatsapp: { enabled: true, ready: true }, phone: null, preferences: [{ alertType: 'day_counter.amber', channel: 'EMAIL' }, { alertType: 'day_counter.red', channel: 'EMAIL' }] });
+      expect(r).toEqual({ whatsapp: { enabled: true, ready: true, checkinLink: true, shareLink: true }, phone: null, preferences: [{ alertType: 'day_counter.amber', channel: 'EMAIL' }, { alertType: 'day_counter.red', channel: 'EMAIL' }] });
       const withPhone = (await a.as.OWNER_MANAGER.put('/api/me/phone', { phone: '+212 6 12 34 56 78' }).expect(200)).body;
       expect(withPhone.phone).toBe('+212•••••••78');
       expect(JSON.stringify(withPhone)).not.toContain('612345678');

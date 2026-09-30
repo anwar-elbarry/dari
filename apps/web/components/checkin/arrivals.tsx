@@ -7,6 +7,7 @@ import { api } from '../../lib/api';
 import { useSession } from '../../lib/session';
 import type { Arrival, CheckinState, LinkStatus, PropertyReduced } from '../../lib/types';
 import { useSubmit } from '../../lib/use-submit';
+import { DeliveryStatus } from '../delivery';
 import { Alert, Button, Card, Dialog, StatusPill, Tag } from '../ui';
 import { GuestDialog } from './guest-dialog';
 import { LinkDialog } from './link-dialog';
@@ -131,6 +132,7 @@ export function ArrivalsScreen({ propertyId }: { propertyId: string }) {
                     <StatusPill tone={LINK_TONE[link.status]}>{t(`linkStatus.${link.status}`, { date: fmt(link.expiresAt) })}</StatusPill>
                   </p>
                 )}
+                {link && canSend && <DeliveryStatus linkId={link.id} />}
 
                 {canSend && a.checkinStatus !== 'COMPLETE' && (
                   <div className="flex flex-wrap gap-2 border-t border-bone pt-3">

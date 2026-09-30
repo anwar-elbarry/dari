@@ -29,7 +29,13 @@ export class PreferencesService {
     ]);
     const chosen = new Map(rows.map((r) => [r.alertType, r.channel]));
     return {
-      whatsapp: { enabled: this.config.WHATSAPP_ENABLED, ready: this.config.WHATSAPP_ENABLED && templates.templates.day_counter_alert !== undefined },
+      // `ready`: alerts can go by WhatsApp; `checkinLink` and `shareLink`: the screens may offer to send those. Each needs the switch and an approved template.
+      whatsapp: {
+        enabled: this.config.WHATSAPP_ENABLED,
+        ready: this.config.WHATSAPP_ENABLED && templates.templates.day_counter_alert !== undefined,
+        checkinLink: this.config.WHATSAPP_ENABLED && templates.templates.checkin_link !== undefined,
+        shareLink: this.config.WHATSAPP_ENABLED && templates.templates.share_link !== undefined,
+      },
       phone: me.phone ? maskPhone(me.phone) : null,
       preferences: ALERT_TYPES.map((alertType) => ({ alertType, channel: chosen.get(alertType) ?? DEFAULT_CHANNEL })),
     };
