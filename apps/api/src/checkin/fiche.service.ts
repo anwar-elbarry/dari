@@ -97,9 +97,10 @@ export class FicheService {
     void this.generate(accountId, guestId).catch((e: unknown) => this.logger.warn(`Fiche generation failed for guest ${guestId} (${e instanceof Error ? e.name : 'error'})`));
   }
 
-  async regenerate(user: AuthUser, guestId: string) {
+  async regenerate(user: AuthUser, guestId: string, meta: ClientMeta) {
     try {
       const { templateVersion, revokedShares } = await this.generate(user.accountId, guestId, user.id);
+      await this.audits.record({ accountId: user.accountId, actorId: user.id, action: 'guest.fiche.regenerated', resourceType: 'GuestCheckIn', resourceId: guestId, ip: meta.ip });
       return { templateVersion, generatedAt: new Date(), revokedShares };
     } catch (e) {
       if (e instanceof PdfUnavailableError) throw new ServiceUnavailableException({ code: 'PDF_UNAVAILABLE', message: 'The PDF could not be generated. Try again later.' });

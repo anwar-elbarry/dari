@@ -76,7 +76,7 @@ describe('OcrClient', () => {
   });
 
   it('posts the raw image with the shared secret, refusing redirects', async () => {
-    const f = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ok });
+    const f = jest.fn().mockImplementation(async () => new Response(JSON.stringify(ok), { status: 200 }));
     global.fetch = f as unknown as typeof fetch;
     const r = await client().extract(Buffer.from('jpeg-bytes'));
     const [url, init] = f.mock.calls[0];
@@ -90,9 +90,15 @@ describe('OcrClient', () => {
   it('never throws: errors and timeouts become "unavailable"', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('ECONNREFUSED')) as unknown as typeof fetch;
     expect((await client().extract(Buffer.from('x'))).status).toBe('unavailable');
-    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) }) as unknown as typeof fetch;
+    global.fetch = jest.fn().mockImplementation(async () => new Response('{}', { status: 503 })) as unknown as typeof fetch;
     expect((await client().extract(Buffer.from('x'))).status).toBe('unavailable');
-    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => { throw new Error('bad json'); } }) as unknown as typeof fetch;
+    global.fetch = jest.fn().mockImplementation(async () => new Response('not json', { status: 200 })) as unknown as typeof fetch;
+    expect((await client().extract(Buffer.from('x'))).status).toBe('unavailable');
+  });
+
+  it('refuses an oversized answer instead of buffering it', async () => {
+    const big = JSON.stringify({ ...ok, padding: 'x'.repeat(200 * 1024) });
+    global.fetch = jest.fn().mockImplementation(async () => new Response(big, { status: 200 })) as unknown as typeof fetch;
     expect((await client().extract(Buffer.from('x'))).status).toBe('unavailable');
   });
 });

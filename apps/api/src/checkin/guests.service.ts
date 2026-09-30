@@ -114,6 +114,13 @@ export class GuestsService {
     return guestView(await this.guest(user, id), user.role);
   }
 
+  /** The detail route: Owner/Manager receive the guest's fields, so that read is on record (Staff get status only). */
+  async read(user: AuthUser, id: string, meta: ClientMeta) {
+    const view = await this.get(user, id);
+    if (can(user.role, 'police:read')) await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'guest.read', resourceType: 'GuestCheckIn', resourceId: id, ip: meta.ip });
+    return view;
+  }
+
   /** Manager corrections (e.g. an OCR slip the guest did not catch). The Fiche is regenerated separately. */
   async update(user: AuthUser, id: string, dto: UpdateGuestDto, meta: ClientMeta) {
     const g = await this.guest(user, id);

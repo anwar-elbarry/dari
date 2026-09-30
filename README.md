@@ -20,7 +20,7 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-4.md`) — [`docs/phase-4.md`](docs/phase-4.md) |
 | 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | **Code done as a BETA (unvalidated default rates, watermarked exports) · fiduciaire validation open** (see outcome in `docs/phase-5.md`) — [`docs/phase-5.md`](docs/phase-5.md) |
 | 6 | Licensing checklist, team management, WhatsApp | Invites and seat limits work; WhatsApp message delivered | **Code done · gates open** (see outcome and gate tracker in `docs/phase-6.md`) — [`docs/phase-6.md`](docs/phase-6.md) |
-| 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | Planned — [`docs/phase-7.md`](docs/phase-7.md) |
+| 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | **In progress**: 7.0 (gate tracker) and 7.1 (security review) done; 7.2 onward not started — [`docs/phase-7.md`](docs/phase-7.md) |
 | 8 | Fast-follow | Driven by pilot feedback | Not started |
 
 The Tech Spec estimates ~12–14 weeks for 2–3 engineers. **This project is built solo with Claude**, so the plan below applies the solo adjustments in the next section. Realistic solo estimate: about 5–7 months full-time, longer part-time. Cut scope before cutting quality on anything touching ID data or tax.

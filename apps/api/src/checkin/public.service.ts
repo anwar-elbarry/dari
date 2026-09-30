@@ -208,7 +208,15 @@ export class PublicCheckInService {
           });
           if (done.count !== 1) throw new ConflictException({ code: 'ALREADY_SUBMITTED', message: 'This form was already submitted.' });
           // The form is in: the photo now follows the retention rule (checkout + days) instead of the one-day draft limit.
-          await tx.storedObject.updateMany({ where: { id: draft.docImageId!, accountId }, data: { expiresAt: new Date(booking.checkOut.getTime() + retention.days * DAY_MS) } });
+          // Use the photo the row points at now (a parallel upload may have replaced it) and require it to be alive.
+          const current = await tx.guestCheckIn.findFirst({ where: { id: draft.id, accountId }, select: { docImageId: true } });
+          const kept = current?.docImageId
+            ? await tx.storedObject.updateMany({
+                where: { id: current.docImageId, accountId, deletedAt: null, NOT: { wrappedKey: '' } },
+                data: { expiresAt: new Date(booking.checkOut.getTime() + retention.days * DAY_MS) },
+              })
+            : { count: 0 };
+          if (kept.count !== 1) throw new ConflictException({ code: 'DOCUMENT_REQUIRED', message: 'Send a photo of the document first.' });
           return index;
         });
         break;

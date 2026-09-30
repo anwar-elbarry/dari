@@ -219,6 +219,36 @@ describe('retention (integration)', () => {
     });
   });
 
+  describe('a draft that is submitted while the purge runs', () => {
+    it('is left alone: its row and its photo survive', async () => {
+      const { guest: g, imageId } = await guest(a, { status: 'PENDING', createdHoursAgo: 25 });
+      // The purge read the draft as PENDING; the guest submits before it acts.
+      const real = t.prisma.guestCheckIn.findMany.bind(t.prisma.guestCheckIn);
+      jest.spyOn(t.prisma.guestCheckIn, 'findMany').mockImplementationOnce(((args: never) =>
+        real(args).then(async (rows: unknown[]) => {
+          await t.prisma.guestCheckIn.update({ where: { id: g.id }, data: { status: 'SUBMITTED', guestIndex: 1, submittedAt: new Date() } });
+          return rows;
+        })) as never);
+
+      const result = await retention.purge();
+      expect(result.drafts).toBe(0);
+      expect(await t.prisma.guestCheckIn.findUnique({ where: { id: g.id } })).toMatchObject({ status: 'SUBMITTED' });
+      const photo = await t.prisma.storedObject.findUniqueOrThrow({ where: { id: imageId! } });
+      expect(photo.deletedAt).toBeNull();
+      expect(photo.wrappedKey).not.toBe('');
+    });
+
+    it('still removes the photo of a draft whose row was deleted if the bucket failed: the next run finds it by its expiry', async () => {
+      const { guest: g, imageId } = await guest(a, { status: 'PENDING', createdHoursAgo: 25, expiresInDays: -1 });
+      const failing = jest.spyOn(store, 'delete').mockRejectedValueOnce(new Error('bucket down'));
+      expect(await retention.purge()).toMatchObject({ drafts: 1, failed: 1 });
+      expect(await t.prisma.guestCheckIn.findUnique({ where: { id: g.id } })).toBeNull();
+      failing.mockRestore();
+      expect(await retention.purge()).toMatchObject({ failed: 0 });
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id: imageId! } })).deletedAt).not.toBeNull();
+    });
+  });
+
   describe('failures', () => {
     it('keeps going when one object fails, reports it, retries next run, and audits only what was deleted', async () => {
       const one = await guest(a, { expiresInDays: 1 });

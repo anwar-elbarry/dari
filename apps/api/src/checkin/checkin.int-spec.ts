@@ -632,6 +632,19 @@ describe('guest check-in (integration)', () => {
       await a.as.ACCOUNTANT.get(`/api/guests/${guestId}`).expect(403);
     });
 
+    it('records a guest detail read by Owner/Manager (identifiers only), and none for Staff or a refused role', async () => {
+      const { guestId } = await submitted();
+      await a.as.STAFF.get(`/api/guests/${guestId}`).expect(200);
+      await a.as.ACCOUNTANT.get(`/api/guests/${guestId}`).expect(403);
+      expect(await t.prisma.auditLog.count({ where: { action: 'guest.read' } })).toBe(0);
+
+      await a.as.OWNER_MANAGER.get(`/api/guests/${guestId}`).expect(200);
+      const rows = await t.prisma.auditLog.findMany({ where: { action: 'guest.read' } });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ accountId: a.accountId, actorId: a.users.OWNER_MANAGER.id, resourceType: 'GuestCheckIn', resourceId: guestId });
+      expect(JSON.stringify(rows[0])).not.toMatch(/Eriksson|L898902C3/);
+    });
+
     it("hides a guest's unfinished draft", async () => {
       const link = await newLink();
       const draftId = await draftFor(link.token);

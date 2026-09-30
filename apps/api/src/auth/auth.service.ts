@@ -105,6 +105,7 @@ export class AuthService {
       if (!token.replacedById) throw invalidSession();
       // Rotated: a race between tabs if recent, otherwise a copied token being replayed.
       if (now.getTime() - token.revokedAt.getTime() < REUSE_GRACE_MS) {
+        await this.audit.record({ accountId: token.user.accountId, actorId: token.userId, action: 'auth.refresh_token.race', resourceType: 'User', resourceId: token.userId, ip: meta.ip });
         throw new UnauthorizedException({ code: 'REFRESH_RACE', message: 'Session was just refreshed. Retry.' });
       }
       await this.revokeAllSessions(token.userId);
@@ -122,7 +123,10 @@ export class AuthService {
       await tx.refreshToken.update({ where: { id: token.id }, data: { replacedById: created.id } });
       return true;
     });
-    if (!rotated) throw new UnauthorizedException({ code: 'REFRESH_RACE', message: 'Session was just refreshed. Retry.' });
+    if (!rotated) {
+      await this.audit.record({ accountId: token.user.accountId, actorId: token.userId, action: 'auth.refresh_token.race', resourceType: 'User', resourceId: token.userId, ip: meta.ip });
+      throw new UnauthorizedException({ code: 'REFRESH_RACE', message: 'Session was just refreshed. Retry.' });
+    }
 
     return { access: await this.signAccess(token.user), refresh: next };
   }

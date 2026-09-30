@@ -46,7 +46,8 @@ const store = {
  * and kept only for this tab's session. From here on it travels in a request header, never in a URL.
  */
 function readToken(): string | null {
-  const found = /[#&?]token=([A-Za-z0-9_-]{43})/.exec(window.location.hash) ?? /[?&]token=([A-Za-z0-9_-]{43})/.exec(window.location.search);
+  // Fragment only: a token in the query string would already have reached a server and its logs.
+  const found = /[#&?]token=([A-Za-z0-9_-]{43})/.exec(window.location.hash);
   if (found) {
     window.history.replaceState(null, '', window.location.pathname);
     store.set(KEY_TOKEN, found[1]);

@@ -80,6 +80,27 @@ export function suggestionHashes(suggestion: Suggestion, draftId: string): Recor
   );
 }
 
+const MAX_RESPONSE_BYTES = 64 * 1024;
+
+/** Reads at most `max` bytes: a hostile or broken worker cannot make the API buffer an unbounded body. */
+async function readCapped(res: Response, max: number): Promise<string> {
+  const reader = res.body?.getReader();
+  if (!reader) return '';
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > max) {
+      await reader.cancel();
+      throw new Error('response too large');
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 @Injectable()
 export class OcrClient {
   private readonly logger = new Logger('Ocr');
@@ -105,7 +126,7 @@ export class OcrClient {
         this.logger.warn(`OCR worker answered HTTP ${res.status}`);
         return UNAVAILABLE;
       }
-      return mapWorkerResponse(await res.json());
+      return mapWorkerResponse(JSON.parse(await readCapped(res, MAX_RESPONSE_BYTES)));
     } catch (e) {
       this.logger.warn(`OCR worker unreachable (${e instanceof Error ? e.name : 'error'})`);
       return UNAVAILABLE;

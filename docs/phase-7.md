@@ -63,7 +63,7 @@ Part of the [roadmap](../README.md). Built solo with Claude: each numbered step 
 | Step | Work | Model |
 |---|---|---|
 | 7.0 ✅ | Gate tracker for this phase, the consolidated list of open decisions, staging environment | fast |
-| 7.1 | `/security-review` on the diff since Phase 3; fix or accept each finding with a test | strong |
+| 7.1 ✅ | `/security-review` on the diff since Phase 3; fix or accept each finding with a test | strong |
 | 7.2 | Independent read-only pass on storage, tokens, RBAC and tenancy, logging, public routes, webhook; fix or accept | strong |
 | 7.3 | Pen-test checklist on the public routes, run against staging; findings fixed with regression tests | strong |
 | 7.4 | Limits and abuse: rate limits against the real edge, upload and PDF concurrency, Redis failure behaviour | fast |
@@ -242,3 +242,60 @@ These are the open decisions of this plan and of the Phase 3 to 6 plans that are
 1. The Evidence column is filled in the commit that closes the gate; a row past its proposed date is raised at the start of the next session.
 2. Each session of this phase starts by reading this table and ends by updating it.
 3. The per-phase trackers keep the detail; when they disagree with this table, the most recently edited one wins and the other is corrected in the same commit.
+
+---
+
+## 7.1 — Security review of everything since Phase 3
+
+**Scope.** The diff from the start of Phase 3 (`d7580bb`) to the head of this branch: Phases 3 to 6, about 22 000 changed lines in `apps` and `services`. **Method, stated plainly:** the built-in `/security-review` command was not run; the review was done by seven read-only reading passes, each given one area and told to verify every candidate end to end and discard what it could not substantiate: (1) storage, retention, audit and the document worker; (2) the public check-in surface; (3) authentication, RBAC, tenancy, configuration, CI; (4) the web app; then, on the final head, (5) Secure Share and the register, (6) messaging, checklist and team, (7) tax, exports, the Accountant role, migrations, CI and dependencies. Passes 1 to 4 read the Phase 3 code only (the branch was behind); their findings were re-verified by passes 5 to 7 and by hand on the final head. Nothing was run against a live deployment: this is a reading review, plus the test suites below. It is not the independent pass of 7.2 (see "What this review did not do").
+
+**Result: no High finding.** No cross-tenant access, no exposed token or personal data, no authentication bypass, no route that Staff or the Accountant can use to reach data they must not see. No Medium on the scale of this plan (precondition needed or metadata leak) survived verification either; one pass had rated two items Medium (the unaudited guest reads, the CI audit gate) and they are listed below as Low with the reason. Every Low and Info item is either fixed (10, first table) or accepted or assigned with a reason (second table).
+
+### Fixed in this step (each with a regression test that fails on the old code)
+
+| # | Severity | Finding | Fix | Test |
+|---|---|---|---|---|
+| 1 | Low | `rewrapOutdatedKeys` wrote by id only, so a `delete()` that shredded a key between its read and its write could be undone: the key reappears in the database and its backups | Write only if the row still holds the key that was read and is not deleted | `storage.int-spec`: never writes a key back onto a shredded object |
+| 2 | Low | `delete()` marked the row deleted before writing the audit row: a failing audit write lost the audit of a physical deletion (reads already failed closed) | Audit first, then `deletedAt`; a retry finishes and writes the row | `storage.int-spec`: delete audit |
+| 3 | Low | The draft purge shredded the photo, then deleted the row: a guest submitting at that moment ended `SUBMITTED` with a destroyed ID image | The row is deleted first and only while still `PENDING`; a submit that won leaves everything alone; a photo whose removal fails keeps its one-day expiry and is found by the next run | `retention.int-spec`: draft submitted while the purge runs (two tests) |
+| 4 | Low | `submit` extended the retention of the photo it read at the start; an upload in between replaced it and the new photo kept the one-day expiry, purged within a day from a submitted guest | Re-read the photo inside the transaction, extend that one, and refuse (rolling back the claimed place) if it is gone | Covered by the existing check-in suites; the race itself is not reproducible in a test |
+| 5 | Low | The purge queries took the first 200 rows with no paging: 200 permanently failing objects (a store outage) would starve everything behind them | All four queries now use the same paged `sweep` as registers and licence documents | `retention.int-spec` suite unchanged and green; starvation beyond 200 rows is not tested |
+| 6 | Low | Owner/Manager reads of a guest's fields (`GET /guests/:id`) and Fiche regeneration left no audit row; the route had only the global 100 requests a minute | `guest.read` and `guest.fiche.regenerated` (identifiers only); 60 requests a minute on the detail route | `checkin.int-spec`, `fiche.int-spec` (real Chromium) |
+| 7 | Low | `OCR_SERVICE_URL` could be plain `http` to a public host in production, sending ID images and the shared secret in clear; the answer was read with no size limit | Production refuses `http` to a public host; the answer is capped at 64 KB | `env.spec`, `ocr.client.spec` |
+| 8 | Low | A rotated refresh token replayed inside the 30-second window left no trace | `auth.refresh_token.race` audit row (the window itself is unchanged) | Existing `auth.int-spec` green |
+| 9 | Low | The guest form also accepted `?token=` from the query string, which has already reached a server and its logs | Fragment only | Existing e2e uses the fragment |
+| 10 | Low | CI ran an unpinned `npx s3rver` and had no `permissions:` block; dev compose published Postgres, Redis and s3rver (default credentials) on every interface | Pinned to 3.7.1, `permissions: contents: read`, compose binds `127.0.0.1` | CI run |
+
+Also corrected: `docs/deployment.md` said the key rotation moves 2000 objects per run; it is 200 per hourly run.
+
+**Verification run for these changes:** lint, typecheck, unit tests (48 suites, 405 tests) and the integration suites for storage, retention, check-in, abuse, logging, auth, the permission matrix and the Fiche (with real Chromium) pass on a local Postgres 16 without Redis. The Redis-backed paths and the full integration suite were **not** validated here: with a local Redis the suite already fails 35 tests on the untouched head (BullMQ "missing key" errors), so that run says nothing about these changes. CI is the reference for them.
+
+### Accepted or assigned, with the reason
+
+| Finding | Severity | Decision |
+|---|---|---|
+| The login lockout is keyed on the email alone: anyone can lock a known address for 15 minutes | Low | Accepted: documented trade-off of the limiter; keying on email plus IP would let an attacker with many addresses guess freely. Revisit with the first customer complaint |
+| Unauthenticated guest uploads are buffered (up to 8 MB) before the token is checked | Low | Accepted: per-address limit of 10 a minute; put a body-size limit at the edge (pen-test item in 7.3) |
+| The consent id sent with a submission can be any approved text, not necessarily the current one, so `consentTextId` proves that an approved text was named, not which one the guest saw | Low | **Assigned to G3**: matters once counsel approves a second version; then require the current row in the guest's language (or a short grace window) |
+| The per-link upload cap (10 in 15 minutes) is tight for a party of ten; the per-link draft cap is not atomic; a valid-token holder can tell whether a draft id exists | Low | Accepted: functional or negligible; revisit with the pilot if a party is refused |
+| CSP allows inline scripts | Low | Accepted since Phase 1; nonces before the launch is widened (no injection sink was found anywhere in `apps/web`) |
+| CI gates `npm audit` on critical only; 3 high advisories (`deepmerge-ts` through the Prisma CLI) exist | Low | Accepted: build-time tool, not reachable from the running API; re-run on each Prisma release |
+| Fiche PDFs are never purged; the structured guest record is kept; the audit table is not append-only at database level | Info | **Gates G4** (retention) and a restricted database role for audit writes (7.5) |
+| `MaritalDocument.fileUrl`, `AddOnService.licenseDocUrl`, `Vendor.docUrl` are URL strings; `MaritalDocument`, `AddOnService`, `AddOnOrder` have no `accountId`; none is used by any route | Info | **Precondition of M5 and Phase 8**: before any route uses them they need a `StoredObject` reference, `accountId` with composite keys and an entry in `TENANT_MODELS` |
+| `OCR` worker: `requirements.txt` has unpinned ranges, no lockfile or hashes, ships test dependencies and an undigested base image; it buffers up to 10 MB before taking a concurrency slot | Low | Open for 7.5 (pin and hash, split dev requirements) |
+| Arrivals returns guest names to Owner/Manager without an audit row; the Redis lockout key is the base64 of the email; the WhatsApp recipient counter reuses the JWT secret as its HMAC key; `TRUST_PROXY` has no production guard; the invitation quota is soft; licence PDFs are stored as uploaded | Info | Accepted: names only, no document number; the rest are hardening with no path to an exposure. `TRUST_PROXY` and the edge are checked by pilot checklist section 1 |
+| A shared register goes stale when a guest is corrected after sharing: the link keeps serving the snapshot until expiry or revocation | Info | Accepted (a share is a snapshot); add to the pilot notes |
+| `check:enablement` tests the guest feature only (bucket, Chromium, retention rows), not the register or share flags; if its bucket delete fails one random object stays | Info | Accepted; ticked by hand in the pilot checklist |
+| Invitations and signup reveal whether an email is registered (409) | Info | Accepted since Phase 1 (public signup is closed to the pilot) |
+
+### Checked and found sound (no finding)
+
+Envelope encryption (fresh key and nonce per object, account-and-key bound AAD, tag checked, fixed error message), audit-before-read on every stored document, Secure Share token handling (256 bits, hash only, fragment and header, one neutral answer, expiry and revocation re-checked inside the transaction, atomic view count), the WhatsApp webhook (signature over the exact bytes, constant-time, neutral answers, payload never logged, forward-only status updates), tenancy (every tenant model in `TENANT_MODELS`, composite keys on every new table, nothing cascades to audit or storage), RBAC (every route declared, a matrix row for each, Staff and Accountant limits), team seat limits and the last-owner rule under a row lock, the Accountant portal (no guest data, no property route), exports (no formulas, text sanitised, rates from `RuleConfig`/`TaxRule`, disclaimer fails closed), the Fiche, register and tax PDFs (every value escaped, Chromium with JavaScript off and no network), web headers and token handling, and no committed secret.
+
+### What this review did not do
+
+- No dynamic testing: nothing ran against a deployed instance, so the real edge (client IP, body limits, webhook body bytes) is untested. That is 7.3, on staging.
+- `services/ocr` was read for the trust boundary only; its dependencies were not scanned.
+- Seven passes by the same kind of reader are not the independent pass planned as 7.2: that step stays, with the areas this review found least exercised (webhook through the real proxy, key backup and restore, logging under real traffic).
+- The built-in `/security-review` command was not used; run it once on the final diff before the pilot if you want its output on record.
+- Regression tests for findings 4 and 5 are partial (see the table).

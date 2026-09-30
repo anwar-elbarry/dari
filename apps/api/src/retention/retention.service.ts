@@ -59,51 +59,75 @@ export class RetentionService {
   async purge(now = new Date()): Promise<PurgeResult> {
     const result: PurgeResult = { purged: 0, drafts: 0, failed: 0, overdue: 0 };
 
-    // 1. Abandoned drafts: the photo, then the row (nothing personal is in a draft besides the photo).
-    const drafts = await this.prisma.guestCheckIn.findMany({
-      where: { status: 'PENDING', createdAt: { lt: new Date(now.getTime() - DRAFT_TTL_MS) } },
-      select: { id: true, accountId: true, docImage: { select: { id: true, deletedAt: true } } },
-      take: BATCH,
-    });
-    for (const d of drafts) {
-      if (d.docImage && !d.docImage.deletedAt && !(await this.remove(d.accountId, d.docImage.id, purgeAudit('GuestCheckIn', d.id), result))) continue;
-      await this.prisma.guestCheckIn.deleteMany({ where: { id: d.id, status: 'PENDING' } });
-      result.drafts += 1;
-    }
+    // 1. Abandoned drafts. The row goes first, and only while it is still PENDING: a guest who submits at this very
+    // moment wins (nothing is deleted), and a photo whose removal fails below keeps its one-day expiry, so step 2 finds it.
+    await this.sweep(
+      (skip) =>
+        this.prisma.guestCheckIn.findMany({
+          where: { status: 'PENDING', createdAt: { lt: new Date(now.getTime() - DRAFT_TTL_MS) } },
+          select: { id: true, accountId: true, docImageId: true },
+          orderBy: { id: 'asc' },
+          take: BATCH,
+          skip,
+        }),
+      async (d) => {
+        const claimed = await this.prisma.guestCheckIn.deleteMany({ where: { id: d.id, status: 'PENDING' } });
+        if (claimed.count === 0) return false; // submitted meanwhile: left alone (and skipped, it is no longer a draft)
+        result.drafts += 1;
+        if (d.docImageId) await this.remove(d.accountId, d.docImageId, purgeAudit('GuestCheckIn', d.id), result);
+        return true;
+      },
+    );
 
     // 2. Objects past their own purge date, and 4. half-finished deletions (key shredded, bucket delete failed).
-    const due = await this.prisma.storedObject.findMany({
-      where: { deletedAt: null, OR: [{ expiresAt: { lte: now } }, { wrappedKey: '' }] },
-      select: { id: true, accountId: true },
-      orderBy: { expiresAt: 'asc' },
-      take: BATCH,
-    });
+    await this.sweep(
+      (skip) =>
+        this.prisma.storedObject.findMany({
+          where: { deletedAt: null, OR: [{ expiresAt: { lte: now } }, { wrappedKey: '' }] },
+          select: { id: true, accountId: true },
+          orderBy: { id: 'asc' },
+          take: BATCH,
+          skip,
+        }),
+      (o) => this.remove(o.accountId, o.id, purgeAudit('StoredObject', o.id), result),
+    );
+
     // 3. ID images past the CURRENT retention rule (shortening the rule applies to images already stored).
     const { days } = await this.rules.idRetention();
-    const byRule = await this.prisma.guestCheckIn.findMany({
-      where: { docImage: { is: { deletedAt: null, kind: 'ID_IMAGE' } }, booking: { checkOut: { lte: new Date(now.getTime() - days * DAY) } } },
-      select: { docImageId: true, accountId: true },
-      take: BATCH,
-    });
+    await this.sweep(
+      (skip) =>
+        this.prisma.guestCheckIn.findMany({
+          where: { docImage: { is: { deletedAt: null, kind: 'ID_IMAGE' } }, booking: { checkOut: { lte: new Date(now.getTime() - days * DAY) } } },
+          select: { id: true, docImageId: true, accountId: true },
+          orderBy: { id: 'asc' },
+          take: BATCH,
+          skip,
+        }),
+      (g) => (g.docImageId ? this.remove(g.accountId, g.docImageId, purgeAudit('StoredObject', g.docImageId), result) : Promise.resolve(true)),
+    );
+
     // 5. Fiche PDFs past the rule, once counsel has set and validated a period (no period: kept).
     const fiche = (await this.rules.ficheRetention()).enforceable;
-    const ficheDue =
-      fiche === null
-        ? []
-        : await this.prisma.ficheDePolice.findMany({
+    const purgedFiches: { accountId: string; id: string }[] = [];
+    if (fiche !== null) {
+      await this.sweep(
+        (skip) =>
+          this.prisma.ficheDePolice.findMany({
             where: { pdf: { is: { deletedAt: null } }, guestCheckIn: { is: { booking: { checkOut: { lte: new Date(now.getTime() - fiche * DAY) } } } } },
             select: { id: true, pdfObjectId: true, accountId: true },
+            orderBy: { id: 'asc' },
             take: BATCH,
-          });
-    const targets = new Map<string, string>();
-    for (const o of due) targets.set(o.id, o.accountId);
-    for (const f of ficheDue) targets.set(f.pdfObjectId, f.accountId);
-    for (const g of byRule) if (g.docImageId) targets.set(g.docImageId, g.accountId);
-
-    for (const [id, accountId] of targets) await this.remove(accountId, id, purgeAudit('StoredObject', id), result);
+            skip,
+          }),
+        async (f) => {
+          if (!(await this.remove(f.accountId, f.pdfObjectId, purgeAudit('StoredObject', f.pdfObjectId), result))) return false;
+          purgedFiches.push({ accountId: f.accountId, id: f.id });
+          return true;
+        },
+      );
+    }
 
     // 5b. A share link must not outlive its file: revoke the links that pointed at a purged Fiche.
-    const purgedFiches = ficheDue.filter((f) => targets.has(f.pdfObjectId)).map((f) => ({ accountId: f.accountId, id: f.id }));
     const deletedFiches = await this.prisma.ficheDePolice.findMany({ where: { id: { in: purgedFiches.map((f) => f.id) }, pdf: { is: { deletedAt: { not: null } } } }, select: { id: true, accountId: true } });
     await this.revokeShares('FICHE_DE_POLICE', deletedFiches, now);
 

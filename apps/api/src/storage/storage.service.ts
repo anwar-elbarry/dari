@@ -100,8 +100,9 @@ export class StorageService {
     if (row.wrappedKey !== '') await db.storedObject.update({ where: { id }, data: { wrappedKey: '' } });
     // 2. Physical delete. If it fails the row stays (shredded, not deleted) and a retry finishes the job.
     await this.store.delete(row.key);
-    await db.storedObject.update({ where: { id }, data: { deletedAt: new Date() } });
+    // 3. Audit before the row is marked deleted: if the audit write fails the row stays open, so a retry writes it.
     await this.audit.record({ accountId, ...audit });
+    await db.storedObject.update({ where: { id }, data: { deletedAt: new Date() } });
     return true;
   }
 
@@ -116,7 +117,8 @@ export class StorageService {
     });
     for (const row of rows) {
       const wrappedKey = rewrapKey(row.wrappedKey, this.keyring, this.aad(row.accountId, row.key));
-      await this.prisma.storedObject.update({ where: { id: row.id }, data: { wrappedKey } });
+      // Only if the row still holds the key we read: a delete() that shredded it meanwhile must not be undone.
+      await this.prisma.storedObject.updateMany({ where: { id: row.id, wrappedKey: row.wrappedKey, deletedAt: null }, data: { wrappedKey } });
     }
     return rows.length;
   }

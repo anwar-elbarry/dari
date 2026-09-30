@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   node:
     runs-on: ubuntu-latest
@@ -41,7 +44,7 @@ jobs:
       - name: Start an S3 test server
         run: |
           mkdir -p /tmp/s3data
-          nohup npx s3rver -d /tmp/s3data -a 127.0.0.1 -p 9000 --silent --configure-bucket dari-test > /tmp/s3rver.log 2>&1 &
+          nohup npx --yes s3rver@3.7.1 -d /tmp/s3data -a 127.0.0.1 -p 9000 --silent --configure-bucket dari-test > /tmp/s3rver.log 2>&1 &
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:9000/ && break; sleep 1; done
       # The Fiche PDF tests drive a real Chromium and check that Arabic text renders (needs an Arabic-capable font).
       - name: Install Chromium and fonts for the PDF tests

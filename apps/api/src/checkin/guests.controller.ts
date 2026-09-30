@@ -27,9 +27,10 @@ export class GuestsController {
   }
 
   @Requires('guest:read_meta')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get('guests/:id')
-  get(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.guests.get(user, id);
+  get(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    return this.guests.read(user, id, clientMeta(req));
   }
 
   @Requires('guest:write')
@@ -64,7 +65,7 @@ export class GuestsController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('guests/:id/fiche/regenerate')
   @HttpCode(200)
-  regenerate(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.fiche.regenerate(user, id);
+  regenerate(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    return this.fiche.regenerate(user, id, clientMeta(req));
   }
 }

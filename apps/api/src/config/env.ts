@@ -120,6 +120,9 @@ const envSchema = z
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(100),
   })
   .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && env.OCR_SERVICE_URL && !isInternalOrHttps(env.OCR_SERVICE_URL)) {
+      ctx.addIssue({ code: 'custom', path: ['OCR_SERVICE_URL'], message: 'must be https, or http to a private host (an ID image and the shared secret travel in clear otherwise)' });
+    }
     if (env.OCR_SERVICE_URL && !env.OCR_SHARED_SECRET) {
       ctx.addIssue({ code: 'custom', path: ['OCR_SHARED_SECRET'], message: 'required with OCR_SERVICE_URL' });
     }
@@ -186,6 +189,24 @@ const envSchema = z
     TAX_REPORTS_ENABLED: TAX_REPORTS_ENABLED === undefined ? env.NODE_ENV !== 'production' : TAX_REPORTS_ENABLED === 'true',
     WHATSAPP_ENABLED: WHATSAPP_ENABLED === undefined ? env.NODE_ENV !== 'production' : WHATSAPP_ENABLED === 'true',
   }));
+
+/** https, or plain http only to a host that is not on the internet: a bare service name, localhost, a private IPv4 or *.internal/*.local/*.svc. */
+export function isInternalOrHttps(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol === 'https:') return true;
+  if (u.protocol !== 'http:') return false;
+  const h = u.hostname;
+  if (h === 'localhost' || /^[a-z0-9-]+$/i.test(h) || /\.(internal|local|svc|svc\.cluster\.local)$/i.test(h)) return true;
+  const m = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(h);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
 
 export type AppConfig = z.infer<typeof envSchema>;
 

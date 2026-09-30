@@ -175,6 +175,10 @@ suite('Fiche de Police PDF (integration, real Chromium)', () => {
       expect(await text(pdf)).toContain('Architect');
       await a.as.STAFF.post(`/api/guests/${guestId}/fiche/regenerate`).expect(403);
       await b.as.OWNER_MANAGER.post(`/api/guests/${guestId}/fiche/regenerate`).expect(404);
+      // Only the successful regeneration by Owner/Manager is on record.
+      const rows = await t.prisma.auditLog.findMany({ where: { action: 'guest.fiche.regenerated' } });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ accountId: a.accountId, actorId: a.users.OWNER_MANAGER.id, resourceType: 'GuestCheckIn', resourceId: guestId });
     });
 
     it('shows Staff and Owner/Manager whether a Fiche exists, without exposing it to Staff', async () => {

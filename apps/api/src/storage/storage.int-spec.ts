@@ -187,5 +187,41 @@ describe('StorageService (integration)', () => {
       expect((await after.read(a, objects[0].id, readAudit('g'))).bytes.equals(IMAGE)).toBe(true);
       expect((await after.read(b, objects[1].id, readAudit('g'))).bytes.toString()).toBe('pdf');
     });
+
+    it('never writes a key back onto an object that was shredded after the rewrap read it', async () => {
+      const k1 = randomBytes(32);
+      const k2 = randomBytes(32);
+      const audit = t.app.get(AuditService);
+      const before = new StorageService(t.prisma, audit, store, { currentId: 'k1', keys: new Map([['k1', k1]]) }, t.config);
+      const rotating = new StorageService(t.prisma, audit, store, { currentId: 'k2', keys: new Map([['k2', k2], ['k1', k1]]) }, t.config);
+      const { id } = await before.put(a, 'ID_IMAGE', IMAGE);
+
+      // The rewrap has read the row (old key); a delete shreds it before the rewrap writes.
+      const stale = await t.prisma.storedObject.findUniqueOrThrow({ where: { id } });
+      jest.spyOn(t.prisma.storedObject, 'findMany').mockResolvedValueOnce([stale]);
+      await t.prisma.storedObject.update({ where: { id }, data: { wrappedKey: '' } });
+
+      await rotating.rewrapOutdatedKeys();
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id } })).wrappedKey).toBe('');
+      jest.restoreAllMocks();
+    });
+  });
+
+  describe('delete audit', () => {
+    it('is on record before the row is marked deleted: a failing audit write leaves the job to a retry', async () => {
+      const { id } = await storage.put(a, 'ID_IMAGE', IMAGE);
+      const auditService = t.app.get(AuditService);
+      jest.spyOn(auditService, 'record').mockRejectedValueOnce(new Error('audit down'));
+
+      await expect(storage.delete(a, id, deleteAudit('guest-9'))).rejects.toThrow('audit down');
+      // Shredded and gone from the bucket, but still open: nothing is deleted without a trace.
+      expect(await t.prisma.storedObject.findUniqueOrThrow({ where: { id } })).toMatchObject({ deletedAt: null, wrappedKey: '' });
+      expect(await t.prisma.auditLog.count({ where: { action: 'storage.object.deleted' } })).toBe(0);
+
+      expect(await storage.delete(a, id, deleteAudit('guest-9'))).toBe(true); // the retry finishes and writes the row
+      expect((await t.prisma.storedObject.findUniqueOrThrow({ where: { id } })).deletedAt).not.toBeNull();
+      expect(await t.prisma.auditLog.count({ where: { action: 'storage.object.deleted', resourceId: 'guest-9' } })).toBe(1);
+      jest.restoreAllMocks();
+    });
   });
 });

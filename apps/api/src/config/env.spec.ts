@@ -85,6 +85,20 @@ describe('parseEnv', () => {
     });
   });
 
+  describe('document worker transport in production', () => {
+    const prodBase = { ...base, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20), OCR_SHARED_SECRET: 's'.repeat(32) };
+    it('refuses plain http to a public host, allows https and private hosts', () => {
+      expect(() => parseEnv({ ...prodBase, OCR_SERVICE_URL: 'http://ocr.example.com' })).toThrow(/OCR_SERVICE_URL/);
+      expect(() => parseEnv({ ...prodBase, OCR_SERVICE_URL: 'http://203.0.113.9:8001' })).toThrow(/OCR_SERVICE_URL/);
+      for (const url of ['https://ocr.example.com', 'http://ocr:8001', 'http://10.0.3.4:8001', 'http://192.168.1.5:8001', 'http://ocr.internal:8001', 'http://localhost:8001']) {
+        expect(parseEnv({ ...prodBase, OCR_SERVICE_URL: url }).OCR_SERVICE_URL).toBe(url);
+      }
+    });
+    it('does not restrict development', () => {
+      expect(parseEnv({ ...base, OCR_SERVICE_URL: 'http://ocr.example.com', OCR_SHARED_SECRET: 's'.repeat(32) }).OCR_SERVICE_URL).toBe('http://ocr.example.com');
+    });
+  });
+
   describe('GUEST_CHECKIN_ENABLED', () => {
     it('is on in development and test, off by default in production', () => {
       expect(parseEnv(base).GUEST_CHECKIN_ENABLED).toBe(true);

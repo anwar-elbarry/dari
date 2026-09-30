@@ -13,6 +13,7 @@ export type AuditAction =
   | 'auth.password_reset.requested'
   | 'auth.password_reset.completed'
   | 'auth.refresh_token.reuse_detected'
+  | 'auth.refresh_token.race'
   | 'invitation.created'
   | 'invitation.accepted'
   | 'invitation.revoked'
@@ -35,6 +36,8 @@ export type AuditAction =
   | 'checkin.link.revoked'
   | 'checkin.submitted'
   | 'guest.updated'
+  | 'guest.read'
+  | 'guest.fiche.regenerated'
   | 'retention.purged'
   // Phase 4: the monthly register and Secure Share. Identifiers only, never a token.
   | 'register.generated'
