@@ -110,9 +110,27 @@ export class RetentionService {
     // 6. Monthly registers past the rule (counted from the last day of the month), once counsel has validated a period.
     await this.purgeRegisters(now, result);
 
+    // 7. Licence documents past the rule (counted from the upload), once counsel has validated a period.
+    await this.purgeLicenseDocuments(now, result);
+
     result.overdue = await this.prisma.storedObject.count({ where: { deletedAt: null, expiresAt: { lte: new Date(now.getTime() - OVERDUE_AFTER_MS) } } });
     if (result.failed > 0 || result.overdue > 0) await this.alert(result);
     return result;
+  }
+
+  /** The checklist item stays; it just loses its document. */
+  private async purgeLicenseDocuments(now: Date, result: PurgeResult) {
+    const days = (await this.rules.licenseDocumentRetention()).enforceable;
+    if (days === null) return;
+    const due = await this.prisma.checklistItem.findMany({
+      where: { document: { is: { deletedAt: null, createdAt: { lte: new Date(now.getTime() - days * DAY) } } } },
+      select: { id: true, accountId: true, documentObjectId: true },
+      take: BATCH,
+    });
+    for (const item of due) {
+      if (!item.documentObjectId || !(await this.remove(item.accountId, item.documentObjectId, purgeAudit('ChecklistItem', item.id), result))) continue;
+      await this.prisma.checklistItem.updateMany({ where: { id: item.id, documentObjectId: item.documentObjectId }, data: { documentObjectId: null } });
+    }
   }
 
   /** The register row goes with its PDF: a month without a file reads as "no register" and can be generated again. */

@@ -109,7 +109,7 @@ Every route goes into the permission matrix; every `:id` route into the tenant-i
 | 6.0 ✅ | Carry-overs that need code (none blocking) and the gate tracker for this phase; start the Meta verification | fast |
 | 6.1 ✅ | Data model, migration, capabilities, RuleConfig rows, feature flag `WHATSAPP_ENABLED` | fast |
 | 6.2 ✅ | **Team management API**: list, role change, disable/enable, seat limit, last-manager protection, resend; tests on session termination | strong |
-| 6.3 | Checklist API and template loading; document upload, audited read, shred, retention | fast |
+| 6.3 ✅ | Checklist API and template loading; document upload, audited read, shred, retention | fast |
 | 6.4 | **Messaging service**: provider interface, WhatsApp Cloud driver, e-mail fallback, templates from RuleConfig, quiet hours, caps, delivery log, signed webhook | strong |
 | 6.5 | Web: team, checklist, preferences, delivery status | fast |
 | 6.6 | Hardening: webhook abuse and logging suites, security review, e2e, docs, Phase 7 plan | strong |
@@ -139,6 +139,19 @@ Steps 6.2 and 6.4 carry the risk.
 - Tests: `team.int-spec.ts` (overview, seat limits incl. Starter and the parallel-race, role/disable/enable, self-refusal, last-owner, resend), extended permission matrix and tenant-isolation rows, and the seat helper reused by `invitations.service`. `Account.seatLimit` in the test seed is 50 so the RBAC suites are not constrained by seats.
 
 **Note on `Account.seatLimit`:** enforcement uses the per-account `Account.seatLimit` column (the authoritative value the operator sets; billing is Phase 8). The `plan.seat_limits` rule supplies the per-plan figures (used by the retro-migration and the future billing/plan-change path) and, more importantly here, `countedRoles`. Signup still uses the column default (1 = Starter); wiring signup to the policy waits for the plan picker, to keep the auth path untouched.
+
+### Step 6.3 as built
+
+**Checklist API** in `apps/api/src/checklist`:
+- `GET /properties/:id/checklist` (`checklist:read`): `{ covered, validated, progress: { done, total }, items }`. The copies of the template steps are made on read (idempotent: a unique key plus `skipDuplicates`, so parallel reads create each once). A step applies when its city equals the property's commune (case-insensitive, trimmed) and its licence type is the property's or unrestricted. **A step with a `condition` (such as "meals") is included**: the property has no field saying whether it applies, so the manager marks it "not applicable"; progress leaves those out. Changing a property's licence type drops the copies of steps that no longer apply only if nobody touched them. `covered: false` means no checklist exists for that city: nothing is invented. `validated` is true only when every step of the list has a `validatedBy`.
+- **Staff** get `id, code, names, condition, position, status` and nothing else: no due date, note or document flag. The choice is made on the `license_document:read` capability, not on the role name.
+- `PATCH /properties/:id/checklist/:itemId` (`checklist:write`): `status`, `dueDate` (`YYYY-MM-DD`, a real date), `note` (500 characters); `null` clears. Audit `checklist.updated`, ids only (never the note).
+- Documents: `POST|GET|DELETE /properties/:id/checklist/:itemId/document`. Upload (`checklist:write`, 8 MB, one file, no other fields) accepts a **PDF** (recognised by content, stored as is) or a **photo** (decoded and re-encoded to JPEG with all metadata dropped, as for ID scans); anything else is 422 `DOCUMENT_INVALID`, an oversized body 413. The file is a `LICENSE_DOCUMENT` `StoredObject`, written provisional and adopted by a compare-and-swap that also marks the replaced file due (`handOver`), then the old one is shredded; parallel uploads leave one live file. Read (`license_document:read`, Owner/Manager only) writes the `license_document.read` audit row before decrypting, then sends the file as a download (`Content-Disposition: attachment`, `nosniff`, `no-store`): a PDF is never rendered inside our origin. Delete detaches and shreds.
+- **Retention:** `retention.license_documents_days` is applied by the hourly job only once counsel has validated a period, **counted from the upload date** (an assumption for counsel to confirm: a licence document may need another anchor, such as the end of the operation). The item stays and loses its document; the purge is audited `retention.purged`.
+- **Template loading** (`npm run checklist:load -w apps/api -- file.json`): `parseTemplateFile()` validates counsel's list (codes, bilingual names, positions, licence types, conditions; a validator and a date go together) and `loadChecklistTemplate()` upserts it by (city, code). A step edited without a validation becomes unvalidated again; steps stored but absent from the file are reported and left alone. **No step is supplied by the code**; the tests use invented ones.
+- Tests: `checklist.int-spec.ts` (loading, scoping by city and licence type, races, Staff view, validation, documents, audit-before-bytes, retention), the permission matrix and tenant-isolation rows, `template-file.spec.ts`, `document-type.spec.ts`, and a checklist case in `checkin-logging.int-spec.ts` (notes, file names, file contents and storage failures that quote them).
+
+**Housekeeping:** the 6.2 commit had reformatted whole files with Prettier's defaults, although the repo has no Prettier config and is hand-formatted (single quotes, long lines). The seven files concerned were restored and the 6.2 changes re-applied in place (about 80 changed lines instead of about 2,000). Do not run `prettier --write` on existing files.
 
 ### Decisions taken (2026-09-30)
 

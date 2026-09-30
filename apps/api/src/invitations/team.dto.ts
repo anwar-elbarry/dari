@@ -1,5 +1,5 @@
-import { IsBoolean, IsIn, IsOptional } from "class-validator";
-import { INVITABLE_ROLES, InvitableRole } from "./dto";
+import { IsBoolean, IsIn, IsOptional } from 'class-validator';
+import { INVITABLE_ROLES, InvitableRole } from './dto';
 
 /**
  * A member's role can only be set to Staff or Accountant, never Owner/Manager: promoting to Owner/Manager

@@ -291,4 +291,33 @@ describe('no personal data in logs or audit rows (integration)', () => {
     expect(output).not.toContain('4242424');
     await expectClean(['TAXID-QX-99']);
   });
+
+  it('the checklist routes, including storage failures that quote the note and the document, leave no note, file content or personal data in the logs or the audit trail', async () => {
+    await t.prisma.checklistTemplateStep.create({ data: { code: 'log_step', position: 1, nameFr: 'Étape de test', nameEn: 'Test step' } });
+    const property = await t.prisma.property.findFirstOrThrow({ where: { accountId: a.accountId } });
+    const base = `/api/properties/${property.id}/checklist`;
+    const marker = `LICENCE-BODY-${PII.docNumber}`;
+    const pdf = `%PDF-1.4\n${marker} ${PII.name}\n%%EOF`;
+
+    const item = ((await a.as.OWNER_MANAGER.get(base).expect(200)).body as { items: { id: string }[] }).items[0]!;
+    await a.as.OWNER_MANAGER.patch(`${base}/${item.id}`, { status: 'IN_PROGRESS', note: `${PII.name} ${PII.city}`, dueDate: '2026-12-01' }).expect(200);
+    await a.as.OWNER_MANAGER.patch(`${base}/${item.id}`, { note: 'x'.repeat(501) + PII.name }).expect(400);
+    await a.as.OWNER_MANAGER.patch(`${base}/${item.id}`, { dueDate: PII.name }).expect(400);
+    await a.as.OWNER_MANAGER.upload(`${base}/${item.id}/document`, pdf, {}, `${PII.name}.pdf`).expect(200);
+    await a.as.OWNER_MANAGER.upload(`${base}/${item.id}/document`, `${PII.name} is not a document`, {}, `${PII.name}.pdf`).expect(422);
+    await a.as.OWNER_MANAGER.get(`${base}/${item.id}/document`).expect(200);
+    await a.as.STAFF.get(base).expect(200);
+    await a.as.STAFF.get(`${base}/${item.id}/document`).expect(403);
+
+    // Storage fails with messages that quote the note, the file name and the owner: a 500, only the type is logged.
+    jest.spyOn(t.app.get(StorageService), 'put').mockRejectedValueOnce(new Error(`write failed for ${PII.name} ${marker}`));
+    expect((await a.as.OWNER_MANAGER.upload(`${base}/${item.id}/document`, pdf, {}, 'again.pdf')).status).toBe(500);
+    jest.spyOn(t.app.get(StorageService), 'read').mockRejectedValueOnce(new Error(`read failed for ${PII.name} ${marker}`));
+    expect((await a.as.OWNER_MANAGER.get(`${base}/${item.id}/document`)).status).toBe(500);
+    await a.as.OWNER_MANAGER.delete(`${base}/${item.id}/document`).expect(204);
+
+    expect(output).not.toContain(marker);
+    expect(JSON.stringify(await t.prisma.auditLog.findMany())).not.toContain(marker);
+    await expectClean([marker]);
+  });
 });

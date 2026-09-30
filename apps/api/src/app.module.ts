@@ -23,6 +23,7 @@ import { HealthController } from './health/health.controller';
 import { IcalModule } from './ical/ical.module';
 import { ImportsModule } from './imports/imports.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { ChecklistModule } from './checklist/checklist.module';
 import { MailModule } from './mail/mail.module';
 import { CapabilitiesGuard } from './rbac/capabilities.guard';
 import { PrismaModule } from './prisma/prisma.module';
@@ -60,6 +61,7 @@ export class AppModule {
         RetentionModule.register(resolved),
         AuthModule,
         InvitationsModule,
+        ChecklistModule,
         PropertiesModule,
         IcalModule.register(resolved),
         ComplianceModule,

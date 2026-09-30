@@ -19,7 +19,7 @@ Sources of truth: *Business MVP Spec V3 (EN/AR)* and *Technical Spec V2*. Layout
 | 3 | Guest check-in, OCR/MRZ, Fiche de Police, consent, retention | A test guest completes check-in and a PDF is produced | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-3.md`) — [`docs/phase-3.md`](docs/phase-3.md) |
 | 4 | Monthly Police Register, Secure Share | Share link expires and revokes correctly, access logged | **Code done · legal gates open** (see outcome and gate tracker in `docs/phase-4.md`) — [`docs/phase-4.md`](docs/phase-4.md) |
 | 5 | Tax engine, exports, Accountant portal | **Fiduciaire has validated formulas and seeded TaxRule** | **Code done as a BETA (unvalidated default rates, watermarked exports) · fiduciaire validation open** (see outcome in `docs/phase-5.md`) — [`docs/phase-5.md`](docs/phase-5.md) |
-| 6 | Licensing checklist, team management, WhatsApp | Invites and seat limits work; WhatsApp message delivered | **In progress** (6.0 and 6.1 done: gates, data model, flag) — [`docs/phase-6.md`](docs/phase-6.md) |
+| 6 | Licensing checklist, team management, WhatsApp | Invites and seat limits work; WhatsApp message delivered | **In progress** (6.0 to 6.3 done: gates, model, team, checklist) — [`docs/phase-6.md`](docs/phase-6.md) |
 | 7 | Security review, hardening, pilot | Counsel sign-off + 5–10 pilot customers onboarded | Not started |
 | 8 | Fast-follow | Driven by pilot feedback | Not started |
 

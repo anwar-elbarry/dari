@@ -1,16 +1,11 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
-import type { Role } from "@prisma/client";
-import { AuditService, AuditAction } from "../audit/audit.service";
-import { AuthUser, ClientMeta } from "../auth/auth.types";
-import { RulesService } from "../compliance/rules.service";
-import { PrismaService } from "../prisma/prisma.service";
-import { lockAccountSeats, seatLimitReached, seatsInUse } from "./seats";
-import { UpdateMemberDto } from "./team.dto";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Role } from '@prisma/client';
+import { AuditService, AuditAction } from '../audit/audit.service';
+import { AuthUser, ClientMeta } from '../auth/auth.types';
+import { RulesService } from '../compliance/rules.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { lockAccountSeats, seatLimitReached, seatsInUse } from './seats';
+import { UpdateMemberDto } from './team.dto';
 
 const MEMBER_FIELDS = {
   id: true,
@@ -37,15 +32,13 @@ export class TeamService {
     const [members, account, used] = await Promise.all([
       db.user.findMany({
         select: MEMBER_FIELDS,
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
       this.prisma.account.findUniqueOrThrow({
         where: { id: user.accountId },
         select: { seatLimit: true },
       }),
-      this.prisma.$transaction((tx) =>
-        seatsInUse(tx, user.accountId, countedRoles),
-      ),
+      this.prisma.$transaction((tx) => seatsInUse(tx, user.accountId, countedRoles)),
     ]);
     return {
       members: members.map(({ disabledAt, ...m }) => ({
@@ -63,30 +56,23 @@ export class TeamService {
    * demoted or disabled while the acting owner remains). Re-enabling, or moving a member into a counted role,
    * needs a free seat. Disabling or changing a role ends that member's sessions at once.
    */
-  async update(
-    user: AuthUser,
-    id: string,
-    dto: UpdateMemberDto,
-    meta: ClientMeta,
-  ) {
+  async update(user: AuthUser, id: string, dto: UpdateMemberDto, meta: ClientMeta) {
     if (dto.role === undefined && dto.disabled === undefined) {
       throw new BadRequestException({
-        code: "NOTHING_TO_UPDATE",
-        message: "Provide a role or a disabled flag.",
+        code: 'NOTHING_TO_UPDATE',
+        message: 'Provide a role or a disabled flag.',
       });
     }
-    const target = await this.prisma
-      .forAccount(user.accountId)
-      .user.findFirst({ where: { id }, select: { id: true } });
+    const target = await this.prisma.forAccount(user.accountId).user.findFirst({ where: { id }, select: { id: true } });
     if (!target)
       throw new NotFoundException({
-        code: "NOT_FOUND",
-        message: "Member not found.",
+        code: 'NOT_FOUND',
+        message: 'Member not found.',
       });
     if (target.id === user.id)
       throw new ForbiddenException({
-        code: "CANNOT_MODIFY_SELF",
-        message: "You cannot change your own role or status.",
+        code: 'CANNOT_MODIFY_SELF',
+        message: 'You cannot change your own role or status.',
       });
 
     const { countedRoles } = await this.rules.seatPolicy();
@@ -100,52 +86,33 @@ export class TeamService {
       });
       if (!current)
         throw new NotFoundException({
-          code: "NOT_FOUND",
-          message: "Member not found.",
+          code: 'NOT_FOUND',
+          message: 'Member not found.',
         });
 
       const newRole = dto.role ?? current.role;
-      const willDisabled =
-        dto.disabled === true
-          ? true
-          : dto.disabled === false
-            ? false
-            : current.disabledAt !== null;
+      const willDisabled = dto.disabled === true ? true : dto.disabled === false ? false : current.disabledAt !== null;
       const out: AuditAction[] = [];
-      if (dto.role !== undefined && dto.role !== current.role)
-        out.push("user.role_changed");
-      if (dto.disabled === true && !current.disabledAt)
-        out.push("user.disabled");
-      if (dto.disabled === false && current.disabledAt)
-        out.push("user.enabled");
+      if (dto.role !== undefined && dto.role !== current.role) out.push('user.role_changed');
+      if (dto.disabled === true && !current.disabledAt) out.push('user.disabled');
+      if (dto.disabled === false && current.disabledAt) out.push('user.enabled');
       if (out.length === 0) return out; // no effective change: no write, no audit
 
       // Moving a member into a counted, active seat (re-enabling, or Accountant -> Staff) needs room.
       const wasCounted = current.disabledAt === null && counted(current.role);
       const willCount = !willDisabled && counted(newRole);
-      if (
-        willCount &&
-        !wasCounted &&
-        (await seatsInUse(tx, user.accountId, countedRoles)) >= limit
-      )
-        throw seatLimitReached();
+      if (willCount && !wasCounted && (await seatsInUse(tx, user.accountId, countedRoles)) >= limit) throw seatLimitReached();
 
       await tx.user.updateMany({
         where: { id, accountId: user.accountId },
         data: {
-          ...(dto.role !== undefined && dto.role !== current.role
-            ? { role: dto.role }
-            : {}),
-          ...(dto.disabled === true && !current.disabledAt
-            ? { disabledAt: new Date() }
-            : {}),
-          ...(dto.disabled === false && current.disabledAt
-            ? { disabledAt: null }
-            : {}),
+          ...(dto.role !== undefined && dto.role !== current.role ? { role: dto.role } : {}),
+          ...(dto.disabled === true && !current.disabledAt ? { disabledAt: new Date() } : {}),
+          ...(dto.disabled === false && current.disabledAt ? { disabledAt: null } : {}),
         },
       });
       // A new role or a disabled account must not keep working on tokens issued before the change.
-      if (out.includes("user.role_changed") || out.includes("user.disabled")) {
+      if (out.includes('user.role_changed') || out.includes('user.disabled')) {
         await tx.refreshToken.updateMany({
           where: { userId: id, revokedAt: null },
           data: { revokedAt: new Date() },
@@ -159,14 +126,12 @@ export class TeamService {
         accountId: user.accountId,
         actorId: user.id,
         action,
-        resourceType: "User",
+        resourceType: 'User',
         resourceId: id,
         ip: meta.ip,
       });
     }
-    const updated = await this.prisma
-      .forAccount(user.accountId)
-      .user.findFirstOrThrow({ where: { id }, select: MEMBER_FIELDS });
+    const updated = await this.prisma.forAccount(user.accountId).user.findFirstOrThrow({ where: { id }, select: MEMBER_FIELDS });
     const { disabledAt, ...member } = updated;
     return { ...member, disabled: disabledAt !== null };
   }
