@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { CSRF_HEADER, CSRF_HEADER_VALUE } from '../common/csrf.guard';
+import { FORGOT_PER_EMAIL_PER_HOUR, RESET_KEEP_RECENT_MS } from './auth.service';
 import { hashToken } from './tokens';
 import { client, createTestApp, PASSWORD, requireDatabase, resetDatabase, signup, TestApp } from '../test/test-app';
 
@@ -221,16 +222,40 @@ describe('auth (integration)', () => {
       await client(t.app).post('/api/auth/login', { email: 'reset@x.test', password: newPassword }).expect(200);
     });
 
-    it('refuses an expired token and invalidates older tokens when a new one is requested', async () => {
+    it('refuses an expired token and invalidates tokens older than a few minutes when a new one is requested', async () => {
       await signup(t.app, 'old@x.test');
       await client(t.app).post('/api/auth/forgot-password', { email: 'old@x.test' }).expect(204);
       const first = await t.mail.waitFor('old@x.test', 1);
+      await t.prisma.passwordResetToken.updateMany({ where: { tokenHash: hashToken(first) }, data: { createdAt: new Date(Date.now() - RESET_KEEP_RECENT_MS - 1000) } });
       await client(t.app).post('/api/auth/forgot-password', { email: 'old@x.test' }).expect(204);
       const second = await t.mail.waitFor('old@x.test', 2);
 
       await client(t.app).post('/api/auth/reset-password', { token: first, password: 'a-brand-new-password' }).expect(400);
       await t.prisma.passwordResetToken.updateMany({ where: { tokenHash: hashToken(second) }, data: { expiresAt: new Date(Date.now() - 1000) } });
       await client(t.app).post('/api/auth/reset-password', { token: second, password: 'a-brand-new-password' }).expect(400);
+    });
+
+    it('keeps a link sent minutes ago alive when someone asks again; using one link kills the others', async () => {
+      await signup(t.app, 'recent@x.test');
+      await client(t.app).post('/api/auth/forgot-password', { email: 'recent@x.test' }).expect(204);
+      const first = await t.mail.waitFor('recent@x.test', 1);
+      await client(t.app).post('/api/auth/forgot-password', { email: 'recent@x.test' }).expect(204);
+      const second = await t.mail.waitFor('recent@x.test', 2);
+
+      await client(t.app).post('/api/auth/reset-password', { token: first, password: 'a-brand-new-password' }).expect(204);
+      await client(t.app).post('/api/auth/reset-password', { token: second, password: 'another-new-password' }).expect(400);
+    });
+
+    it(`sends at most ${FORGOT_PER_EMAIL_PER_HOUR} reset e-mails an hour per address and still answers 204`, async () => {
+      await signup(t.app, 'flood@x.test');
+      for (let i = 0; i < FORGOT_PER_EMAIL_PER_HOUR + 2; i++) {
+        await client(t.app).post('/api/auth/forgot-password', { email: i % 2 ? 'Flood@x.test' : 'flood@x.test' }).expect(204);
+      }
+      await t.mail.waitFor('flood@x.test', FORGOT_PER_EMAIL_PER_HOUR);
+      await new Promise((r) => setTimeout(r, 300));
+      expect(t.mail.sent.filter((m) => m.to === 'flood@x.test')).toHaveLength(FORGOT_PER_EMAIL_PER_HOUR);
+      const user = await t.prisma.user.findUniqueOrThrow({ where: { email: 'flood@x.test' } });
+      expect(await t.prisma.passwordResetToken.count({ where: { userId: user.id } })).toBe(FORGOT_PER_EMAIL_PER_HOUR);
     });
   });
 

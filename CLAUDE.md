@@ -100,7 +100,8 @@ SaaS for short-term-rental managers in Morocco (launch: Marrakech). Specs: Busin
 
 ## Auth, roles and tenancy (apps/api/src)
 - Sessions: access JWT (15 min) + rotating refresh token, both httpOnly, SameSite=Lax; only token hashes are stored. Names and paths come from `cookieScheme()` in `auth/cookies.ts`: `__Host-dari_at` / `__Host-dari_rt` (Path=/) when `COOKIE_SECURE`, else `dari_at` (`/api`) / `dari_rt` (`/api/auth`) for plain-HTTP development. Never hard-code the names.
-- Signup: `SIGNUP_ENABLED` (off in production); closed answers 403 `SIGNUP_CLOSED` (web message under `errors.*`). Rate limits key on the client address with IPv6 collapsed to its /64 (`common/throttle-key.ts`, `ClientThrottlerGuard`).
+- Signup: `SIGNUP_ENABLED` (off in production); closed answers 403 `SIGNUP_CLOSED` (web message under `errors.*`). Pilot accounts: `npm run account:create -w apps/api` (`ops/account-create.ts`; the owner gets no known password and uses "Forgot password").
+- Forgot-password: at most `FORGOT_PER_EMAIL_PER_HOUR` mails per address (keyed hash in a `WindowCounter`, always 204); a new request keeps tokens younger than `RESET_KEEP_RECENT_MS`; a completed reset invalidates all the user's other tokens. Rate limits key on the client address with IPv6 collapsed to its /64 (`common/throttle-key.ts`, `ClientThrottlerGuard`).
 - Deleting a calendar feed detaches its bookings first (`feeds.service.ts`): the composite key `(feedId, accountId)` cannot SET NULL.
 - Every state-changing request needs the header `X-Requested-With: dari` (CSRF). The web client adds it.
 - Guards run in order: rate limit → CSRF → session (`AuthGuard`, re-reads the user each request) → capabilities.

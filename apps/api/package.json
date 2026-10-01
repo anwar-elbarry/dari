@@ -14,6 +14,7 @@
     "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "check:enablement": "dotenv -e ../../.env -- tsx src/ops/check-enablement.ts",
     "checklist:load": "dotenv -e ../../.env -- tsx src/ops/load-checklist-template.ts",
+    "account:create": "dotenv -e ../../.env -- tsx src/ops/create-account.ts",
     "test:int": "jest --runInBand --testRegex '.*\\.int-spec\\.ts$'"
   },
   "dependencies": {

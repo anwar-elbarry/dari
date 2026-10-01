@@ -2,7 +2,9 @@ import { BadRequestException, ConflictException, ForbiddenException, HttpExcepti
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { createHmac } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
+import { WindowCounter } from '../common/window-counter';
 import { isUniqueViolation } from '../common/prisma-errors';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { MailService } from '../mail/mail.service';
@@ -26,6 +28,20 @@ export interface SessionTokens {
  */
 const REUSE_GRACE_MS = 30_000;
 
+/**
+ * Reset e-mails per address per hour, on top of the per-client rate limit, so an attacker rotating
+ * client addresses cannot flood a mailbox. Requests past the cap still answer 204 and send nothing.
+ */
+export const FORGOT_PER_EMAIL_PER_HOUR = 3;
+/**
+ * A new reset request invalidates the user's unused tokens older than this, not the recent ones, so a
+ * stranger asking for a reset cannot kill the link the owner was just sent. The hourly cap bounds how
+ * many links can be live at once.
+ */
+export const RESET_KEEP_RECENT_MS = 10 * 60_000;
+
+export const AUTH_COUNTER = Symbol('AUTH_COUNTER');
+
 const invalidCredentials = () =>
   new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' });
 const invalidSession = () => new UnauthorizedException({ code: 'INVALID_SESSION', message: 'Session expired. Please log in again.' });
@@ -44,6 +60,7 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly mail: MailService,
     private readonly limiter: LoginLimiter,
+    @Inject(AUTH_COUNTER) private readonly counter: WindowCounter,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -146,13 +163,21 @@ export class AuthService {
    * the database work nor the mail send shows in the response time.
    */
   async forgotPassword(email: string, meta: ClientMeta): Promise<void> {
+    // Counted for unknown addresses too, so the cap behaves the same whether an account exists. The key
+    // is a keyed hash of the address, never the address itself.
+    const key = `forgot:${createHmac('sha256', this.config.JWT_ACCESS_SECRET).update(email).digest('hex')}`;
+    if ((await this.counter.hit(key, 3_600_000)) > FORGOT_PER_EMAIL_PER_HOUR) return;
+
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.disabledAt) return;
 
     const raw = randomToken();
     const now = new Date();
     await this.prisma.$transaction([
-      this.prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: now } }),
+      this.prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, usedAt: null, createdAt: { lt: new Date(now.getTime() - RESET_KEEP_RECENT_MS) } },
+        data: { usedAt: now },
+      }),
       this.prisma.passwordResetToken.create({
         data: { userId: user.id, tokenHash: hashToken(raw), expiresAt: new Date(now.getTime() + this.config.PASSWORD_RESET_TTL_MIN * 60_000) },
       }),
@@ -169,7 +194,7 @@ export class AuthService {
       .catch((e: unknown) => this.logger.error(`Password reset mail failed: ${describeUnexpected(e, false)}`));
   }
 
-  /** Single use; on success every existing session of the user is revoked. */
+  /** Single use; on success every other live reset link and every existing session of the user is revoked. */
   async resetPassword(rawToken: string, password: string, meta: ClientMeta): Promise<void> {
     const invalid = () => new BadRequestException({ code: 'INVALID_TOKEN', message: 'This link is invalid or has expired.' });
     const token = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash: hashToken(rawToken) }, include: { user: true } });
@@ -181,6 +206,7 @@ export class AuthService {
       const claim = await tx.passwordResetToken.updateMany({ where: { id: token.id, usedAt: null, expiresAt: { gt: now } }, data: { usedAt: now } });
       if (claim.count === 0) return false;
       await tx.user.update({ where: { id: token.userId }, data: { passwordHash } });
+      await tx.passwordResetToken.updateMany({ where: { userId: token.userId, usedAt: null }, data: { usedAt: now } });
       await tx.refreshToken.updateMany({ where: { userId: token.userId, revokedAt: null }, data: { revokedAt: now } });
       return true;
     });
