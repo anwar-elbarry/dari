@@ -3,8 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
-import { AUTH_COUNTER, AuthService } from './auth.service';
-import { MemoryWindowCounter, RedisWindowCounter, WindowCounter } from '../common/window-counter';
+import { AuthService } from './auth.service';
 import { LoginLimiter, MemoryLoginLimiter, RedisLoginLimiter } from './login-limiter';
 import { REDIS, RedisClient } from '../redis/redis.module';
 
@@ -23,7 +22,6 @@ import { REDIS, RedisClient } from '../redis/redis.module';
     AuthService,
     AuthGuard,
     { provide: LoginLimiter, inject: [REDIS], useFactory: (redis: RedisClient) => (redis ? new RedisLoginLimiter(redis) : new MemoryLoginLimiter()) },
-    { provide: AUTH_COUNTER, inject: [REDIS], useFactory: (redis: RedisClient): WindowCounter => (redis ? new RedisWindowCounter(redis) : new MemoryWindowCounter()) },
   ],
   exports: [AuthService, AuthGuard, JwtModule],
 })

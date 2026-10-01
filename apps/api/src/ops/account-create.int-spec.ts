@@ -41,7 +41,6 @@ describe('account:create (integration)', () => {
   });
 
   it('is the only way in: public signup stays closed', async () => {
-    const res = await client(t.app).post('/api/auth/signup', { companyName: 'X Co', name: 'X Person', email: 'x@x.test', password: 'a-long-password' }).expect(403);
-    expect(res.body.error.code).toBe('SIGNUP_CLOSED');
+    await client(t.app).post('/api/auth/signup', { companyName: 'X Co', name: 'X Person', email: 'x@x.test', password: 'a-long-password' }).expect(404);
   });
 });

@@ -56,7 +56,7 @@ Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.Comm
 
 1. **Run the whole integration suite** once and send me any failure that is not a timeout. `tax.int-spec.ts` failed once under load and passed alone.
 2. ~~**`account:create` ops script.**~~ Done (2026-10-01): `npm run account:create -w apps/api -- --company "Riad X" --name "Owner" --email owner@example.ma [--seats 3]`. No password is set or printed; the owner uses "Forgot password". Tests: `ops/account-create.spec.ts`, `ops/account-create.int-spec.ts`.
-3. ~~**Forgot-password hardening**~~ Done (2026-10-01): 3 reset e-mails an hour per address (still 204), tokens younger than 10 minutes survive a new request, a completed reset invalidates the other live tokens. Tests in `auth/auth.int-spec.ts`.
+3. ~~**Forgot-password hardening**~~ Done in the merged remote commit `d19ca01`: per account at most 3 reset e-mails an hour and none within 2 minutes of the previous one (still 204), so a flood cannot invalidate the link just sent. Tests in `auth/auth.int-spec.ts`.
 4. **Push the branch** when you are happy with it.
 
 ## 4. Yours, on staging or with other people
@@ -71,6 +71,6 @@ Before enabling anything in production: `npm run check:enablement -w apps/api`.
 
 ## 5. Changed in the last commit, for reference
 
-- `SIGNUP_ENABLED` (off in production): signup answers 403 `SIGNUP_CLOSED`; the web form shows a dedicated message. See `docs/deployment.md`.
+- `SIGNUP_ENABLED` (off in production): signup answers 404 (`SignupEnabledGuard`, from the merged `d19ca01`; the 403 `SIGNUP_CLOSED` version was dropped in the merge). See `docs/deployment.md`.
 - Rate limits key on the IPv6 /64 (`apps/api/src/common/throttle-key.ts`, `client-throttler.guard.ts`).
 - Migration `20260930150000_composite_keys_bookings_notifications`. Deleting a calendar feed now detaches its bookings in code first (`apps/api/src/ical/feeds.service.ts`), because a composite key cannot SET NULL.

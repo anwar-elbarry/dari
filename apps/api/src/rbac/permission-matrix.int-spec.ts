@@ -32,6 +32,8 @@ export interface Fixtures {
   /** A submitted guest with an encrypted ID image. */
   guestId: string;
   shareId: () => Promise<string>;
+  /** A share that points at the guest's real Fiche, so renewing it can succeed. */
+  renewableShareId: () => Promise<string>;
   /** A checklist item on the property; `withDocument` also gives it an encrypted document. Synthetic test step, not a real checklist. */
   checklistItemId: (withDocument?: boolean) => Promise<string>;
   taxReportId: string;
@@ -146,6 +148,7 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/shares', url: () => '/api/shares', expect: MANAGER_ONLY(200) },
   { method: 'GET', route: '/api/shares/lifetime', url: () => '/api/shares/lifetime', expect: MANAGER_ONLY(200) },
   { method: 'DELETE', route: '/api/shares/:id', url: async (f) => `/api/shares/${await f.shareId()}`, expect: MANAGER_ONLY(204) },
+  { method: 'POST', route: '/api/shares/:id/renew', url: async (f) => `/api/shares/${await f.renewableShareId()}/renew`, body: () => ({ expiresInHours: 24 }), expect: MANAGER_ONLY(201) },
   { method: 'GET', route: '/api/shares/:id/access', url: async (f) => `/api/shares/${await f.shareId()}/access`, expect: MANAGER_ONLY(200) },
 
   // Tax estimates (Phase 5). The Accountant reads reports and their exports (report:read); only Owner/Manager generate, see what is missing, or fill in a stay's amounts.
@@ -205,6 +208,10 @@ describe('permission matrix (integration)', () => {
       },
       shareId: async () =>
         (await t.prisma.shareLink.create({ data: { accountId: acc.accountId, resourceType: 'POLICE_REGISTER', resourceId: 'r', tokenHash: `matrix-share-${n++}`, recipientLabel: 'Police', expiresAt: new Date(Date.now() + 86_400_000), createdBy: acc.users.OWNER_MANAGER.id } })).id,
+      renewableShareId: async () => {
+        const fiche = await t.prisma.ficheDePolice.findFirstOrThrow({ where: { accountId: acc.accountId, guestCheckInId: guest.id } });
+        return (await t.prisma.shareLink.create({ data: { accountId: acc.accountId, resourceType: 'FICHE_DE_POLICE', resourceId: fiche.id, tokenHash: `matrix-renew-${n++}`, recipientLabel: 'Police', expiresAt: new Date(Date.now() + 86_400_000), createdBy: acc.users.OWNER_MANAGER.id } })).id;
+      },
       stayId: stay.id,
       guestId: guest.id,
       linkId: async () =>

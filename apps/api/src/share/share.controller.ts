@@ -5,7 +5,7 @@ import { AuthUser, clientMeta } from '../auth/auth.types';
 import { CurrentUser, Public } from '../auth/decorators';
 import { NoStore } from '../checkin/no-store.decorator';
 import { Requires } from '../rbac/requires.decorator';
-import { CreateShareDto } from './dto';
+import { CreateShareDto, RenewShareDto } from './dto';
 import { SecureShareEnabledGuard } from './secure-share-enabled.guard';
 import { ShareService } from './share.service';
 
@@ -37,6 +37,14 @@ export class SharesController {
   @Get()
   list(@CurrentUser() user: AuthUser) {
     return this.shares.list(user);
+  }
+
+  /** A new link (new token, shown once) for the same document: the first token can never be shown again. */
+  @Requires('share:manage')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post(':id/renew')
+  renew(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RenewShareDto, @Req() req: Request) {
+    return this.shares.renew(user, id, dto, clientMeta(req));
   }
 
   @Requires('share:manage')

@@ -68,6 +68,7 @@ const CASES: { method: string; route: string; call: (c: Client, ids: Ids) => Pro
   { method: 'POST', route: '/api/properties/:id/registers/:month', call: (c, a) => c.post(`/api/properties/${a.propertyId}/registers/2026-03`) },
   { method: 'GET', route: '/api/properties/:id/registers/:month/pdf', call: (c, a) => c.get(`/api/properties/${a.propertyId}/registers/2026-03/pdf`) },
   { method: 'DELETE', route: '/api/shares/:id', call: (c, a) => c.delete(`/api/shares/${a.shareId}`) },
+  { method: 'POST', route: '/api/shares/:id/renew', call: (c, a) => c.post(`/api/shares/${a.shareId}/renew`, { expiresInHours: 24 }) },
   { method: 'GET', route: '/api/shares/:id/access', call: (c, a) => c.get(`/api/shares/${a.shareId}/access`) },
   { method: 'GET', route: '/api/tax/reports/:id', call: (c, a) => c.get(`/api/tax/reports/${a.taxReportId}`) },
   { method: 'GET', route: '/api/tax/reports/:id/pdf', call: (c, a) => c.get(`/api/tax/reports/${a.taxReportId}/pdf`) },

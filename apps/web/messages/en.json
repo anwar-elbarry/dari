@@ -14,7 +14,6 @@
   },
   "errors": {
     "INVALID_CREDENTIALS": "Wrong email or password.",
-    "SIGNUP_CLOSED": "Signup is closed for now. Contact us to open an account.",
     "EMAIL_IN_USE": "An account already uses this email.",
     "TOO_MANY_ATTEMPTS": "Too many attempts. Try again in 15 minutes.",
     "TOO_MANY_REQUESTS": "Too many requests. Wait a minute.",
@@ -655,6 +654,8 @@
     "accessTitle": "Who opened this link",
     "accessNote": "Time and browser only. The person's address is not recorded.",
     "accessEmpty": "This link has not been opened.",
+    "renew": "Create a new link",
+    "renewTitle": "Create a new link",
     "revoke": "Revoke",
     "revokeTitle": "Revoke this link?",
     "revokeBody": "The link stops working at once. You can create a new one.",
@@ -662,6 +663,7 @@
     "revoked": "Link revoked.",
     "close": "Close",
     "dialog": {
+      "revokeOld": "Revoke the previous link once the new one is created",
       "titleFiche": "Share the Fiche",
       "notice": "This link gives access to personal data of travellers to anyone who holds it. Give it only to the person concerned, keep the duration short, and revoke it when it is no longer needed.",
       "hours": "Duration of the link, in hours",

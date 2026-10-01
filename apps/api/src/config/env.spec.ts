@@ -180,6 +180,17 @@ describe('parseEnv', () => {
     });
   });
 
+  describe('SIGNUP_ENABLED', () => {
+    it('is on in development and test, off by default in production, and can be switched explicitly', () => {
+      expect(parseEnv(base).SIGNUP_ENABLED).toBe(true);
+      expect(parseEnv({ ...base, NODE_ENV: 'test' }).SIGNUP_ENABLED).toBe(true);
+      const prod = { ...base, ...prodStorage, NODE_ENV: 'production', JWT_ACCESS_SECRET: 'Zq3'.repeat(15), REDIS_URL: 'redis://localhost:6379', MAIL_DRIVER: 'resend', MAIL_API_KEY: 'k'.repeat(20) };
+      expect(parseEnv(prod).SIGNUP_ENABLED).toBe(false);
+      expect(parseEnv({ ...prod, SIGNUP_ENABLED: 'true' }).SIGNUP_ENABLED).toBe(true);
+      expect(() => parseEnv({ ...base, SIGNUP_ENABLED: 'yes' })).toThrow(/SIGNUP_ENABLED/);
+    });
+  });
+
   it('requires a long JWT secret', () => {
     expect(() => parseEnv({ ...base, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
   });

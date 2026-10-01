@@ -1,10 +1,8 @@
-import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { createHmac } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
-import { WindowCounter } from '../common/window-counter';
 import { isUniqueViolation } from '../common/prisma-errors';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { MailService } from '../mail/mail.service';
@@ -28,25 +26,16 @@ export interface SessionTokens {
  */
 const REUSE_GRACE_MS = 30_000;
 
-/**
- * Reset e-mails per address per hour, on top of the per-client rate limit, so an attacker rotating
- * client addresses cannot flood a mailbox. Requests past the cap still answer 204 and send nothing.
- */
-export const FORGOT_PER_EMAIL_PER_HOUR = 3;
-/**
- * A new reset request invalidates the user's unused tokens older than this, not the recent ones, so a
- * stranger asking for a reset cannot kill the link the owner was just sent. The hourly cap bounds how
- * many links can be live at once.
- */
-export const RESET_KEEP_RECENT_MS = 10 * 60_000;
-
-export const AUTH_COUNTER = Symbol('AUTH_COUNTER');
-
 const invalidCredentials = () =>
   new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' });
 const invalidSession = () => new UnauthorizedException({ code: 'INVALID_SESSION', message: 'Session expired. Please log in again.' });
 
 export const hashPassword = (password: string) => argon2.hash(password, { type: argon2.argon2id });
+
+/** Password-reset e-mails per account: at most 3 an hour, and none within 2 minutes of the previous one. */
+export const RESET_MAX_PER_WINDOW = 3;
+const RESET_WINDOW_MS = 3_600_000;
+const RESET_MIN_GAP_MS = 120_000;
 
 @Injectable()
 export class AuthService {
@@ -60,7 +49,6 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly mail: MailService,
     private readonly limiter: LoginLimiter,
-    @Inject(AUTH_COUNTER) private readonly counter: WindowCounter,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -70,7 +58,6 @@ export class AuthService {
    * Removing that needs email verification at signup (planned after the pilot); rate limits mitigate.
    */
   async signup(dto: SignupDto, meta: ClientMeta): Promise<SessionTokens> {
-    if (!this.config.SIGNUP_ENABLED) throw new ForbiddenException({ code: 'SIGNUP_CLOSED', message: 'Signup is closed. Contact us to open an account.' });
     const passwordHash = await hashPassword(dto.password);
     let user: User;
     try {
@@ -132,13 +119,15 @@ export class AuthService {
       throw invalidSession();
     }
     if (token.expiresAt <= now || token.user.disabledAt) throw invalidSession();
+    // Absolute lifetime: rotating never extends a login past this, however often it is refreshed.
+    if (now.getTime() - token.familyStartedAt.getTime() > this.config.REFRESH_MAX_LIFETIME_DAYS * 86_400_000) throw invalidSession();
 
     const next = randomToken();
     const rotated = await this.prisma.$transaction(async (tx) => {
       // Claim the old token atomically: a concurrent refresh with the same token gets count 0.
       const claim = await tx.refreshToken.updateMany({ where: { id: token.id, revokedAt: null }, data: { revokedAt: now } });
       if (claim.count === 0) return false;
-      const created = await tx.refreshToken.create({ data: this.refreshTokenData(token.userId, next, meta) });
+      const created = await tx.refreshToken.create({ data: this.refreshTokenData(token.userId, next, meta, token.familyStartedAt) });
       await tx.refreshToken.update({ where: { id: token.id }, data: { replacedById: created.id } });
       return true;
     });
@@ -154,7 +143,10 @@ export class AuthService {
     if (!rawToken) return;
     const token = await this.prisma.refreshToken.findUnique({ where: { tokenHash: hashToken(rawToken) }, include: { user: true } });
     if (!token) return;
-    await this.prisma.refreshToken.updateMany({ where: { id: token.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.updateMany({ where: { id: token.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+      this.prisma.user.update({ where: { id: token.userId }, data: { sessionsRevokedAt: new Date() } }),
+    ]);
     await this.audit.record({ accountId: token.user.accountId, actorId: token.userId, action: 'auth.logout', resourceType: 'User', resourceId: token.userId, ip: meta.ip });
   }
 
@@ -163,21 +155,18 @@ export class AuthService {
    * the database work nor the mail send shows in the response time.
    */
   async forgotPassword(email: string, meta: ClientMeta): Promise<void> {
-    // Counted for unknown addresses too, so the cap behaves the same whether an account exists. The key
-    // is a keyed hash of the address, never the address itself.
-    const key = `forgot:${createHmac('sha256', this.config.JWT_ACCESS_SECRET).update(email).digest('hex')}`;
-    if ((await this.counter.hit(key, 3_600_000)) > FORGOT_PER_EMAIL_PER_HOUR) return;
-
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.disabledAt) return;
 
-    const raw = randomToken();
+    // Per-address limits on top of the per-IP one (an attacker can rotate IPv6 addresses): at most a few links an hour, and
+    // no new link while one was sent moments ago, which also stops a flood from invalidating the link the owner just received.
     const now = new Date();
+    const recent = await this.prisma.passwordResetToken.findMany({ where: { userId: user.id, createdAt: { gt: new Date(now.getTime() - RESET_WINDOW_MS) } }, select: { createdAt: true } });
+    if (recent.length >= RESET_MAX_PER_WINDOW || recent.some((r) => now.getTime() - r.createdAt.getTime() < RESET_MIN_GAP_MS)) return;
+
+    const raw = randomToken();
     await this.prisma.$transaction([
-      this.prisma.passwordResetToken.updateMany({
-        where: { userId: user.id, usedAt: null, createdAt: { lt: new Date(now.getTime() - RESET_KEEP_RECENT_MS) } },
-        data: { usedAt: now },
-      }),
+      this.prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: now } }),
       this.prisma.passwordResetToken.create({
         data: { userId: user.id, tokenHash: hashToken(raw), expiresAt: new Date(now.getTime() + this.config.PASSWORD_RESET_TTL_MIN * 60_000) },
       }),
@@ -194,7 +183,7 @@ export class AuthService {
       .catch((e: unknown) => this.logger.error(`Password reset mail failed: ${describeUnexpected(e, false)}`));
   }
 
-  /** Single use; on success every other live reset link and every existing session of the user is revoked. */
+  /** Single use; on success every existing session of the user is revoked. */
   async resetPassword(rawToken: string, password: string, meta: ClientMeta): Promise<void> {
     const invalid = () => new BadRequestException({ code: 'INVALID_TOKEN', message: 'This link is invalid or has expired.' });
     const token = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash: hashToken(rawToken) }, include: { user: true } });
@@ -205,8 +194,7 @@ export class AuthService {
     const done = await this.prisma.$transaction(async (tx) => {
       const claim = await tx.passwordResetToken.updateMany({ where: { id: token.id, usedAt: null, expiresAt: { gt: now } }, data: { usedAt: now } });
       if (claim.count === 0) return false;
-      await tx.user.update({ where: { id: token.userId }, data: { passwordHash } });
-      await tx.passwordResetToken.updateMany({ where: { userId: token.userId, usedAt: null }, data: { usedAt: now } });
+      await tx.user.update({ where: { id: token.userId }, data: { passwordHash, sessionsRevokedAt: now } });
       await tx.refreshToken.updateMany({ where: { userId: token.userId, revokedAt: null }, data: { revokedAt: now } });
       return true;
     });
@@ -223,11 +211,16 @@ export class AuthService {
   }
 
   private revokeAllSessions(userId: string) {
-    return this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    const now = new Date();
+    return this.prisma.$transaction([
+      this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } }),
+      this.prisma.user.update({ where: { id: userId }, data: { sessionsRevokedAt: now } }),
+    ]);
   }
 
-  private refreshTokenData(userId: string, raw: string, meta: ClientMeta) {
+  private refreshTokenData(userId: string, raw: string, meta: ClientMeta, familyStartedAt?: Date) {
     return {
+      ...(familyStartedAt ? { familyStartedAt } : {}),
       userId,
       tokenHash: hashToken(raw),
       expiresAt: new Date(Date.now() + this.config.REFRESH_TOKEN_TTL_DAYS * 86_400_000),

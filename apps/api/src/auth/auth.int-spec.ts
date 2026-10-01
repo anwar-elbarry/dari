@@ -1,6 +1,5 @@
 import request from 'supertest';
 import { CSRF_HEADER, CSRF_HEADER_VALUE } from '../common/csrf.guard';
-import { FORGOT_PER_EMAIL_PER_HOUR, RESET_KEEP_RECENT_MS } from './auth.service';
 import { hashToken } from './tokens';
 import { client, createTestApp, PASSWORD, requireDatabase, resetDatabase, signup, TestApp } from '../test/test-app';
 
@@ -222,11 +221,12 @@ describe('auth (integration)', () => {
       await client(t.app).post('/api/auth/login', { email: 'reset@x.test', password: newPassword }).expect(200);
     });
 
-    it('refuses an expired token and invalidates tokens older than a few minutes when a new one is requested', async () => {
+    it('refuses an expired token and invalidates older tokens when a new one is requested', async () => {
       await signup(t.app, 'old@x.test');
       await client(t.app).post('/api/auth/forgot-password', { email: 'old@x.test' }).expect(204);
       const first = await t.mail.waitFor('old@x.test', 1);
-      await t.prisma.passwordResetToken.updateMany({ where: { tokenHash: hashToken(first) }, data: { createdAt: new Date(Date.now() - RESET_KEEP_RECENT_MS - 1000) } });
+      // A second request within two minutes sends nothing (see the limits test below): move the first one back in time.
+      await t.prisma.passwordResetToken.updateMany({ data: { createdAt: new Date(Date.now() - 5 * 60_000) } });
       await client(t.app).post('/api/auth/forgot-password', { email: 'old@x.test' }).expect(204);
       const second = await t.mail.waitFor('old@x.test', 2);
 
@@ -234,28 +234,94 @@ describe('auth (integration)', () => {
       await t.prisma.passwordResetToken.updateMany({ where: { tokenHash: hashToken(second) }, data: { expiresAt: new Date(Date.now() - 1000) } });
       await client(t.app).post('/api/auth/reset-password', { token: second, password: 'a-brand-new-password' }).expect(400);
     });
+  });
 
-    it('keeps a link sent minutes ago alive when someone asks again; using one link kills the others', async () => {
-      await signup(t.app, 'recent@x.test');
-      await client(t.app).post('/api/auth/forgot-password', { email: 'recent@x.test' }).expect(204);
-      const first = await t.mail.waitFor('recent@x.test', 1);
-      await client(t.app).post('/api/auth/forgot-password', { email: 'recent@x.test' }).expect(204);
-      const second = await t.mail.waitFor('recent@x.test', 2);
-
-      await client(t.app).post('/api/auth/reset-password', { token: first, password: 'a-brand-new-password' }).expect(204);
-      await client(t.app).post('/api/auth/reset-password', { token: second, password: 'another-new-password' }).expect(400);
+  describe('password reset limits per address', () => {
+    it('sends no second link within two minutes, so a flood cannot invalidate the link the owner just received', async () => {
+      await signup(t.app, 'flood@x.test');
+      await client(t.app).post('/api/auth/forgot-password', { email: 'flood@x.test' }).expect(204);
+      const first = await t.mail.waitFor('flood@x.test', 1);
+      for (let i = 0; i < 3; i++) await client(t.app).post('/api/auth/forgot-password', { email: 'flood@x.test' }).expect(204);
+      await new Promise((r) => setTimeout(r, 300));
+      expect(t.mail.sent.filter((m) => m.to === 'flood@x.test')).toHaveLength(1);
+      await client(t.app).post('/api/auth/reset-password', { token: first, password: 'a-brand-new-password' }).expect(204); // still valid
     });
 
-    it(`sends at most ${FORGOT_PER_EMAIL_PER_HOUR} reset e-mails an hour per address and still answers 204`, async () => {
-      await signup(t.app, 'flood@x.test');
-      for (let i = 0; i < FORGOT_PER_EMAIL_PER_HOUR + 2; i++) {
-        await client(t.app).post('/api/auth/forgot-password', { email: i % 2 ? 'Flood@x.test' : 'flood@x.test' }).expect(204);
+    it('sends at most three links an hour to one address, and answers 204 either way', async () => {
+      await signup(t.app, 'cap@x.test');
+      for (let i = 0; i < 5; i++) {
+        await t.prisma.passwordResetToken.updateMany({ data: { createdAt: new Date(Date.now() - 5 * 60_000) } }); // past the two-minute gap
+        await client(t.app).post('/api/auth/forgot-password', { email: 'cap@x.test' }).expect(204);
+        await new Promise((r) => setTimeout(r, 150));
       }
-      await t.mail.waitFor('flood@x.test', FORGOT_PER_EMAIL_PER_HOUR);
-      await new Promise((r) => setTimeout(r, 300));
-      expect(t.mail.sent.filter((m) => m.to === 'flood@x.test')).toHaveLength(FORGOT_PER_EMAIL_PER_HOUR);
-      const user = await t.prisma.user.findUniqueOrThrow({ where: { email: 'flood@x.test' } });
-      expect(await t.prisma.passwordResetToken.count({ where: { userId: user.id } })).toBe(FORGOT_PER_EMAIL_PER_HOUR);
+      expect(t.mail.sent.filter((m) => m.to === 'cap@x.test')).toHaveLength(3);
+    });
+  });
+
+  describe('access tokens after a session is cut off', () => {
+    /** Signs up and returns the raw cookies, as a thief who copied them would hold them. */
+    async function cookiesOf(email: string) {
+      const res = await request(t.app.getHttpServer()).post('/api/auth/signup').set(CSRF_HEADER, CSRF_HEADER_VALUE).send({ companyName: 'Riad Co', name: 'Sara', email, password: PASSWORD }).expect(201);
+      return (res.headers['set-cookie'] as unknown as string[]).map((c) => c.split(';')[0]).join('; ');
+    }
+    const me = (cookies: string) => request(t.app.getHttpServer()).get('/api/me').set('Cookie', cookies);
+    const wholeSecond = () => new Promise((r) => setTimeout(r, 1100)); // `iat` and the revocation instant are whole seconds
+
+    it('a stolen access cookie stops working once the password is reset', async () => {
+      const stolen = await cookiesOf('stolen@x.test');
+      await me(stolen).expect(200);
+      await wholeSecond();
+      await client(t.app).post('/api/auth/forgot-password', { email: 'stolen@x.test' }).expect(204);
+      const token = await t.mail.waitFor('stolen@x.test', 1);
+      await client(t.app).post('/api/auth/reset-password', { token, password: 'a-brand-new-password' }).expect(204);
+      await me(stolen).expect(401);
+      // A fresh login after the reset works.
+      const again = client(t.app);
+      await again.post('/api/auth/login', { email: 'stolen@x.test', password: 'a-brand-new-password' }).expect(200);
+      await again.get('/api/me').expect(200);
+    });
+
+    it('logout also ends the access token, not only the refresh token', async () => {
+      const cookies = await cookiesOf('bye@x.test');
+      await me(cookies).expect(200);
+      await wholeSecond();
+      await request(t.app.getHttpServer()).post('/api/auth/logout').set(CSRF_HEADER, CSRF_HEADER_VALUE).set('Cookie', cookies).expect(204);
+      await me(cookies).expect(401);
+    });
+
+    it('reuse of a rotated refresh token also cuts off access tokens', async () => {
+      const cookies = await cookiesOf('reuse@x.test');
+      const oldRt = /dari_rt=([^;]+)/.exec(cookies)![1];
+      await request(t.app.getHttpServer()).post('/api/auth/refresh').set(CSRF_HEADER, CSRF_HEADER_VALUE).set('Cookie', cookies).expect(200);
+      await wholeSecond();
+      await t.prisma.refreshToken.updateMany({ where: { replacedById: { not: null } }, data: { revokedAt: new Date(Date.now() - 60_000) } }); // outside the grace window
+      await request(t.app.getHttpServer()).post('/api/auth/refresh').set(CSRF_HEADER, CSRF_HEADER_VALUE).set('Cookie', `dari_rt=${oldRt}`).expect(401);
+      await me(cookies).expect(401);
+    });
+  });
+
+  describe('session lifetime', () => {
+    it('refuses to rotate a login older than REFRESH_MAX_LIFETIME_DAYS, and carries the start over on every rotation', async () => {
+      const c = await signup(t.app, 'old-session@x.test');
+      await c.post('/api/auth/refresh').expect(200);
+      const [first, second] = await t.prisma.refreshToken.findMany({ orderBy: { createdAt: 'asc' } });
+      expect(second.familyStartedAt.getTime()).toBe(first.familyStartedAt.getTime());
+      await t.prisma.refreshToken.updateMany({ data: { familyStartedAt: new Date(Date.now() - (t.config.REFRESH_MAX_LIFETIME_DAYS + 1) * 86_400_000) } });
+      await c.post('/api/auth/refresh').expect(401);
+    });
+  });
+
+  describe('signup flag', () => {
+    it('answers 404 when SIGNUP_ENABLED is off, and creates nothing', async () => {
+      const closed = await createTestApp({ env: { SIGNUP_ENABLED: 'false' } });
+      try {
+        await resetDatabase(closed.prisma, closed.redis);
+        await client(closed.app).post('/api/auth/signup', { companyName: 'Riad Co', name: 'Sara', email: 'closed@x.test', password: PASSWORD }).expect(404);
+        expect(await closed.prisma.user.count()).toBe(0);
+        await client(closed.app).post('/api/auth/login', { email: 'nobody@x.test', password: PASSWORD }).expect(401); // the rest of auth is unaffected
+      } finally {
+        await closed.app.close();
+      }
     });
   });
 

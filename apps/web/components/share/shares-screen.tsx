@@ -6,6 +6,7 @@ import { api, ApiError } from '../../lib/api';
 import type { PropertyReduced, ShareAccessRow, ShareRow, ShareStatus } from '../../lib/types';
 import { useSubmit } from '../../lib/use-submit';
 import { Alert, Button, Card, Dialog, StatusPill } from '../ui';
+import { ShareDialog } from './share-dialog';
 
 const TONE: Record<ShareStatus, 'success' | 'neutral' | 'danger'> = { ACTIVE: 'success', EXPIRED: 'neutral', REVOKED: 'danger' };
 
@@ -19,6 +20,7 @@ export function SharesScreen() {
   const [state, setState] = useState<'ok' | 'failed' | 'unavailable'>('ok');
   const [notice, setNotice] = useState<string | null>(null);
   const [revokeFor, setRevokeFor] = useState<ShareRow | null>(null);
+  const [renewFor, setRenewFor] = useState<ShareRow | null>(null);
   const [logFor, setLogFor] = useState<ShareRow | null>(null);
   const [log, setLog] = useState<ShareAccessRow[] | null>(null);
   const revoke = useSubmit();
@@ -99,6 +101,9 @@ export function SharesScreen() {
                 <Button variant="ghost" onClick={() => openLog(s)}>
                   {t('accessLog')}
                 </Button>
+                <Button variant="ghost" onClick={() => setRenewFor(s)}>
+                  {t('renew')}
+                </Button>
                 {s.status === 'ACTIVE' && (
                   <Button variant="danger" onClick={() => setRevokeFor(s)}>
                     {t('revoke')}
@@ -109,6 +114,14 @@ export function SharesScreen() {
           </li>
         ))}
       </ul>
+
+      <ShareDialog
+        target={null}
+        renew={renewFor ? { id: renewFor.id, label: renewFor.recipientLabel, active: renewFor.status === 'ACTIVE' } : null}
+        title={t('renewTitle')}
+        onClose={() => setRenewFor(null)}
+        onChanged={() => void load()}
+      />
 
       <Dialog open={revokeFor !== null} onClose={() => setRevokeFor(null)} title={t('revokeTitle')} closeLabel={tc('cancel')}>
         <div className="space-y-4">

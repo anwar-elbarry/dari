@@ -209,6 +209,8 @@ model User {
   passwordHash String
   lastLoginAt  DateTime?
   disabledAt   DateTime?
+  /** Access tokens issued before this moment are refused (password reset, reuse detection, logout). */
+  sessionsRevokedAt DateTime?
   createdAt    DateTime  @default(now())
 
   account             Account                  @relation(fields: [accountId], references: [id])
@@ -229,6 +231,8 @@ model RefreshToken {
   expiresAt    DateTime
   revokedAt    DateTime?
   replacedById String?
+  /** When the login this token descends from started; carried over on every rotation to cap a session's life. */
+  familyStartedAt DateTime @default(now())
   userAgent    String?
   ip           String?
   createdAt    DateTime  @default(now())

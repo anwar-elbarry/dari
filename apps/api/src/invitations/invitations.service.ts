@@ -3,6 +3,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuthService, hashPassword, SessionTokens } from '../auth/auth.service';
 import { AuthUser, ClientMeta } from '../auth/auth.types';
 import { hashToken, randomToken } from '../auth/tokens';
+import { WindowCounter } from '../common/window-counter';
 import { isUniqueViolation } from '../common/prisma-errors';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { MailService } from '../mail/mail.service';
@@ -26,6 +27,10 @@ export const MAX_INVITATION_RESENDS = 3;
 /** Invitations (new or re-sent) one account may e-mail in an hour: the mail goes out under Dari's sender domain, in the account's own words. */
 export const INVITATIONS_PER_HOUR = 20;
 
+/** Invitations to an address that already has an account, per account and hour: the 409 must not be a free way to test who is registered. */
+export const INVITE_PROBES_PER_HOUR = 10;
+export const INVITE_PROBE_COUNTER = Symbol('INVITE_PROBE_COUNTER');
+
 @Injectable()
 export class InvitationsService {
   constructor(
@@ -34,6 +39,7 @@ export class InvitationsService {
     private readonly mail: MailService,
     private readonly auth: AuthService,
     private readonly rules: RulesService,
+    @Inject(INVITE_PROBE_COUNTER) private readonly probes: WindowCounter,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -53,7 +59,12 @@ export class InvitationsService {
 
   async create(user: AuthUser, dto: CreateInvitationDto, meta: ClientMeta) {
     await this.assertInvitationQuota(user.accountId);
-    if (await this.prisma.user.findUnique({ where: { email: dto.email }, select: { id: true } })) throw emailInUse();
+    if (await this.prisma.user.findUnique({ where: { email: dto.email }, select: { id: true } })) {
+      if ((await this.probes.hit(`invite-probe:${user.accountId}`, 3_600_000)) > INVITE_PROBES_PER_HOUR) {
+        throw new HttpException({ code: 'INVITATION_QUOTA', message: 'Too many invitations sent in the last hour. Try again later.' }, HttpStatus.TOO_MANY_REQUESTS);
+      }
+      throw emailInUse();
+    }
 
     const db = this.prisma.forAccount(user.accountId);
     const raw = randomToken();

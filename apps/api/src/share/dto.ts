@@ -1,5 +1,5 @@
 import { ShareResourceType } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 import { Text } from '../checkin/dto';
 
 /**
@@ -33,6 +33,29 @@ export class CreateShareDto {
   recipientLabel!: string;
 
   /** Also send the link by WhatsApp to this number (E.164). Used for this one message and stored nowhere. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  whatsappTo?: string;
+}
+
+/** A new link for the same document as an existing one (the old token cannot be shown again). */
+export class RenewShareDto {
+  @IsInt()
+  @Min(1)
+  @Max(168)
+  expiresInHours!: number;
+
+  /** Defaults to the previous link's label. */
+  @ValidateIf((o: RenewShareDto) => o.recipientLabel !== undefined)
+  @Text(2, 80)
+  recipientLabel?: string;
+
+  /** Revoke the previous link in the same request (only if it is still live). */
+  @ValidateIf((o: RenewShareDto) => o.revokeOld !== undefined)
+  @IsBoolean()
+  revokeOld?: boolean;
+
   @IsOptional()
   @IsString()
   @MaxLength(40)

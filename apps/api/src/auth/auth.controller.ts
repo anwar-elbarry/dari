@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Logger, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Logger, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { APP_CONFIG, AppConfig } from '../config/env';
@@ -10,6 +10,7 @@ import { AuthUser, clientMeta } from './auth.types';
 import { clearSessionCookies, cookieScheme, setSessionCookies } from './cookies';
 import { CurrentUser, Public } from './decorators';
 import { ForgotPasswordDto, LoginDto, ResetPasswordDto, SignupDto } from './dto';
+import { SignupEnabledGuard } from './signup-enabled.guard';
 import { describeUnexpected } from '../common/http-exception.filter';
 
 const STRICT = { default: { limit: 10, ttl: 60_000 } };
@@ -25,6 +26,7 @@ export class AuthController {
   ) {}
 
   @Public()
+  @UseGuards(SignupEnabledGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('auth/signup')
   @HttpCode(201)

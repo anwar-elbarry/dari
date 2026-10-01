@@ -14,7 +14,6 @@
   },
   "errors": {
     "INVALID_CREDENTIALS": "E-mail ou mot de passe incorrect.",
-    "SIGNUP_CLOSED": "L'inscription est fermée pour le moment. Contactez-nous pour ouvrir un compte.",
     "EMAIL_IN_USE": "Un compte utilise déjà cet e-mail.",
     "TOO_MANY_ATTEMPTS": "Trop de tentatives. Réessayez dans 15 minutes.",
     "TOO_MANY_REQUESTS": "Trop de requêtes. Patientez une minute.",
@@ -655,6 +654,8 @@
     "accessTitle": "Qui a ouvert ce lien",
     "accessNote": "Heure et navigateur seulement. L'adresse de la personne n'est pas enregistrée.",
     "accessEmpty": "Ce lien n'a pas été ouvert.",
+    "renew": "Créer un nouveau lien",
+    "renewTitle": "Créer un nouveau lien",
     "revoke": "Révoquer",
     "revokeTitle": "Révoquer ce lien ?",
     "revokeBody": "Le lien cesse de fonctionner immédiatement. Vous pouvez en créer un nouveau.",
@@ -662,6 +663,7 @@
     "revoked": "Lien révoqué.",
     "close": "Fermer",
     "dialog": {
+      "revokeOld": "Révoquer le lien précédent une fois le nouveau créé",
       "titleFiche": "Partager la fiche",
       "notice": "Ce lien donne accès à des données personnelles de voyageurs à toute personne qui le détient. Ne le remettez qu'à la personne concernée, gardez une durée courte et révoquez-le quand il n'est plus utile.",
       "hours": "Durée du lien, en heures",
