@@ -1,13 +1,15 @@
-import { ConflictException, HttpException, HttpStatus, Inject, Injectable, Logger, NotFoundException, PayloadTooLargeException, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Inject, Injectable, Logger, NotFoundException, PayloadTooLargeException, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { hashToken } from '../auth/tokens';
+import { VALIDATION_FAILED } from '../common/http-exception.filter';
 import { WindowCounter } from '../common/window-counter';
 import { RulesService } from '../compliance/rules.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DRAFT_TTL_MS } from '../retention/retention.service';
 import { StorageService } from '../storage/storage.service';
 import { ConsentService } from './consent.service';
+import { entryStampRequired } from './entry-stamp';
 import { FicheService } from './fiche.service';
 import { parseIsoDate, SubmitDto } from './dto';
 import { ImageRejectedError, MAX_UPLOAD_BYTES, sanitizeImage } from './image-sanitizer';
@@ -22,8 +24,9 @@ const MAX_SUBMITS_PER_LINK_WINDOW = 20;
 const DAY_MS = 86_400_000;
 
 /**
- * The four fields the police form needs, always required (rule 5 in CLAUDE.md). Enforced by SubmitDto and
- * listed here so the form and the server cannot drift apart.
+ * The four fields the police form needs (rule 5 in CLAUDE.md). Enforced by SubmitDto and `submit`, and listed here
+ * so the form and the server cannot drift apart. The entry stamp is the one counsel may exempt some guests from
+ * (`entryStampExemption` in the view, applied by `entryStampRequired()`).
  */
 export const REQUIRED_FIELDS = ['entryStampNumber', 'cityOfOrigin', 'nextDestination', 'profession'] as const;
 
@@ -74,6 +77,7 @@ export class PublicCheckInService {
     const { link, booking } = await this.resolve(rawToken);
     const wording = await this.consent.current(lang ?? 'fr');
     if (!wording) throw new ServiceUnavailableException({ code: 'CHECKIN_UNAVAILABLE', message: 'Check-in is not available at the moment.' });
+    const { enforceable } = await this.rules.entryStampExemption();
     return {
       property: { name: booking.property.name },
       stay: { checkIn: isoDay(booking.checkIn), checkOut: isoDay(booking.checkOut) },
@@ -81,6 +85,8 @@ export class PublicCheckInService {
       consent: wording,
       limits: { maxImageBytes: MAX_UPLOAD_BYTES, maxUploadsPerGuest: MAX_UPLOADS_PER_GUEST },
       requiredFields: REQUIRED_FIELDS,
+      /** Who may leave the entry stamp out; null while counsel has validated no exemption (everyone gives it). */
+      entryStampExemption: enforceable,
     };
   }
 
@@ -156,6 +162,11 @@ export class PublicCheckInService {
     if (!wording) throw new UnprocessableEntityException({ code: 'CONSENT_INVALID', message: 'The consent text is not valid.' });
 
     const retention = await this.rules.idRetention();
+    // A missing entry stamp is refused like any missing field (400), unless counsel's validated exemption covers the guest.
+    const { enforceable: exemption } = await this.rules.entryStampExemption();
+    if (dto.entryStampNumber === undefined && entryStampRequired(exemption, dto)) {
+      throw new BadRequestException({ code: VALIDATION_FAILED, message: 'Request validation failed.', details: [{ field: 'entryStampNumber', errors: ['Enter the entry stamp number.'] }] });
+    }
     const now = new Date();
     const dob = parseIsoDate(dto.dob);
     const expiry = dto.docExpiryDate ? parseIsoDate(dto.docExpiryDate) : null;
@@ -196,7 +207,7 @@ export class PublicCheckInService {
               dob: dob!,
               docExpiryDate: expiry,
               declaredMoroccanNationality: dto.declaredMoroccanNationality,
-              entryStampNumber: dto.entryStampNumber,
+              entryStampNumber: dto.entryStampNumber ?? null,
               cityOfOrigin: dto.cityOfOrigin,
               nextDestination: dto.nextDestination,
               profession: dto.profession,

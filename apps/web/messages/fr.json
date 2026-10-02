@@ -552,6 +552,7 @@
       "no": "Non",
       "entryStampNumber": "Numéro du cachet d'entrée",
       "entryStampHint": "Le numéro du cachet dans votre passeport, ou du document d'entrée.",
+      "entryStampHintMoroccan": "Citoyens marocains sans cachet d'entrée : écrivez Citoyen marocain.",
       "cityOfOrigin": "Ville de provenance",
       "nextDestination": "Prochaine destination",
       "profession": "Profession",

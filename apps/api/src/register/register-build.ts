@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
+import { EntryStampExemption, entryStampRequired } from '../checkin/entry-stamp';
 
-/** The fields a police register needs for every guest. A submitted guest missing one is reported. */
+/** The fields a police register needs for every guest. A submitted guest missing one is reported (the entry stamp only when required: `entryStampRequired()`). */
 export const MANDATORY_FIELDS = ['docNumber', 'entryStampNumber', 'cityOfOrigin', 'nextDestination', 'profession'] as const;
 export type MandatoryField = (typeof MANDATORY_FIELDS)[number];
 
@@ -13,6 +14,7 @@ export interface RegisterGuest {
   nationality: string | null;
   docNumber: string | null;
   dob: Date | null;
+  declaredMoroccanNationality: boolean | null;
   entryStampNumber: string | null;
   cityOfOrigin: string | null;
   nextDestination: string | null;
@@ -62,8 +64,11 @@ export interface RegisterRow {
 const blank = (v: string | null) => v === null || v.trim() === '';
 const submitted = (g: RegisterGuest) => g.status === 'SUBMITTED' || g.status === 'VERIFIED';
 
-/** Pure: the rows of the register, the incomplete records, and the digest of what they were built from. `monthEnd` is the first day of the next month. */
-export function buildRegister(stays: RegisterStay[], property: RegisterProperty, monthEnd: Date) {
+/**
+ * Pure: the rows of the register, the incomplete records, and the digest of what they were built from. `monthEnd` is
+ * the first day of the next month; `exemption` is the enforceable entry-stamp exemption (null: everyone needs one).
+ */
+export function buildRegister(stays: RegisterStay[], property: RegisterProperty, monthEnd: Date, exemption: EntryStampExemption | null = null) {
   const ordered = [...stays].sort((a, b) => a.checkIn.getTime() - b.checkIn.getTime() || a.id.localeCompare(b.id));
   const rows: RegisterRow[] = [];
   const problems: Problem[] = [];
@@ -78,7 +83,7 @@ export function buildRegister(stays: RegisterStay[], property: RegisterProperty,
         problems.push({ kind: 'DRAFT', bookingId: stay.id, guestId: g.id });
         continue;
       }
-      const missing = MANDATORY_FIELDS.filter((f) => blank(g[f]));
+      const missing = MANDATORY_FIELDS.filter((f) => blank(g[f]) && (f !== 'entryStampNumber' || entryStampRequired(exemption, g)));
       if (missing.length > 0) problems.push({ kind: 'MISSING_FIELD', bookingId: stay.id, guestId: g.id, fields: missing });
       if (g.status === 'SUBMITTED') problems.push({ kind: 'UNVERIFIED', bookingId: stay.id, guestId: g.id });
       rows.push({ n: rows.length + 1, bookingId: stay.id, checkIn: stay.checkIn, checkOut: stay.checkOut, continuesNextMonth: stay.checkOut.getTime() > monthEnd.getTime(), guest: g });
@@ -87,11 +92,17 @@ export function buildRegister(stays: RegisterStay[], property: RegisterProperty,
 
   const byKind = Object.fromEntries(PROBLEM_KINDS.map((k) => [k, problems.filter((p) => p.kind === k).length])) as Record<ProblemKind, number>;
   const summary: Summary = { stays: ordered.length, guests: rows.length, problems: problems.length, byKind };
-  return { rows, problems, summary, digest: digestOf(ordered, property) };
+  return { rows, problems, summary, digest: digestOf(ordered, property, exemption) };
 }
 
 /** Changes whenever anything printed on the register, or its list of problems, changes. Hashed: it is stored, and the values are not. */
-export function digestOf(ordered: RegisterStay[], property: RegisterProperty): string {
+export function digestOf(ordered: RegisterStay[], property: RegisterProperty, exemption: EntryStampExemption | null = null): string {
+  // The Moroccan-nationality answer is not printed; it counts only through the exemption, and only when it waives a
+  // stamp, so registers built before the exemption existed keep their digest.
+  const forDigest = (g: RegisterGuest) => {
+    const { declaredMoroccanNationality, ...printed } = g;
+    return entryStampRequired(exemption, { nationality: g.nationality, declaredMoroccanNationality }) ? printed : { ...printed, stampExempt: true };
+  };
   const view = ordered.map((s) => ({
     id: s.id,
     in: s.checkIn.toISOString(),
@@ -99,7 +110,7 @@ export function digestOf(ordered: RegisterStay[], property: RegisterProperty): s
     party: s.partySize,
     guests: [...s.guests]
       .sort((a, b) => a.id.localeCompare(b.id))
-      .map((g) => (g.status === 'PENDING' ? { id: g.id, status: g.status } : { ...g, dob: g.dob?.toISOString() ?? null })),
+      .map((g) => (g.status === 'PENDING' ? { id: g.id, status: g.status } : { ...forDigest(g), dob: g.dob?.toISOString() ?? null })),
   }));
   return createHash('sha256').update(JSON.stringify([property.name, property.address, property.commune, view])).digest('hex');
 }

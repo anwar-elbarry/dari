@@ -3,7 +3,7 @@ import { REGISTER_TEMPLATE_VERSION, RegisterData, renderRegisterHtml } from './r
 
 const row = (n: number, over: Partial<RegisterRow['guest']> = {}, continues = false): RegisterRow => ({
   n, bookingId: 'b', checkIn: new Date('2026-10-09T00:00:00Z'), checkOut: new Date('2026-10-12T00:00:00Z'), continuesNextMonth: continues,
-  guest: { id: `g${n}`, status: 'VERIFIED', guestIndex: n, docType: 'PASSPORT', fullName: 'Anna Maria Eriksson', nationality: 'SWE', docNumber: 'L898902C3', dob: new Date('1974-08-12T00:00:00Z'), entryStampNumber: 'CMN-1', cityOfOrigin: 'Stockholm', nextDestination: 'Essaouira', profession: 'Engineer', ...over },
+  guest: { id: `g${n}`, status: 'VERIFIED', guestIndex: n, docType: 'PASSPORT', fullName: 'Anna Maria Eriksson', nationality: 'SWE', docNumber: 'L898902C3', dob: new Date('1974-08-12T00:00:00Z'), declaredMoroccanNationality: false, entryStampNumber: 'CMN-1', cityOfOrigin: 'Stockholm', nextDestination: 'Essaouira', profession: 'Engineer', ...over },
 });
 const summary = (problems = 0) => ({ stays: 1, guests: 1, problems, byKind: { NO_CHECKIN: 0, PARTY_INCOMPLETE: 0, DRAFT: 0, MISSING_FIELD: 0, UNVERIFIED: 0 } });
 const data = (over: Partial<RegisterData> = {}): RegisterData => ({ property: { name: 'Riad Yasmine', address: '12 Derb', commune: 'Marrakech' }, month: '2026-10', rows: [row(1)], summary: summary(), generatedAt: new Date('2026-11-02T09:31:00Z'), ...over });

@@ -1,7 +1,7 @@
 import { applyDecorators } from '@nestjs/common';
 import { DocType } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { Equals, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
+import { Equals, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 const clean = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.normalize('NFC').replace(/\s+/g, ' ').trim() : value);
 const upper = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toUpperCase() : value);
@@ -46,7 +46,8 @@ export class ResendLinkDto {
 
 /**
  * What the guest sends to submit. The four fields the police form needs (entry stamp number, city of origin,
- * next destination, profession) are required here, server-side, whatever the form does (rule 5 in CLAUDE.md).
+ * next destination, profession) are required server-side, whatever the form does (rule 5 in CLAUDE.md). The entry
+ * stamp may be left out only when counsel's validated exemption covers the guest; `submit` checks that.
  * OCR output is never trusted: everything below is what the guest confirmed.
  */
 export class SubmitDto {
@@ -86,8 +87,10 @@ export class SubmitDto {
   @IsBoolean()
   declaredMoroccanNationality!: boolean;
 
+  /** Absent only for a guest the exemption covers (checked in `submit`); never null or blank. */
+  @ValidateIf((o: SubmitDto) => o.entryStampNumber !== undefined)
   @Text(1, 40, /^[A-Za-z0-9][A-Za-z0-9 /.-]*$/)
-  entryStampNumber!: string;
+  entryStampNumber?: string;
 
   @Text(2, 80)
   cityOfOrigin!: string;

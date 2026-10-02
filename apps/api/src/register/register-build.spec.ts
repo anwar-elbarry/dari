@@ -3,12 +3,30 @@ import { buildRegister, digestOf, RegisterGuest, RegisterStay } from './register
 const property = { name: 'Riad Yasmine', address: '12 Derb', commune: 'Marrakech' };
 const MONTH_END = new Date('2026-11-01T00:00:00Z');
 const guest = (id: string, over: Partial<RegisterGuest> = {}): RegisterGuest => ({
-  id, status: 'VERIFIED', guestIndex: 1, docType: 'PASSPORT', fullName: `Guest ${id}`, nationality: 'SWE', docNumber: `D${id}`, dob: new Date('1980-01-01'),
+  id, status: 'VERIFIED', guestIndex: 1, docType: 'PASSPORT', fullName: `Guest ${id}`, nationality: 'SWE', docNumber: `D${id}`, dob: new Date('1980-01-01'), declaredMoroccanNationality: false,
   entryStampNumber: 'S1', cityOfOrigin: 'Paris', nextDestination: 'Fès', profession: 'Engineer', ...over,
 });
 const stay = (id: string, checkIn: string, checkOut: string, guests: RegisterGuest[], partySize: number | null = null): RegisterStay => ({ id, checkIn: new Date(checkIn), checkOut: new Date(checkOut), partySize, guests });
 
+// Example exemption for the mechanism only: who is exempt is counsel's decision, stored in RuleConfig.
+const EXEMPTION = { nationalities: ['MAR'], ifDeclaredMoroccan: true };
+
 describe('buildRegister', () => {
+  it('reports a missing entry stamp unless the enforceable exemption covers the guest', () => {
+    const guests = [guest('m', { nationality: 'MAR', entryStampNumber: null }), guest('d', { declaredMoroccanNationality: true, entryStampNumber: null, guestIndex: 2 }), guest('f', { entryStampNumber: null, guestIndex: 3 })];
+    const fields = (exemption: typeof EXEMPTION | null) =>
+      buildRegister([stay('a', '2026-10-04', '2026-10-06', guests)], property, MONTH_END, exemption).problems.filter((p) => p.kind === 'MISSING_FIELD').map((p) => [p.guestId, p.fields]);
+    expect(fields(null)).toEqual([['m', ['entryStampNumber']], ['d', ['entryStampNumber']], ['f', ['entryStampNumber']]]);
+    expect(fields(EXEMPTION)).toEqual([['f', ['entryStampNumber']]]);
+  });
+
+  it('keeps the digest of a register the exemption does not touch, and changes it when a stamp is waived', () => {
+    const s = (over: Partial<RegisterGuest>) => [stay('a', '2026-10-04', '2026-10-06', [guest('g', over)])];
+    expect(digestOf(s({ declaredMoroccanNationality: true }), property)).toBe(digestOf(s({ declaredMoroccanNationality: false }), property)); // not printed
+    expect(digestOf(s({ nationality: 'SWE' }), property, EXEMPTION)).toBe(digestOf(s({ nationality: 'SWE' }), property));
+    expect(digestOf(s({ nationality: 'MAR' }), property, EXEMPTION)).not.toBe(digestOf(s({ nationality: 'MAR' }), property));
+  });
+
   it('lists one row per submitted guest, by arrival then guest index, numbered from 1', () => {
     const { rows, problems } = buildRegister(
       [stay('b', '2026-10-12', '2026-10-14', [guest('g3')]), stay('a', '2026-10-03', '2026-10-05', [guest('g2', { guestIndex: 2 }), guest('g1', { guestIndex: 1 })])],

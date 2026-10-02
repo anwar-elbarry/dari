@@ -16,6 +16,18 @@ export type GuestForm = {
   profession: string;
 };
 
+/** Mirrors `entryStampRequired()` in apps/api/src/checkin/entry-stamp.ts. The rule itself comes from the API (RuleConfig). */
+export interface EntryStampExemption {
+  nationalities: string[];
+  ifDeclaredMoroccan: boolean;
+}
+
+export function entryStampRequired(exemption: EntryStampExemption | null, f: Pick<GuestForm, 'nationality' | 'declaredMoroccanNationality'>): boolean {
+  if (!exemption) return true;
+  if (f.nationality && exemption.nationalities.includes(f.nationality)) return false;
+  return !(exemption.ifDeclaredMoroccan && f.declaredMoroccanNationality === 'yes');
+}
+
 const NAME = /^[\p{L}\p{M}][\p{L}\p{M} '.-]*$/u;
 const FREE_TEXT = /^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}<>]+$/u;
 const STAMP = /^[A-Za-z0-9][A-Za-z0-9 /.-]*$/;
@@ -30,7 +42,7 @@ function realDate(v: string): Date | null {
 }
 
 /** Field name → error key (translated by the caller). Empty object when the form is acceptable. */
-export function validate(f: GuestForm, now = new Date()): Partial<Record<keyof GuestForm, 'required' | 'invalid'>> {
+export function validate(f: GuestForm, now = new Date(), exemption: EntryStampExemption | null = null): Partial<Record<keyof GuestForm, 'required' | 'invalid'>> {
   const e: Partial<Record<keyof GuestForm, 'required' | 'invalid'>> = {};
   const name = clean(f.fullName);
   if (!name) e.fullName = 'required';
@@ -48,7 +60,9 @@ export function validate(f: GuestForm, now = new Date()): Partial<Record<keyof G
   }
   if (!f.declaredMoroccanNationality) e.declaredMoroccanNationality = 'required';
   const stamp = clean(f.entryStampNumber);
-  if (!stamp) e.entryStampNumber = 'required';
+  if (!entryStampRequired(exemption, f)) {
+    /* not asked: the field is hidden and not sent */
+  } else if (!stamp) e.entryStampNumber = 'required';
   else if (stamp.length > 40 || !STAMP.test(stamp)) e.entryStampNumber = 'invalid';
   for (const key of ['cityOfOrigin', 'nextDestination', 'profession'] as const) {
     const v = clean(f[key]);

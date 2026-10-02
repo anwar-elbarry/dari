@@ -1,4 +1,5 @@
 import { ApiError } from './api';
+import type { EntryStampExemption } from './guest-validation';
 
 /**
  * Client for the public guest routes. There is no session: the link's token travels in the `X-Checkin-Token`
@@ -29,6 +30,8 @@ export interface CheckinView {
   consent: { id: string; version: string; locale: string; body: string };
   limits: { maxImageBytes: number; maxUploadsPerGuest: number };
   requiredFields: string[];
+  /** Who may leave the entry stamp out; null while counsel has validated no exemption (everyone gives it). */
+  entryStampExemption: EntryStampExemption | null;
 }
 
 export type OcrStatus = 'ok' | 'partial' | 'no_mrz' | 'unreadable' | 'unavailable';

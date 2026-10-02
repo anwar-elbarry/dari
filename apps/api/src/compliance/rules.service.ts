@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EntryStampExemption, parseEntryStampExemption } from '../checkin/entry-stamp';
 import { PrismaService } from '../prisma/prisma.service';
 import { DayCounterThresholds, DEFAULT_THRESHOLDS } from './day-counter';
 
@@ -21,6 +22,7 @@ export const WHATSAPP_TEMPLATES_RULE_KEY = 'whatsapp.templates';
 export const QUIET_HOURS_RULE_KEY = 'messaging.quiet_hours';
 export const DAILY_CAP_RULE_KEY = 'messaging.daily_cap';
 export const SEAT_LIMITS_RULE_KEY = 'plan.seat_limits';
+export const ENTRY_STAMP_EXEMPTION_RULE_KEY = 'checkin.entry_stamp_exemption';
 
 export interface SeatPolicyRule {
   /** Seats per plan; a plan without a figure is absent (the account's own `seatLimit` applies). */
@@ -81,6 +83,14 @@ export interface ShareLifetimeRule {
   minHours: number;
   maxHours: number;
   validated: boolean;
+}
+/** No default exists: until counsel validates a row, `enforceable` is null and every guest gives an entry stamp number. */
+export interface EntryStampExemptionRule {
+  /** What the row says, validated or not (for the enablement check). */
+  configured: EntryStampExemption | null;
+  validated: boolean;
+  /** The exemption to apply: only one counsel has validated. Dropping a field from the police form is never a guess. */
+  enforceable: EntryStampExemption | null;
 }
 export interface CheckinGraceRule {
   /** Hours after the booked checkout during which a check-in link still works. */
@@ -170,6 +180,13 @@ export class RulesService {
     const days = boundedInt((row?.value as { days?: unknown } | null)?.days, 1, MAX_RECORD_RETENTION_DAYS);
     const validated = !!row?.validatedBy;
     return { days, validated, enforceable: days !== null && validated ? days : null };
+  }
+
+  async entryStampExemption(): Promise<EntryStampExemptionRule> {
+    const row = await this.prisma.ruleConfig.findUnique({ where: { key: ENTRY_STAMP_EXEMPTION_RULE_KEY } });
+    const configured = parseEntryStampExemption(row?.value);
+    const validated = !!row?.validatedBy;
+    return { configured, validated, enforceable: validated ? configured : null };
   }
 
   async licenseDocumentRetention(): Promise<RecordRetentionRule> {

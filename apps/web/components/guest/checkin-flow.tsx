@@ -7,7 +7,7 @@ import { countryOptions, normalizeNationality } from '../../lib/countries';
 import { CheckinView, FormField, guestApi, SubmitResult, UploadResult } from '../../lib/guest-api';
 import { ImageProblem, prepareImage } from '../../lib/guest-image';
 import { DocChoice, DocumentDrawing } from './document-drawing';
-import { clean, GuestForm, validate } from '../../lib/guest-validation';
+import { clean, entryStampRequired, GuestForm, validate } from '../../lib/guest-validation';
 import { Alert, Button, Card, Field, fieldAria, Input, Select, StatusPill } from '../ui';
 
 type Step = 'loading' | 'unavailable' | 'temporary' | 'intro' | 'photo' | 'form' | 'done';
@@ -163,7 +163,8 @@ export function CheckinFlow() {
     e.preventDefault();
     if (!token.current || !view || !draftId) return;
     setProblem(null);
-    const found = validate(form);
+    const found = validate(form, new Date(), view.entryStampExemption);
+    const stampNeeded = entryStampRequired(view.entryStampExemption, form);
     const next: Partial<Record<keyof GuestForm | 'consent', string>> = Object.fromEntries(Object.entries(found).map(([k, v]) => [k, tf(v as 'required' | 'invalid')]));
     if (!consented) next.consent = tf('required');
     setErrors(next);
@@ -186,7 +187,7 @@ export function CheckinFlow() {
         dob: form.dob,
         ...(form.docExpiryDate ? { docExpiryDate: form.docExpiryDate } : {}),
         declaredMoroccanNationality: form.declaredMoroccanNationality === 'yes',
-        entryStampNumber: clean(form.entryStampNumber),
+        ...(stampNeeded ? { entryStampNumber: clean(form.entryStampNumber) } : {}),
         cityOfOrigin: clean(form.cityOfOrigin),
         nextDestination: clean(form.nextDestination),
         profession: clean(form.profession),
@@ -329,6 +330,9 @@ export function CheckinFlow() {
 
   if (step === 'form' && view && upload) {
     const status = upload.ocr.status;
+    // Hidden only when counsel's validated exemption covers this guest. Until then a Moroccan guest gets a hint instead.
+    const stampNeeded = entryStampRequired(view.entryStampExemption, form);
+    const stampHint = form.nationality === 'MAR' || form.declaredMoroccanNationality === 'yes' ? tf('entryStampHintMoroccan') : tf('entryStampHint');
     const readTone = status === 'ok' ? 'success' : status === 'partial' ? 'warning' : 'info';
     const readText = status === 'ok' ? t('read.ok') : status === 'partial' ? t('read.partial') : t('read.none');
     return (
@@ -407,9 +411,11 @@ export function CheckinFlow() {
 
         <Card className="space-y-4">
           <h2 className="font-display text-lg font-semibold">{tf('staySection')}</h2>
-          <Field id="f-entryStampNumber" label={tf('entryStampNumber')} hint={tf('entryStampHint')} error={errors.entryStampNumber}>
-            <Input {...fieldAria('f-entryStampNumber', errors.entryStampNumber, tf('entryStampHint'))} autoComplete="off" value={form.entryStampNumber} onChange={set('entryStampNumber')} />
-          </Field>
+          {stampNeeded && (
+            <Field id="f-entryStampNumber" label={tf('entryStampNumber')} hint={stampHint} error={errors.entryStampNumber}>
+              <Input {...fieldAria('f-entryStampNumber', errors.entryStampNumber, stampHint)} autoComplete="off" value={form.entryStampNumber} onChange={set('entryStampNumber')} />
+            </Field>
+          )}
           <Field id="f-cityOfOrigin" label={tf('cityOfOrigin')} error={errors.cityOfOrigin}>
             <Input {...fieldAria('f-cityOfOrigin', errors.cityOfOrigin)} autoComplete="address-level2" dir="auto" value={form.cityOfOrigin} onChange={set('cityOfOrigin')} />
           </Field>

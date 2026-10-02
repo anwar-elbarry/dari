@@ -552,6 +552,7 @@
       "no": "No",
       "entryStampNumber": "Entry stamp number",
       "entryStampHint": "The number of the stamp in your passport, or the entry document.",
+      "entryStampHintMoroccan": "Moroccan citizens without an entry stamp: write Citoyen marocain.",
       "cityOfOrigin": "City you are coming from",
       "nextDestination": "Your next destination",
       "profession": "Profession",

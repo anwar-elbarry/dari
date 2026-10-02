@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser, ClientMeta } from '../auth/auth.types';
 import { PdfRenderer, PdfUnavailableError } from '../checkin/pdf-renderer';
+import { RulesService } from '../compliance/rules.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { can } from '../rbac/capabilities';
 import { revokeLinksTo } from '../share/revoke-links';
@@ -24,7 +25,7 @@ const MAX_ROWS = 1500;
 const SWAP_ATTEMPTS = 5;
 
 const GUEST_SELECT = {
-  id: true, status: true, guestIndex: true, docType: true, fullName: true, nationality: true, docNumber: true, dob: true,
+  id: true, status: true, guestIndex: true, docType: true, fullName: true, nationality: true, docNumber: true, dob: true, declaredMoroccanNationality: true,
   entryStampNumber: true, cityOfOrigin: true, nextDestination: true, profession: true,
 } satisfies Prisma.GuestCheckInSelect;
 const STAY_SELECT = { id: true, checkIn: true, checkOut: true, partySize: true, checkIns: { select: GUEST_SELECT } } satisfies Prisma.BookingSelect;
@@ -46,6 +47,7 @@ export class RegisterService {
     private readonly storage: StorageService,
     private readonly renderer: PdfRenderer,
     private readonly audit: AuditService,
+    private readonly rules: RulesService,
   ) {}
 
   private async property(accountId: string, propertyId: string) {
@@ -74,7 +76,8 @@ export class RegisterService {
   private async build(accountId: string, propertyId: string, month: string) {
     const property = await this.property(accountId, propertyId);
     const stays = await this.stays(accountId, propertyId, month);
-    return { property, stays, built: buildRegister(stays, property, parseMonth(month)!.end) };
+    const { enforceable } = await this.rules.entryStampExemption();
+    return { property, stays, built: buildRegister(stays, property, parseMonth(month)!.end, enforceable) };
   }
 
   /** Months with their status. Owner/Manager also get the counts of incomplete records; Staff get the status only. */
@@ -82,6 +85,7 @@ export class RegisterService {
     const db = this.prisma.forAccount(user.accountId);
     const property = await this.property(user.accountId, propertyId);
     const detailed = can(user.role, 'register:read');
+    const { enforceable } = await this.rules.entryStampExemption();
 
     const window = lastMonths(now, LIST_MONTHS);
     const registers = await db.policeRegister.findMany({ where: { propertyId }, select: { month: true, inputDigest: true, generatedAt: true, guestCount: true } });
@@ -105,7 +109,7 @@ export class RegisterService {
         out.push(detailed ? { month, status: 'outdated' as RegisterStatus, generatedAt: byMonth.get(month)!.generatedAt } : { month, status: 'outdated' as RegisterStatus });
         continue;
       }
-      const built = buildRegister(stays, property, parseMonth(month)!.end);
+      const built = buildRegister(stays, property, parseMonth(month)!.end, enforceable);
       const reg = byMonth.get(month);
       const status: RegisterStatus = !reg ? 'none' : reg.inputDigest === built.digest ? 'generated' : 'outdated';
       out.push(detailed ? { month, status, generatedAt: reg?.generatedAt ?? null, ...built.summary } : { month, status });

@@ -473,6 +473,43 @@ describe('guest check-in (integration)', () => {
       expect((await t.prisma.checkInLink.findUniqueOrThrow({ where: { id: link.id } })).guestsSubmitted).toBe(0);
     });
 
+    it('waives the entry stamp only for guests a validated exemption covers', async () => {
+      // Example exemption for the mechanism only: who is exempt is counsel's decision, stored in RuleConfig.
+      const key = 'checkin.entry_stamp_exemption';
+      const value = { nationalities: ['MAR'], ifDeclaredMoroccan: true };
+      const without = (over: Record<string, unknown>) => {
+        const body: Record<string, unknown> = { ...form(over) };
+        delete body.entryStampNumber;
+        return body;
+      };
+      const send = async (over: Record<string, unknown>) => {
+        const link = await newLink();
+        const draftId = await draftFor(link.token);
+        return { draftId, res: await guestPost(link.token, '/submit', { ...without(over), draftId, consentTextId: consentFr }) };
+      };
+
+      // Not validated yet: everyone gives the stamp, and the form is told so.
+      await t.prisma.ruleConfig.create({ data: { key, value } });
+      expect((await guestGet((await newLink()).token).expect(200)).body.entryStampExemption).toBeNull();
+      expect((await send({ nationality: 'MAR' })).res.status).toBe(400);
+
+      await t.prisma.ruleConfig.update({ where: { key }, data: { validatedBy: 'counsel', validatedAt: new Date() } });
+      expect((await guestGet((await newLink()).token).expect(200)).body.entryStampExemption).toEqual(value);
+      const refused = await send({});
+      expect(refused.res.status).toBe(400);
+      expect(refused.res.body.error.details.map((d: { field: string }) => d.field)).toEqual(['entryStampNumber']);
+      // Exempt or not, a value that is sent is still checked: never null or blank.
+      const link = await newLink();
+      const res = await guestPost(link.token, '/submit', { ...form({ nationality: 'MAR', entryStampNumber: null }), draftId: await draftFor(link.token), consentTextId: consentFr });
+      expect(res.status).toBe(400);
+      // The booking's two places, taken by the two kinds of exempt guest.
+      for (const over of [{ nationality: 'MAR' }, { declaredMoroccanNationality: true }]) {
+        const sent = await send(over);
+        expect(sent.res.status).toBe(200);
+        expect((await t.prisma.guestCheckIn.findUniqueOrThrow({ where: { id: sent.draftId } })).entryStampNumber).toBeNull();
+      }
+    });
+
     it('refuses a missing identity field, a skipped nationality question and missing or false consent', async () => {
       const link = await newLink();
       const draftId = await draftFor(link.token);
