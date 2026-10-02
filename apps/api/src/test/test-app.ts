@@ -84,10 +84,15 @@ export async function resetDatabase(prisma: PrismaService, redis: RedisClient = 
   if (redis) await redis.flushdb();
   const url = process.env.DATABASE_URL ?? '';
   if (!/test/i.test(url)) throw new Error('Refusing to reset a database whose URL does not contain "test".');
-  const rows = await prisma.$queryRaw<{ tablename: string }[]>`
+  const tables = await prisma.$queryRaw<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
-  if (rows.length) {
-    await prisma.$executeRawUnsafe(`TRUNCATE ${rows.map((r) => `"${r.tablename}"`).join(', ')} CASCADE`);
+  if (!tables.length) return;
+  // TRUNCATE costs time per table, so only the tables that hold rows are emptied (CASCADE reaches the rest).
+  const filled = await prisma.$queryRawUnsafe<{ t: string }[]>(
+    tables.map((r) => `SELECT '${r.tablename}' AS t WHERE EXISTS (SELECT 1 FROM "${r.tablename}")`).join(' UNION ALL '),
+  );
+  if (filled.length) {
+    await prisma.$executeRawUnsafe(`TRUNCATE ${filled.map((r) => `"${r.t}"`).join(', ')} CASCADE`);
   }
 }
 

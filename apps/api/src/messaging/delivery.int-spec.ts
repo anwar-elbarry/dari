@@ -32,7 +32,7 @@ describe('link delivery by WhatsApp (integration)', () => {
     await resetDatabase(t.prisma, t.redis);
     wa.reset();
     t.mail.sent.length = 0;
-    (t.app.get(MESSAGING_COUNTER) as unknown as { entries: Map<string, unknown> }).entries.clear(); // the per-number daily limit is tested on its own
+    (t.app.get(MESSAGING_COUNTER) as unknown as { entries?: Map<string, unknown> }).entries?.clear(); // the per-number daily limit is tested on its own (a Redis counter was flushed above)
     a = await seedAccount(t, 'Alpha');
     b = await seedAccount(t, 'Beta');
     await rule('whatsapp.templates', { checkin_link: { name: 'checkin_link_v1', language: 'fr' }, share_link: { name: 'share_link_v1', language: 'fr' } });

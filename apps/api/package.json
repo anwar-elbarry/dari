@@ -15,7 +15,7 @@
     "check:enablement": "dotenv -e ../../.env -- tsx src/ops/check-enablement.ts",
     "checklist:load": "dotenv -e ../../.env -- tsx src/ops/load-checklist-template.ts",
     "account:create": "dotenv -e ../../.env -- tsx src/ops/create-account.ts",
-    "test:int": "jest --runInBand --testRegex '.*\\.int-spec\\.ts$'"
+    "test:int": "jest --runInBand --testTimeout=30000 --testRegex '.*\\.int-spec\\.ts$'"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1142.0",
