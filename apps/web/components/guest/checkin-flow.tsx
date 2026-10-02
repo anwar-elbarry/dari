@@ -6,6 +6,7 @@ import { ApiError } from '../../lib/api';
 import { countryOptions, normalizeNationality } from '../../lib/countries';
 import { CheckinView, FormField, guestApi, SubmitResult, UploadResult } from '../../lib/guest-api';
 import { ImageProblem, prepareImage } from '../../lib/guest-image';
+import { DocChoice, DocumentDrawing } from './document-drawing';
 import { clean, GuestForm, validate } from '../../lib/guest-validation';
 import { Alert, Button, Card, Field, fieldAria, Input, Select, StatusPill } from '../ui';
 
@@ -77,6 +78,8 @@ export function CheckinFlow() {
   const [busy, setBusy] = useState<null | 'preparing' | 'reading' | 'sending'>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [done, setDone] = useState<SubmitResult | null>(null);
+  /** Which document the guest said they will photograph: decides the instructions and prefills the type. */
+  const [doc, setDoc] = useState<DocChoice | null>(null);
 
   const countries = useMemo(() => countryOptions(locale), [locale]);
   const day = (iso: string) => format.dateTime(new Date(iso.slice(0, 10)), { dateStyle: 'medium', timeZone: 'UTC' });
@@ -207,6 +210,7 @@ export function CheckinFlow() {
 
   function another() {
     setForm(EMPTY);
+    setDoc(null);
     setUpload(null);
     setDraftId(null);
     setErrors({});
@@ -270,29 +274,54 @@ export function CheckinFlow() {
     );
   }
 
+  function chooseDoc(d: DocChoice) {
+    setDoc(d);
+    setForm((f) => ({ ...f, docType: d }));
+  }
+
   if (step === 'photo' && view) {
-    const left = view.limits.maxUploadsPerGuest - (upload ? 1 : 0);
+    const left = upload ? upload.uploadsLeft : view.limits.maxUploadsPerGuest;
     return (
       <Card className="space-y-5">
         <h1 className="font-display text-2xl leading-[1.3] font-bold tracking-[-0.02em]">{t('photo.title')}</h1>
-        <ul className="list-disc space-y-1.5 ps-5 text-sm">
-          {(t.raw('photo.tips') as string[]).map((s) => (
-            <li key={s}>{s}</li>
+        <fieldset className="grid gap-2">
+          <legend className="mb-1 text-sm font-medium">{t('photo.which')}</legend>
+          {(['PASSPORT', 'CIN'] as const).map((d) => (
+            <label key={d} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-card border px-4 py-3 ${doc === d ? 'border-brand-100 bg-brand-50' : 'border-bone bg-mist'}`}>
+              <input type="radio" name="doc" value={d} checked={doc === d} onChange={() => chooseDoc(d)} className="size-4 flex-none accent-[var(--link)]" data-testid={`doc-${d}`} />
+              <span>
+                <span className={`block font-display text-sm font-bold ${doc === d ? 'text-link' : 'text-ink'}`}>{t(`photo.docs.${d}.label`)}</span>
+                <span className="block text-sm text-slate">{t(`photo.docs.${d}.hint`)}</span>
+              </span>
+            </label>
           ))}
-        </ul>
+        </fieldset>
+        {doc && (
+          <div className="space-y-4">
+            <DocumentDrawing kind={doc} label={t(`photo.drawing.${doc}`)} />
+            <p className="text-sm font-medium">{t(`photo.howTo.${doc}`)}</p>
+            <ul className="list-disc space-y-1.5 ps-5 text-sm">
+              {(t.raw('photo.tips') as string[]).map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {problem && <Alert>{problem}</Alert>}
         {busy && <Alert tone="info">{busy === 'preparing' ? t('photo.preparing') : t('photo.reading')}</Alert>}
         {/* Two inputs: the camera directly, or a file already on the phone. Both feed the same resize and upload. */}
         <input ref={takeInput} type="file" accept="image/*" capture="environment" hidden data-testid="take-photo" onChange={(e) => void onFile(e.target.files?.[0])} />
         <input ref={chooseInput} type="file" accept="image/*" hidden data-testid="choose-photo" onChange={(e) => void onFile(e.target.files?.[0])} />
-        <div className="grid gap-3">
-          <Button className="w-full" onClick={() => takeInput.current?.click()} disabled={busy !== null}>
-            {t('photo.take')}
-          </Button>
-          <Button variant="ghost" className="w-full" onClick={() => chooseInput.current?.click()} disabled={busy !== null}>
-            {t('photo.choose')}
-          </Button>
-        </div>
+        {doc && (
+          <div className="grid gap-3">
+            <Button className="w-full" onClick={() => takeInput.current?.click()} disabled={busy !== null}>
+              {t('photo.take')}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => chooseInput.current?.click()} disabled={busy !== null}>
+              {t('photo.choose')}
+            </Button>
+          </div>
+        )}
         <p className="text-center text-xs text-slate">{left > 0 ? t('photo.left', { count: left }) : t('photo.noneLeft')}</p>
       </Card>
     );
@@ -310,6 +339,7 @@ export function CheckinFlow() {
             <p className="mt-1 text-sm text-slate">{tf('intro')}</p>
           </div>
           <Alert tone={readTone}>{readText}</Alert>
+          {status === 'no_mrz' && doc && upload.uploadsLeft > 0 && <p className="text-sm text-carbon">{t(`read.noneHint.${doc}`)}</p>}
           {upload.ocr.quality?.blurry && <Alert tone="warning">{t('read.blurry')}</Alert>}
           {upload.ocr.quality?.lowContrast && <Alert tone="warning">{t('read.lowContrast')}</Alert>}
           {upload.uploadsLeft > 0 && (

@@ -492,10 +492,21 @@
     },
     "photo": {
       "title": "Photographiez votre pièce",
+      "which": "Quelle pièce allez-vous utiliser ?",
+      "docs": {
+        "PASSPORT": { "label": "Passeport", "hint": "La page avec votre photo" },
+        "CIN": { "label": "Carte d'identité ou titre de séjour", "hint": "Le verso de la carte" }
+      },
+      "howTo": {
+        "PASSPORT": "Ouvrez votre passeport à la page avec votre photo. Incluez les deux lignes de lettres et de signes < en bas de la page.",
+        "CIN": "Retournez la carte et photographiez le verso. Incluez les lignes de lettres et de signes < en bas."
+      },
+      "drawing": {
+        "PASSPORT": "Dessin d'un passeport ouvert. Les deux lignes en bas de la page avec la photo sont mises en évidence.",
+        "CIN": "Dessin du verso d'une carte d'identité. Les trois lignes du bas sont mises en évidence."
+      },
       "tips": [
-        "Utilisez votre passeport (la page avec votre photo) ou votre carte nationale d'identité.",
         "Posez-la à plat, bien éclairée, sans reflet ni ombre.",
-        "Passeport : incluez les deux lignes de lettres et de signes < en bas de la page.",
         "Gardez toute la pièce dans l'image, avec un texte net."
       ],
       "take": "Prendre une photo",
@@ -511,7 +522,11 @@
       "none": "Nous n'avons pas pu lire votre pièce automatiquement. Renseignez vos informations ci-dessous.",
       "blurry": "La photo semble floue. Une photo plus nette peut aider.",
       "lowContrast": "La photo est trop sombre ou trop pâle. Une photo mieux éclairée peut aider.",
-      "retake": "Prendre une autre photo"
+      "retake": "Prendre une autre photo",
+      "noneHint": {
+        "PASSPORT": "Vérifiez que les deux lignes en bas de la page avec votre photo sont dans l'image et nettes, puis reprenez une photo.",
+        "CIN": "Avez-vous photographié le verso de la carte ? La plupart des cartes ont des lignes de lettres et de signes < au verso. Si c'est le cas de la vôtre, photographiez le verso."
+      }
     },
     "form": {
       "title": "Vérifiez vos informations",

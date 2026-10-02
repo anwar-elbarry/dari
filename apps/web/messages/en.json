@@ -492,10 +492,21 @@
     },
     "photo": {
       "title": "Photograph your document",
+      "which": "Which document will you use?",
+      "docs": {
+        "PASSPORT": { "label": "Passport", "hint": "The page with your photo" },
+        "CIN": { "label": "ID card or residence permit", "hint": "The back of the card" }
+      },
+      "howTo": {
+        "PASSPORT": "Open your passport at the page with your photo. Include the two lines of letters and < signs at the bottom of the page.",
+        "CIN": "Turn the card over and photograph the back. Include the lines of letters and < signs at the bottom."
+      },
+      "drawing": {
+        "PASSPORT": "Drawing of an open passport. The two lines at the bottom of the photo page are highlighted.",
+        "CIN": "Drawing of the back of an ID card. The three lines at the bottom are highlighted."
+      },
       "tips": [
-        "Use your passport (the page with your photo) or your national ID card.",
         "Lay it flat, in good light, without glare or shadows.",
-        "Passport: include the two lines of letters and < signs at the bottom of the page.",
         "Keep the whole document in the picture and the text sharp."
       ],
       "take": "Take a photo",
@@ -511,7 +522,11 @@
       "none": "We could not read your document automatically. Please fill in your details below.",
       "blurry": "The photo looks blurry. A sharper photo may help.",
       "lowContrast": "The photo is too dark or too faint. A better-lit photo may help.",
-      "retake": "Take another photo"
+      "retake": "Take another photo",
+      "noneHint": {
+        "PASSPORT": "Check that the two lines at the bottom of the photo page are in the picture and sharp, then take another photo.",
+        "CIN": "Did you photograph the back of the card? Most ID cards have lines of letters and < signs on the back. If yours does, take a photo of the back."
+      }
     },
     "form": {
       "title": "Check your details",
