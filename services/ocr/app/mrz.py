@@ -82,6 +82,13 @@ def _fit(line: str, length: int) -> str | None:
         return line.ljust(length, FILLER)
     if length < len(line) <= length + 3 and line.endswith(FILLER):
         return line[:length]
+    if length < len(line) <= length + 3:
+        # An ID card's line 2 ends in a check digit, not in fillers. Tesseract sometimes adds a K, C, L, S or E in
+        # front of its long run of `<`; names never sit right before six fillers on such a line. Check digits then
+        # confirm or flag the result like any other read.
+        extra = len(line) - length
+        fixed = re.sub(r"[KCLSE](?=<{6,})", "", line, count=extra)
+        return fixed if len(fixed) == length else None
     return None
 
 

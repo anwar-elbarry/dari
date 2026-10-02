@@ -151,6 +151,17 @@ def test_normalisation_maps_lookalike_fillers_and_trailing_misreads():
     assert normalize_line("ANNA<MARIA<<<<<<<<") == "ANNA<MARIA<<<<<<<<"
 
 
+def test_an_extra_letter_before_the_fillers_of_an_id_card_line_two_is_dropped():
+    # Seen on a real photo after JPEG re-encoding: Tesseract added a K before the run of `<`, giving 31 characters.
+    lines = build_td1()
+    k = lines[1].index("<<<<")
+    lines[1] = lines[1][:k] + "K" + lines[1][k:]
+    assert len(lines[1]) == 31
+    r = parse_text(chr(10).join(lines), TODAY)
+    assert r is not None and r.format == "TD1" and r.all_checks_pass
+    assert r.fields["nationality"] == "MAR"
+
+
 def test_find_mrz_lines_skips_the_rest_of_the_page_and_repairs_length():
     page = "PASSPORT / PASSEPORT\nSURNAME ERIKSSON\n" + TD3_LINE1 + "\n" + TD3_LINE2[:-2] + "\n"  # last two chars lost
     lines = find_mrz_lines(page)
