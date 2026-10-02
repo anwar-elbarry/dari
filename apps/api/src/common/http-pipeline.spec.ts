@@ -29,6 +29,11 @@ class TestController {
     return dto;
   }
 
+  @Get('ping')
+  ping() {
+    return { ok: true };
+  }
+
   @Get('boom')
   boom() {
     throw new Error('database password is hunter2');
@@ -142,8 +147,9 @@ describe('rate limiting', () => {
 
   it('returns 429 in the standard error shape once the limit is reached', async () => {
     const server = app.getHttpServer();
-    for (let i = 0; i < 3; i++) await request(server).get('/api/health').expect(200);
-    const res = await request(server).get('/api/health').expect(429);
+    // Not /api/health: it skips the limiter, which needs Redis that health must be able to report on.
+    for (let i = 0; i < 3; i++) await request(server).get('/api/test/ping').expect(200);
+    const res = await request(server).get('/api/test/ping').expect(429);
     expect(res.body.error.code).toBe('TOO_MANY_REQUESTS');
   });
 });

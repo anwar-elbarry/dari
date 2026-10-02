@@ -6,7 +6,7 @@ import { PurgeResult, RetentionService } from './retention.service';
 const processor = (result: Partial<PurgeResult>, rewrap: { rewrapped: number; failed: number } = { rewrapped: 0, failed: 0 }) => {
   const purge = jest.fn().mockResolvedValue({ purged: 0, drafts: 0, failed: 0, overdue: 0, ...result });
   const rewrapOutdatedKeys = jest.fn().mockResolvedValue(rewrap);
-  const queue = { upsertJobScheduler: jest.fn().mockResolvedValue(undefined) };
+  const queue = { upsertJobScheduler: jest.fn().mockResolvedValue(undefined), on: jest.fn() };
   return { p: new RetentionProcessor(queue as unknown as Queue, { purge } as unknown as RetentionService, { rewrapOutdatedKeys } as unknown as StorageService), queue, purge, rewrapOutdatedKeys };
 };
 const job = (name: string) => ({ name, data: {} }) as Job;
@@ -14,7 +14,7 @@ const job = (name: string) => ({ name, data: {} }) as Job;
 describe('RetentionProcessor', () => {
   it('schedules the purge and the key rewrap every hour', async () => {
     const { p, queue } = processor({});
-    await p.onModuleInit();
+    p.onModuleInit();
     expect(queue.upsertJobScheduler).toHaveBeenCalledWith(JOB_PURGE, { every: 3_600_000 }, { name: JOB_PURGE, data: {} });
     expect(queue.upsertJobScheduler).toHaveBeenCalledWith(JOB_REWRAP, { every: 3_600_000 }, { name: JOB_REWRAP, data: {} });
   });

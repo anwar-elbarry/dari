@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { raw } from 'express';
 import helmet from 'helmet';
 import { AppConfig } from '../config/env';
+import { REDIS, RedisClient, redisDown } from '../redis/redis.module';
 import { HttpExceptionFilter } from './http-exception.filter';
 import { requestIdMiddleware } from './request-id';
 import { createValidationPipe } from './validation';
@@ -29,7 +30,8 @@ export function configureApp(app: INestApplication, config: AppConfig) {
   app.use('/api/webhooks/whatsapp', raw({ type: '*/*', limit: '256kb' }));
   app.setGlobalPrefix('api');
   app.useGlobalPipes(createValidationPipe());
-  app.useGlobalFilters(new HttpExceptionFilter(config.NODE_ENV === 'development'));
+  const redis = app.get<RedisClient>(REDIS, { strict: false });
+  app.useGlobalFilters(new HttpExceptionFilter(config.NODE_ENV === 'development', () => redisDown(redis)));
   app.enableShutdownHooks();
   return app;
 }

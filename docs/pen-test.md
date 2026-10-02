@@ -68,4 +68,5 @@ High: cross-tenant access, personal data or a token exposed, an authentication b
 
 | Date | By | Build | Script | Manual list | Findings |
 |---|---|---|---|---|---|
+| 2026-10-02 | Claude (local dry run, not staging) | `claude/awesome-gates-3j261d` | 31/31 against the API (`localhost:3001`) and through the web app (`localhost:3000`) | Not run (needs staging and accounts) | Script fixes for Windows (inline multipart body, fresh unknown address per run). No product finding from the script. Redis drill: limits failed closed but slowly (login hung > 15 s) and health answered 500: fixed (1 s command timeout, 503 + `Retry-After`, health `degraded`), test `common/redis-down.spec.ts`. API could not start while Redis was down: fixed (`jobs/schedule.ts`). BullMQ printed raw connection errors: now logged by type only |
 | | | | | | |

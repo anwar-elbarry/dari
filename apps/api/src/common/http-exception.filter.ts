@@ -12,8 +12,8 @@ export const VALIDATION_FAILED = 'VALIDATION_FAILED';
 /**
  * One error shape for every response:
  *   { error: { code, message, details? }, requestId }
- * Unexpected errors return a generic 500; the real error is logged server-side with the request id,
- * never sent to the client.
+ * Unexpected errors return a generic 500, or a 503 while a dependency the request needs is down (Redis: rate limits,
+ * lockout, counters); the real error is logged server-side with the request id, never sent to the client.
  */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -24,7 +24,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
    * error prints the values of a failed write), so in production only the error type, its code and the
    * stack frames are logged.
    */
-  constructor(private readonly includeMessage = false) {}
+  constructor(
+    private readonly includeMessage = false,
+    private readonly dependencyDown: () => boolean = () => false,
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const res = host.switchToHttp().getResponse<Response>();
@@ -52,6 +55,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       body = { code: HttpStatus[status] ?? 'BAD_REQUEST', message: fixedMessage(status) };
     } else {
       this.logger.error(`[${requestId ?? '-'}] ${describeUnexpected(exception, this.includeMessage)}`);
+      if (this.dependencyDown()) {
+        // Same answer on every route, public token routes included: it says nothing about the token.
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        body = { code: 'SERVICE_UNAVAILABLE', message: fixedMessage(status) };
+        res.setHeader('Retry-After', '30');
+      }
     }
 
     res.status(status).json({ error: body, requestId } satisfies ErrorBody);
@@ -75,6 +84,7 @@ const FIXED_MESSAGES: Partial<Record<number, string>> = {
   413: 'Request body too large.',
   415: 'Unsupported content type.',
   429: 'Too many requests. Try again later.',
+  503: 'The service is temporarily unavailable. Try again shortly.',
 };
 
 function fixedMessage(status: number): string {

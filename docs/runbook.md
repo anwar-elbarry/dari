@@ -77,7 +77,7 @@ Whether and when the CNDP and the people concerned must be told, and what the cu
 | Situation | First actions |
 |---|---|
 | Retention alert e-mail ("retention job needs attention") | Check the API logs for "Retention", the object store reachability and Redis. The job retries hourly; overdue data means a personal-data retention breach in progress: fix within the day |
-| Redis down | Rate limits, the login lockout and the jobs (retention, sync) fall back to memory or stop. Production requires Redis; restore it, then confirm the retention job ran. See the Redis notes in `docs/deployment.md` |
+| Redis down (`/api/health` answers 503 `degraded`) | Nothing falls back to memory: rate limits, the login lockout and the view counters fail closed, so every route that uses them answers 503 `SERVICE_UNAVAILABLE` with `Retry-After: 30` within about a second (sign-in, check-in, shared links). The hourly jobs (retention, rewrap, sync, alerts) stop; the API keeps running and retries scheduling every 30 s (log line `could not schedule`). Restore Redis: everything recovers without a restart. Then confirm the retention job ran within the hour. See the Redis notes in `docs/deployment.md` |
 | Chromium missing or crashing | Guests can still check in; Fiches and registers answer 503 `PDF_UNAVAILABLE` until fixed |
 | Bad deploy | Roll back the image; migrations are forward-only, so restore only if a migration corrupted data (section 1) |
 | Database lost | Section 1 restore, then run `check:enablement` before turning any flag back on |

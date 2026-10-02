@@ -89,6 +89,8 @@ The layout is a working draft (`TEMPLATE_VERSION` in `checkin/fiche-template.ts`
 
 `REDIS_URL` is required in production: rate-limit counters, the login lockout and the job queues live there, so several API instances share them. Use a managed Redis in the same region as Postgres, not publicly reachable, with a password or TLS (`rediss://`).
 
+When Redis is unreachable the API fails closed and fast (a command times out after 1 s): routes that need a counter answer 503 with `Retry-After`, and `GET /api/health` answers 503 `{"status":"degraded"}` (it is not rate limited). Point the uptime monitor at `/api/health` and alert on anything but 200. The API starts even while Redis is down and schedules its hourly jobs once Redis is back.
+
 ## Demo seed
 
 `npm run db:seed` creates users with a known password. It refuses non-local databases unless `ALLOW_DEMO_SEED=true`; never set that on staging or production.

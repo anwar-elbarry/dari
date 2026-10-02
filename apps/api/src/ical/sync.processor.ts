@@ -1,8 +1,9 @@
-import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
 import { APP_CONFIG, AppConfig } from '../config/env';
 import { QUEUE_SYNC } from '../jobs/jobs.module';
+import { logJobError, scheduleInBackground } from '../jobs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { SyncService } from './sync.service';
 
@@ -36,8 +37,14 @@ export class SyncProcessor extends WorkerHost implements OnModuleInit {
     super();
   }
 
-  async onModuleInit() {
-    await this.queue.upsertJobScheduler(JOB_SYNC_ALL, { every: this.config.ICAL_SYNC_INTERVAL_HOURS * 3_600_000 }, { name: JOB_SYNC_ALL, data: {} });
+  onModuleInit() {
+    this.queue.on('error', (e) => logJobError(QUEUE_SYNC, e));
+    void scheduleInBackground(JOB_SYNC_ALL, () => this.queue.upsertJobScheduler(JOB_SYNC_ALL, { every: this.config.ICAL_SYNC_INTERVAL_HOURS * 3_600_000 }, { name: JOB_SYNC_ALL, data: {} }));
+  }
+
+  @OnWorkerEvent('error')
+  onWorkerError(e: Error) {
+    logJobError(QUEUE_SYNC, e);
   }
 
   async process(job: Job<{ feedId?: string }>): Promise<unknown> {

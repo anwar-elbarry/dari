@@ -1,7 +1,8 @@
-import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
 import { QUEUE_ALERTS } from '../jobs/jobs.module';
+import { logJobError, scheduleInBackground } from '../jobs/schedule';
 import { AlertsService } from './alerts.service';
 
 export const JOB_EVALUATE_ALL = 'evaluate-all';
@@ -17,8 +18,14 @@ export class AlertsProcessor extends WorkerHost implements OnModuleInit {
     super();
   }
 
-  async onModuleInit() {
-    await this.queue.upsertJobScheduler(JOB_EVALUATE_ALL, { every: 3_600_000 }, { name: JOB_EVALUATE_ALL, data: {} });
+  onModuleInit() {
+    this.queue.on('error', (e) => logJobError(QUEUE_ALERTS, e));
+    void scheduleInBackground(JOB_EVALUATE_ALL, () => this.queue.upsertJobScheduler(JOB_EVALUATE_ALL, { every: 3_600_000 }, { name: JOB_EVALUATE_ALL, data: {} }));
+  }
+
+  @OnWorkerEvent('error')
+  onWorkerError(e: Error) {
+    logJobError(QUEUE_ALERTS, e);
   }
 
   async process(job: Job): Promise<unknown> {

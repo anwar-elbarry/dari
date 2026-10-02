@@ -60,13 +60,15 @@ export function testConfig(overrides: Record<string, string> = {}): AppConfig {
   });
 }
 
-export async function createTestApp(opts: { env?: Record<string, string>; extra?: ModuleMetadata['imports']; logger?: LoggerService } = {}): Promise<TestApp> {
+/** `redis` replaces the app's Redis client (rate limits, lockout, counters) without starting the BullMQ queues. */
+export async function createTestApp(opts: { env?: Record<string, string>; extra?: ModuleMetadata['imports']; logger?: LoggerService; redis?: RedisClient } = {}): Promise<TestApp> {
   const config = testConfig(opts.env);
   const mail = new CapturingMailDriver();
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule.register(config), ...(opts.extra ?? [])] })
+  let builder = Test.createTestingModule({ imports: [AppModule.register(config), ...(opts.extra ?? [])] })
     .overrideProvider(MAIL_DRIVER)
-    .useValue(mail)
-    .compile();
+    .useValue(mail);
+  if (opts.redis !== undefined) builder = builder.overrideProvider(REDIS).useValue(opts.redis);
+  const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication({ logger: opts.logger ?? false });
   configureApp(app, config);
   await app.init();

@@ -1,7 +1,8 @@
-import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
 import { QUEUE_RETENTION } from '../jobs/jobs.module';
+import { logJobError, scheduleInBackground } from '../jobs/schedule';
 import { StorageService } from '../storage/storage.service';
 import { RetentionService } from './retention.service';
 
@@ -27,9 +28,15 @@ export class RetentionProcessor extends WorkerHost implements OnModuleInit {
     super();
   }
 
-  async onModuleInit() {
-    await this.queue.upsertJobScheduler(JOB_PURGE, { every: 3_600_000 }, { name: JOB_PURGE, data: {} });
-    await this.queue.upsertJobScheduler(JOB_REWRAP, { every: 3_600_000 }, { name: JOB_REWRAP, data: {} });
+  onModuleInit() {
+    this.queue.on('error', (e) => logJobError(QUEUE_RETENTION, e));
+    void scheduleInBackground(JOB_PURGE, () => this.queue.upsertJobScheduler(JOB_PURGE, { every: 3_600_000 }, { name: JOB_PURGE, data: {} }));
+    void scheduleInBackground(JOB_REWRAP, () => this.queue.upsertJobScheduler(JOB_REWRAP, { every: 3_600_000 }, { name: JOB_REWRAP, data: {} }));
+  }
+
+  @OnWorkerEvent('error')
+  onWorkerError(e: Error) {
+    logJobError(QUEUE_RETENTION, e);
   }
 
   async process(job: Job): Promise<unknown> {
