@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RiadTax promo</title>
+<!--
+  15 s promo, 1920x1080. Every frame is a pure function of time: window.seek(t) sets the whole stage.
+  No CSS animation or transition anywhere, so render.mjs can capture frame by frame.
+  Language: promo.html?lang=fr (default en). Colours mirror apps/web/design/tokens.json (RiadTax).
+-->
+<style>
+@font-face { font-family: 'Jakarta'; src: url('../../node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); font-weight: 200 800; }
+@font-face { font-family: 'Inter'; src: url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2'); font-weight: 100 900; }
+@font-face { font-family: 'Mono'; src: url('../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2'); font-weight: 100 800; }
+
+:root {
+  --night: #0f0f10; --ink: #202020; --carbon: #2a2a2a; --slate: #646464; --line: #8a8a8a; --fog: #b3b3b3; --cloud: #d4d4d4;
+  --mercury: #eeeeee; --bone: #e8e8e8; --mist: #f8f9fa; --plaster: #e9ebf0; --white: #ffffff;
+  --lime: #e4f222; --lime-600: #cddd12; --lime-deep: #b9cc00; --olive: #5c6600;
+  --card-d: #1a1a1d; --plaster-d: #1f1f23; --merc-d: #26262b; --bone-d: #2e2e33; --cloud-d: #38383e; --ash-d: #8a8a8a; --slate-d: #a8a8a8; --carbon-d: #d6d6d6;
+  --success: #0f7b4b; --success-soft: #dcf5e8; --success-d: #5ee0a0; --success-soft-d: #10281c;
+  --warning: #8a5300; --warning-soft: #fff4d6; --danger: #b42318; --danger-soft: #fde8e6;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--night); }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--night); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+.layer { position: absolute; inset: 0; overflow: hidden; visibility: hidden; }
+.abs { position: absolute; }
+.jk { font-family: 'Jakarta', sans-serif; }
+.mono { font-family: 'Mono', monospace; }
+.zel { position: absolute; inset: 0; }
+
+/* Headlines: each line is a mask; the marker is a lime block revealed with clip-path, ink text inside. */
+.hl { font-family: 'Jakarta', sans-serif; font-weight: 800; letter-spacing: -0.045em; line-height: 1.02; white-space: nowrap; }
+.line { display: block; overflow: hidden; padding: 0.02em 0.12em 0.1em; margin: 0 -0.12em; }
+.li { display: inline-block; will-change: transform; }
+.mk { position: relative; display: inline-block; padding: 0 0.12em; margin: 0 -0.02em; }
+.mk-fill { position: absolute; inset: 0.04em 0 0.02em 0; padding: 0 0.12em; background: var(--lime); color: var(--ink); border-radius: 0.14em; clip-path: inset(0 100% 0 0); white-space: nowrap; }
+.mk-fill > span { position: relative; top: -0.04em; }
+
+.pill { display: inline-flex; align-items: center; gap: 0.55em; border-radius: 999px; font-family: 'Jakarta', sans-serif; font-weight: 700; white-space: nowrap; }
+.dot { width: 0.55em; height: 0.55em; border-radius: 50%; background: currentColor; flex: none; }
+.eyebrow { font-size: 24px; padding: 12px 22px; border: 1.5px solid; }
+
+/* S1 */
+.icard { width: 156px; height: 156px; border-radius: 36px; background: var(--card-d); border: 2px solid var(--bone-d); display: grid; place-items: center; }
+.icard svg { width: 76px; height: 76px; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.word-wrap { left: 0; right: 0; top: 0; text-align: center; overflow: hidden; padding: 0.04em 0 0.12em; }
+.word { display: inline-block; color: var(--white); }
+
+/* S3 */
+.dcard { background: var(--card-d); border: 1.5px solid var(--bone-d); border-radius: 36px; padding: 44px; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.cal .wd { font: 600 18px 'Inter'; color: var(--ash-d); text-align: center; padding-bottom: 4px; }
+.cal .c { height: 52px; border-radius: 12px; background: var(--merc-d); font: 600 16px 'Inter'; color: var(--ash-d); padding: 7px 10px; }
+.cal .c.e { background: transparent; }
+
+/* S4 */
+.phone { width: 430px; height: 880px; border-radius: 68px; background: var(--night); padding: 14px; box-shadow: 0 50px 100px rgba(15, 15, 16, 0.22), 0 0 0 2px #2a2a2e inset; }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 55px; background: var(--white); overflow: hidden; padding: 64px 26px 0; }
+.field-l { font: 600 15px 'Inter'; color: var(--slate); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+.field-i { height: 52px; border: 1.5px solid var(--line); border-radius: 12px; display: flex; align-items: center; padding: 0 16px; font: 600 20px 'Inter'; letter-spacing: 0.12em; color: var(--ink); margin-bottom: 14px; }
+.paper { width: 300px; height: 390px; border-radius: 16px; background: var(--white); box-shadow: 0 40px 80px rgba(15, 15, 16, 0.2), 0 0 0 1px var(--bone); padding: 26px; }
+.bar { height: 10px; border-radius: 5px; background: var(--mercury); margin-bottom: 12px; }
+
+/* S5 */
+.lcard { width: 500px; height: 580px; border-radius: 32px; background: var(--white); box-shadow: 0 34px 70px rgba(15, 15, 16, 0.12), 0 0 0 1px rgba(15, 15, 16, 0.04); padding: 36px; display: flex; flex-direction: column; }
+.chip { width: 60px; height: 60px; border-radius: 18px; background: var(--night); display: grid; place-items: center; flex: none; }
+.chip svg { width: 32px; height: 32px; fill: none; stroke: var(--lime); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.ctitle { font: 700 30px 'Jakarta'; letter-spacing: -0.02em; color: var(--ink); }
+.csub { font: 500 18px 'Inter'; color: var(--slate); margin-top: 4px; }
+.row { display: flex; align-items: center; gap: 14px; height: 56px; border-bottom: 1.5px solid var(--mercury); }
+.av { width: 36px; height: 36px; border-radius: 50%; background: var(--mercury); flex: none; }
+.chk { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--cloud); margin-left: auto; display: grid; place-items: center; }
+.chk svg { width: 16px; height: 16px; fill: none; stroke: var(--white); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.tbar { width: 48px; border-radius: 12px 12px 6px 6px; background: var(--lime); transform-origin: bottom; }
+.shine { position: absolute; top: 0; bottom: 0; width: 140px; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.75), transparent); }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+'use strict';
+const LANG = new URLSearchParams(location.search).get('lang') === 'fr' ? 'fr' : 'en';
+const TEXT = {
+  en: {
+    words: ['Passports.', 'Calendars.', 'Police forms.', 'Taxes.'], sorted: 'Sorted.',
+    tagline: 'Short-term rental compliance and tax',
+    s3eyebrow: '01 · Night counter', s3h: ['Every night', '<m>counted.</m>'], s3sub: 'All your calendars, synced in one place.',
+    property: 'Riad Yasmine', syncing: 'Syncing', synced: 'Synced', month: 'July 2026', days: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+    nightsLabel: 'Nights this year', nights: 'nights', level: 'Below the threshold',
+    s4eyebrow: '02 · Guest check-in', s4h: ['Police forms', 'in <m>one tap.</m>'], s4sub: 'Guests scan their passport. You get the Fiche de police as a PDF.',
+    phoneKicker: 'Check-in', phoneTitle: 'Scan your passport', fields: ['Nationality', 'Document number', 'Date of birth'], check: 'Check', send: 'Send', fiche: 'FICHE DE POLICE', ready: 'Ready',
+    s5eyebrow: '03 · Register · Share · Tax', s5h: ['Ready when <m>they ask.</m>'],
+    reg: ['Register', 'Monthly police register'], regFoot: 'July · 14 stays',
+    share: ['Secure share', 'Expiring, revocable links'], expires: 'Expires', active: 'Active', revoked: 'Revoked', revoke: 'Revoke',
+    tax: ['Tax estimate', 'Monthly, for your accountant'], estimate: 'Estimate', months: ['F', 'M', 'A', 'M', 'J', 'J'], taxNote: 'Estimate only. Confirm with your accountant.',
+    s6h: ['Your rentals,', '<m>under control.</m>'], cta: 'Join the Marrakech pilot', foot: 'Tax figures are estimates. Confirm with your accountant.',
+  },
+  fr: {
+    words: ['Passeports.', 'Calendriers.', 'Fiches de police.', 'Impôts.'], sorted: 'Simplifié.',
+    tagline: 'Conformité et fiscalité de la location courte durée',
+    s3eyebrow: '01 · Compteur de nuits', s3h: ['Chaque nuit', '<m>comptée.</m>'], s3sub: 'Tous vos calendriers, synchronisés au même endroit.',
+    property: 'Riad Yasmine', syncing: 'Synchronisation', synced: 'Synchronisé', month: 'Juillet 2026', days: ['L', 'M', 'M', 'J', 'V', 'S', 'D'],
+    nightsLabel: 'Nuits cette année', nights: 'nuits', level: 'Sous le seuil',
+    s4eyebrow: '02 · Check-in voyageur', s4h: ['La fiche de police', '<m>en un instant.</m>'], s4sub: 'Le voyageur scanne son passeport. Vous recevez la fiche de police en PDF.',
+    phoneKicker: 'Check-in', phoneTitle: 'Scannez votre passeport', fields: ['Nationalité', 'Numéro du document', 'Date de naissance'], check: 'À vérifier', send: 'Envoyer', fiche: 'FICHE DE POLICE', ready: 'Prête',
+    s5eyebrow: '03 · Registre · Partage · Fiscalité', s5h: ['Prêt quand <m>on vous le demande.</m>'],
+    reg: ['Registre', 'Registre de police mensuel'], regFoot: 'Juillet · 14 séjours',
+    share: ['Partage sécurisé', 'Liens expirants et révocables'], expires: 'Expire', active: 'Actif', revoked: 'Révoqué', revoke: 'Révoquer',
+    tax: ['Estimation fiscale', 'Mensuelle, pour votre comptable'], estimate: 'Estimation', months: ['F', 'M', 'A', 'M', 'J', 'J'], taxNote: 'Estimation uniquement. À confirmer avec votre comptable.',
+    s6h: ['Vos locations,', '<m>sous contrôle.</m>'], cta: 'Rejoignez le pilote à Marrakech', foot: 'Les montants fiscaux sont des estimations. À confirmer avec votre comptable.',
+  },
+}[LANG];
+document.documentElement.lang = LANG;
+
+/* ---------- timing helpers ---------- */
+const EASE = {
+  lin: (x) => x,
+  outCubic: (x) => 1 - Math.pow(1 - x, 3),
+  inCubic: (x) => x * x * x,
+  inOutCubic: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+  outQuint: (x) => 1 - Math.pow(1 - x, 5),
+  outExpo: (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x)),
+  inExpo: (x) => (x <= 0 ? 0 : Math.pow(2, 10 * x - 10)),
+  inOutExpo: (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x < 0.5 ? Math.pow(2, 20 * x - 10) / 2 : (2 - Math.pow(2, -20 * x + 10)) / 2),
+  outBack: (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); },
+};
+const P = (t, start, dur, ease = 'outCubic') => EASE[ease](Math.min(1, Math.max(0, (t - start) / dur)));
+const L = (a, b, x) => a + (b - a) * x;
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, x) => { const A = hex(a), B = hex(b); return `rgb(${A.map((v, i) => Math.round(L(v, B[i], x))).join(',')})`; };
+const css = (el, props) => { for (const k in props) el.style[k] = props[k]; };
+const $ = (root, sel) => root.querySelector(sel);
+const $$ = (root, sel) => [...root.querySelectorAll(sel)];
+const stage = document.getElementById('stage');
+const layer = (bg) => { const el = document.createElement('div'); el.className = 'layer'; el.style.background = bg; stage.appendChild(el); return el; };
+const show = (el, on) => { el.style.visibility = on ? 'visible' : 'hidden'; };
+const circle = (r, x = 960, y = 540) => `circle(${Math.max(0, r)}px at ${x}px ${y}px)`;
+
+/* Headline markup: one masked line per entry; <m>..</m> becomes a lime marker. */
+function headline(lines) {
+  return lines.map((l) => `<span class="line"><span class="li">${l.replace(/<m>(.*?)<\/m>/, (_, w) => `<span class="mk"><span>${w}</span><span class="mk-fill"><span>${w}</span></span></span>`)}</span></span>`).join('');
+}
+function fit(el, maxWidth) {
+  const lines = $$(el, '.li');
+  const width = () => (lines.length ? Math.max(...lines.map((l) => l.getBoundingClientRect().width)) : el.getBoundingClientRect().width);
+  let size = parseFloat(getComputedStyle(el).fontSize);
+  while (width() > maxWidth && size > 20) { size -= 2; el.style.fontSize = size + 'px'; }
+}
+/* Reveal lines (mask slide) then markers (lime sweep). */
+function playHeadline(el, t, start, gap = 0.08) {
+  $$(el, '.li').forEach((li, i) => { li.style.transform = `translateY(${(1 - P(t, start + i * gap, 0.55, 'outExpo')) * 110}%)`; });
+  const p = P(t, start + 0.32, 0.42, 'inOutCubic');
+  $$(el, '.mk-fill').forEach((m) => { m.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`; m.style.visibility = p > 0 ? 'visible' : 'hidden'; });
+}
+
+/* Zellige field: 8-point stars (two squares) with diamonds between, centred on the stage. */
+function zellige(parent) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'zel'); svg.setAttribute('viewBox', '0 0 1920 1080'); svg.setAttribute('width', '1920'); svg.setAttribute('height', '1080');
+  const g = document.createElementNS(NS, 'g'); svg.appendChild(g);
+  const items = [];
+  const star = (cx, cy, R) => {
+    const pts = [];
+    for (let k = 0; k < 16; k++) { const a = (k * 22.5 - 90) * Math.PI / 180, r = k % 2 ? R * 0.7654 : R; pts.push(`${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`); }
+    return 'M' + pts.join('L') + 'Z';
+  };
+  const add = (d, cx, cy) => {
+    const p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', d); p.setAttribute('pathLength', '1'); p.setAttribute('fill', 'none'); p.setAttribute('stroke-width', '2'); p.setAttribute('stroke-dasharray', '1');
+    g.appendChild(p); items.push({ el: p, d: Math.hypot(cx - 960, cy - 540) });
+  };
+  for (let j = -4; j <= 4; j++) for (let k = -7; k <= 7; k++) {
+    const x = 960 + k * 160, y = 540 + j * 160;
+    add(star(x, y, 48), x, y);
+    add(`M${x + 80},${y + 62}L${x + 98},${y + 80}L${x + 80},${y + 98}L${x + 62},${y + 80}Z`, x + 80, y + 80);
+  }
+  parent.appendChild(svg);
+  return { svg, g, items };
+}
+
+/* Logo (RiadTax "Badge R"), same geometry as apps/web/components/logo.tsx, with ids to animate. */
+const R_PATH = 'M8 62 V6 H36 A17 17 0 0 1 43.5 38.4 L58 62 H43 L31 42 H23 V62 Z M23 19 V29 H36 A5 5 0 0 0 36 19 Z';
+function markSvg(id, ring) {
+  return `<defs><linearGradient id="${id}g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="64"><stop offset="0" stop-color="#e4f222"/><stop offset="1" stop-color="#b9cc00"/></linearGradient></defs>
+    <path class="m-r" d="${R_PATH}" fill="url(#${id}g)" fill-rule="evenodd" stroke="#e4f222" stroke-width="1.6" pathLength="1" stroke-dasharray="1"/>
+    <g class="m-tile" style="transform-box: fill-box; transform-origin: center"><rect x="3" y="36" width="28" height="28" rx="8" fill="${ring}"/><rect x="5.5" y="38.5" width="23" height="23" rx="6" fill="#0f0f10"/></g>
+    <path class="m-check" d="M10.5 47 L15 51.5 L24 42.5" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1"/>
+    <path class="m-bar" d="M11 58.5 V56" fill="none" stroke="#e4f222" stroke-width="2.8" stroke-linecap="round" pathLength="1" stroke-dasharray="1"/>
+    <path class="m-bar" d="M17 58.5 V54" fill="none" stroke="#e4f222" stroke-width="2.8" stroke-linecap="round" pathLength="1" stroke-dasharray="1"/>
+    <path class="m-bar" d="M23 58.5 V51.5" fill="none" stroke="#e4f222" stroke-width="2.8" stroke-linecap="round" pathLength="1" stroke-dasharray="1"/>`;
+}
+function playMark(root, t, start) {
+  $(root, '.m-r').style.strokeDashoffset = 1 - P(t, start, 0.45, 'inOutCubic');
+  $(root, '.m-r').style.fillOpacity = P(t, start + 0.28, 0.25);
+  $(root, '.m-tile').style.transform = `scale(${Math.max(0, P(t, start + 0.38, 0.32, 'outBack'))})`;
+  $(root, '.m-check').style.strokeDashoffset = 1 - P(t, start + 0.5, 0.22, 'outCubic');
+  $$(root, '.m-bar').forEach((b, i) => { b.style.strokeDashoffset = 1 - P(t, start + 0.6 + i * 0.06, 0.18, 'outCubic'); });
+}
+
+const ICONS = {
+  passport: '<rect x="14" y="8" width="36" height="48" rx="5"/><circle cx="32" cy="28" r="8"/><path d="M22 44H42M26 50H38"/>',
+  calendar: '<rect x="10" y="14" width="44" height="40" rx="6"/><path d="M10 26H54M22 8V18M42 8V18"/><path d="M20 36h.01M32 36h.01M44 36h.01M20 46h.01M32 46h.01" stroke-width="5"/>',
+  form: '<path d="M16 8H38L48 18V56H16Z"/><path d="M38 8V18H48M22 30H42M22 38H42M22 46H34"/>',
+  tax: '<path d="M16 8H48V56L42 52L36 56L30 52L24 56L16 52Z"/><circle cx="26" cy="24" r="3"/><circle cx="38" cy="38" r="3"/><path d="M39 21L25 41"/>',
+  register: '<rect x="12" y="8" width="40" height="48" rx="5"/><path d="M20 20H44M20 30H44M20 40H34"/>',
+  link: '<rect x="14" y="28" width="36" height="26" rx="6"/><path d="M22 28V20a10 10 0 0 1 20 0v8"/><path d="M32 38v6"/>',
+  chart: '<path d="M12 54H52"/><path d="M18 46V34M30 46V22M42 46V28"/>',
+  check: '<path d="M4 9l3.5 3.5L14 5"/>',
+};
+const icon = (name, vb = 64) => `<svg viewBox="0 0 ${vb} ${vb}">${ICONS[name]}</svg>`;
+
+/* ================= Scene 1: kinetic hook (night) ================= */
+const L1 = layer('var(--night)');
+const z1 = zellige(L1);
+L1.insertAdjacentHTML('beforeend', `
+  <div class="abs mono" id="s1count" style="left:120px;top:96px;font-size:22px;color:var(--ash-d);letter-spacing:0.08em"></div>
+  <div class="abs" style="left:120px;top:136px;width:220px;height:3px;background:var(--bone-d);border-radius:2px"><div id="s1prog" style="height:100%;background:var(--lime);border-radius:2px;width:0"></div></div>
+  ${['passport', 'calendar', 'form', 'tax'].map((n) => `<div class="abs icard" data-icon>${icon(n)}</div>`).join('')}
+  ${TEXT.words.map((w) => `<div class="abs word-wrap hl" style="font-size:200px"><span class="word">${w}</span></div>`).join('')}
+  <div class="abs" id="s1line" style="height:14px;border-radius:7px;background:var(--lime);top:672px;left:960px;width:0"></div>`);
+const s1Cards = $$(L1, '[data-icon]');
+const s1CardPos = [[230, 190, -8], [1534, 170, 6], [270, 760, 7], [1560, 750, -5]];
+const s1Words = $$(L1, '.word-wrap').map((wrap) => ({ wrap, word: $(wrap, '.word') }));
+
+/* ================= Lime wipe: "Sorted." ================= */
+const L2 = layer('radial-gradient(circle at 50% 50%, #e4f222 0%, #e4f222 55%, #cddd12 100%)');
+L2.insertAdjacentHTML('beforeend', `<div class="abs word-wrap hl" style="font-size:220px"><span class="word" style="color:var(--ink)">${TEXT.sorted}</span></div>`);
+const s2Word = $(L2, '.word');
+
+/* ================= Scene 2: logo lockup (white) ================= */
+const L3 = layer('var(--white)');
+L3.insertAdjacentHTML('beforeend', `
+  <svg class="abs" id="tile" viewBox="0 0 64 64" width="240" height="240" style="left:840px;top:380px;overflow:visible">
+    <rect width="64" height="64" rx="14" fill="#0f0f10"/><g id="tilemark" transform="translate(7 7) scale(0.78125)">${markSvg('a', '#0f0f10')}</g>
+  </svg>
+  <div class="abs jk" id="wordmark" style="top:0;left:0;font-size:150px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--ink);white-space:nowrap">Riad<span style="color:var(--olive)">Tax</span></div>
+  <div class="abs" id="tagline" style="left:0;right:0;top:668px;text-align:center;font:500 36px 'Inter';color:var(--slate);letter-spacing:-0.01em">${TEXT.tagline}</div>`);
+const tile = $(L3, '#tile'), tileMark = $(L3, '#tilemark'), wordmark = $(L3, '#wordmark'), tagline = $(L3, '#tagline');
+
+/* ================= Scene 3: night counter (night) ================= */
+const L4 = layer('var(--night)');
+const BOOKED = new Set([2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 31]);
+const calCells = [];
+for (let i = 0; i < 35; i++) { const d = i - 1; calCells.push(d >= 1 && d <= 31 ? d : 0); } /* July 2026 starts on a Wednesday (Monday-first grid). */
+L4.insertAdjacentHTML('beforeend', `
+  <div class="abs" id="s3left" style="left:140px;top:300px;width:760px">
+    <div class="pill eyebrow" style="color:var(--carbon-d);border-color:var(--cloud-d)">${TEXT.s3eyebrow}</div>
+    <div class="hl" id="s3h" style="font-size:112px;color:var(--white);margin-top:34px">${headline(TEXT.s3h)}</div>
+    <div id="s3sub" style="font:500 32px/1.4 'Inter';color:var(--fog);margin-top:30px;max-width:640px">${TEXT.s3sub}</div>
+  </div>
+  <div class="abs" id="s3wrap" style="left:960px;top:0;width:820px;perspective:1800px">
+    <div class="dcard" id="s3card" style="transform-origin:50% 100%">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="jk" style="font-size:38px;font-weight:700;letter-spacing:-0.02em;color:var(--white)">${TEXT.property}</div>
+        <div style="position:relative;height:48px;width:300px">
+          <div class="pill abs" id="s3syncing" style="right:0;top:0;height:48px;padding:0 20px;font-size:20px;color:var(--slate-d);background:var(--merc-d)"><svg width="20" height="20" viewBox="0 0 20 20" id="s3spin"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-dasharray="30 60" stroke-linecap="round"/></svg>${TEXT.syncing}</div>
+          <div class="pill abs" id="s3synced" style="right:0;top:0;height:48px;padding:0 20px;font-size:20px;color:var(--success-d);background:var(--success-soft-d)"><span class="dot"></span>${TEXT.synced}</div>
+        </div>
+      </div>
+      <div style="font:600 22px 'Inter';color:var(--slate-d);margin:22px 0 14px">${TEXT.month}</div>
+      <div class="cal">${TEXT.days.map((d) => `<div class="wd">${d}</div>`).join('')}${calCells.map((d) => `<div class="c${d ? '' : ' e'}" data-d="${d}">${d || ''}</div>`).join('')}</div>
+      <div style="height:1.5px;background:var(--bone-d);margin:30px 0 24px"></div>
+      <div style="font:600 22px 'Inter';color:var(--slate-d)">${TEXT.nightsLabel}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px">
+        <div class="jk" style="color:var(--white);font-weight:800;letter-spacing:-0.04em;line-height:1"><span id="s3num" style="font-size:120px;font-variant-numeric:tabular-nums">0</span><span style="font-size:44px;color:var(--ash-d);letter-spacing:-0.02em"> / 120 ${TEXT.nights}</span></div>
+        <div class="pill" id="s3level" style="height:48px;padding:0 20px;font-size:20px;color:var(--success-d);background:var(--success-soft-d);margin-bottom:14px"><span class="dot"></span>${TEXT.level}</div>
+      </div>
+      <div style="position:relative;height:16px;border-radius:8px;background:var(--merc-d);margin-top:22px;overflow:hidden">
+        <div id="s3gauge" style="height:100%;width:0;border-radius:8px;background:var(--success-d)"></div>
+        <span style="position:absolute;top:0;bottom:0;width:4px;background:var(--card-d);left:75%"></span>
+        <span style="position:absolute;top:0;bottom:0;width:4px;background:var(--card-d);left:91.6%"></span>
+      </div>
+    </div>
+  </div>`);
+const s3card = $(L4, '#s3card'), s3wrap = $(L4, '#s3wrap');
+const s3Days = $$(L4, '.c[data-d]').filter((c) => BOOKED.has(+c.dataset.d));
+
+/* ================= Scene 4: guest check-in (mist) ================= */
+const L5 = layer('var(--mist)');
+L5.insertAdjacentHTML('beforeend', `
+  <div class="abs phone" id="phone" style="left:300px;top:100px">
+    <div class="screen">
+      <div class="abs" style="left:50%;top:14px;width:120px;height:32px;margin-left:-60px;border-radius:16px;background:var(--night)"></div>
+      <div style="font:600 17px 'Inter';color:var(--slate)">${TEXT.phoneKicker}</div>
+      <div class="jk" style="font-size:29px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-top:4px">${TEXT.phoneTitle}</div>
+      <div style="position:relative;margin-top:26px;height:226px">
+        <div id="doc" style="position:absolute;inset:0;border-radius:18px;background:var(--plaster);padding:18px;overflow:hidden">
+          <div style="display:flex;gap:16px">
+            <div style="width:92px;height:116px;border-radius:10px;background:var(--cloud);position:relative;overflow:hidden">
+              <div style="position:absolute;left:28px;top:22px;width:36px;height:36px;border-radius:50%;background:var(--fog)"></div>
+              <div style="position:absolute;left:14px;top:66px;width:64px;height:60px;border-radius:32px 32px 0 0;background:var(--fog)"></div>
+            </div>
+            <div style="flex:1;padding-top:6px">
+              <div class="bar" style="width:60%;background:var(--cloud)"></div><div class="bar" style="width:85%;background:var(--cloud)"></div>
+              <div class="bar" style="width:45%;background:var(--cloud)"></div><div class="bar" style="width:70%;background:var(--cloud)"></div>
+            </div>
+          </div>
+          <div class="mono" style="font-size:12.5px;line-height:1.6;color:var(--slate);margin-top:14px;letter-spacing:0.04em">P&lt;UTO&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br>&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;0UTO&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</div>
+          <div id="scanglow" style="position:absolute;left:0;right:0;height:90px;background:linear-gradient(to bottom, rgba(228,242,34,0), rgba(228,242,34,0.45));"></div>
+          <div id="scanline" style="position:absolute;left:0;right:0;height:4px;background:var(--lime);box-shadow:0 0 18px 4px rgba(228,242,34,0.8)"></div>
+        </div>
+        <svg id="finder" viewBox="0 0 370 246" width="370" height="246" style="position:absolute;left:-10px;top:-10px;overflow:visible" fill="none" stroke="#202020" stroke-width="5" stroke-linecap="round">
+          <path d="M2 40V14A12 12 0 0 1 14 2H40M330 2H356A12 12 0 0 1 368 14V40M368 206V232A12 12 0 0 1 356 244H330M40 244H14A12 12 0 0 1 2 232V206"/>
+        </svg>
+        <div id="docok" class="abs" style="right:14px;top:14px;width:46px;height:46px;border-radius:50%;background:var(--success);display:grid;place-items:center"><svg viewBox="0 0 18 18" width="24" height="24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${ICONS.check}</svg></div>
+      </div>
+      <div style="margin-top:30px">
+        ${TEXT.fields.map((f, i) => `<div class="field-l"><span>${f}</span>${i === 1 ? `<span class="pill" data-flag style="font-size:13px;height:24px;padding:0 10px;color:var(--warning);background:var(--warning-soft)"><span class="dot"></span>${TEXT.check}</span>` : ''}</div><div class="field-i"><span data-val></span><span data-caret style="width:2px;height:24px;background:var(--ink);margin-left:2px"></span></div>`).join('')}
+      </div>
+      <div id="send" class="pill" style="position:absolute;left:26px;right:26px;bottom:40px;height:62px;justify-content:center;background:var(--lime);color:var(--ink);font-size:22px">${TEXT.send}</div>
+    </div>
+  </div>
+  <div class="abs paper" id="fiche" style="left:0;top:0">
+    <div class="mono" style="font-size:14px;font-weight:700;letter-spacing:0.14em;color:var(--slate)">${TEXT.fiche}</div>
+    <div style="height:2px;background:var(--ink);margin:14px 0 20px"></div>
+    <div class="bar" style="width:80%"></div><div class="bar" style="width:55%"></div><div class="bar" style="width:70%"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0">${'<div style="height:44px;border-radius:8px;background:var(--mist);border:1.5px solid var(--mercury)"></div>'.repeat(4)}</div>
+    <div class="bar" style="width:65%"></div><div class="bar" style="width:40%"></div>
+    <div style="position:absolute;left:26px;right:26px;bottom:24px;display:flex;justify-content:space-between;align-items:center">
+      <span class="pill" style="height:36px;padding:0 14px;font-size:16px;background:var(--night);color:var(--white)">PDF</span>
+      <span class="pill" style="height:36px;padding:0 14px;font-size:16px;color:var(--success);background:var(--success-soft)"><span class="dot"></span>${TEXT.ready}</span>
+    </div>
+  </div>
+  <div class="abs" id="s4right" style="left:1010px;top:300px;width:800px">
+    <div class="pill eyebrow" style="color:var(--carbon);border-color:var(--cloud)">${TEXT.s4eyebrow}</div>
+    <div class="hl" id="s4h" style="font-size:104px;color:var(--ink);margin-top:34px">${headline(TEXT.s4h)}</div>
+    <div id="s4sub" style="font:500 32px/1.4 'Inter';color:var(--slate);margin-top:30px;max-width:700px">${TEXT.s4sub}</div>
+  </div>`);
+const phone = $(L5, '#phone'), fiche = $(L5, '#fiche');
+const s4Vals = $$(L5, '[data-val]'), s4Carets = $$(L5, '[data-caret]');
+
+/* ================= Scene 5: register, share, tax (plaster) ================= */
+const L6edge = layer('var(--lime)');
+const L6 = layer('var(--plaster)');
+const TAX_BARS = [42, 60, 52, 78, 70, 96];
+L6.insertAdjacentHTML('beforeend', `
+  <div class="abs" id="s5head" style="left:0;right:0;top:84px;text-align:center">
+    <div><div class="pill eyebrow" style="color:var(--carbon);border-color:var(--fog)">${TEXT.s5eyebrow}</div></div>
+    <div class="hl" id="s5h" style="font-size:96px;color:var(--ink);margin-top:22px;display:inline-block">${headline(TEXT.s5h)}</div>
+  </div>
+  <div class="abs" style="left:135px;top:400px;display:flex;gap:50px;perspective:2200px" id="s5cards">
+    <div class="lcard">
+      <div style="display:flex;gap:18px;align-items:center"><div class="chip">${icon('register')}</div><div><div class="ctitle">${TEXT.reg[0]}</div><div class="csub">${TEXT.reg[1]}</div></div></div>
+      <div style="margin-top:22px">${[62, 48, 70, 54, 40].map((w) => `<div class="row"><div class="av"></div><div style="height:12px;border-radius:6px;background:var(--mercury);width:${w}%"></div><div class="chk">${icon('check', 18)}</div></div>`).join('')}</div>
+      <div style="margin-top:auto"><span class="pill" style="height:44px;padding:0 18px;font-size:18px;background:var(--mercury);color:var(--carbon)">${TEXT.regFoot}</span></div>
+    </div>
+    <div class="lcard">
+      <div style="display:flex;gap:18px;align-items:center"><div class="chip">${icon('link')}</div><div><div class="ctitle">${TEXT.share[0]}</div><div class="csub">${TEXT.share[1]}</div></div></div>
+      <div class="mono" style="margin-top:26px;height:54px;border-radius:12px;border:1.5px solid var(--line);display:flex;align-items:center;padding:0 16px;font-size:19px;color:var(--carbon);gap:10px">
+        <svg viewBox="0 0 64 64" width="22" height="22" fill="none" stroke="#202020" stroke-width="5" stroke-linecap="round">${ICONS.link}</svg>/s#••••••••••••••
+      </div>
+      <div style="position:relative;width:170px;height:170px;margin:26px auto 0">
+        <svg viewBox="0 0 170 170" width="170" height="170" style="transform:rotate(-90deg)"><circle cx="85" cy="85" r="74" fill="none" stroke="#eeeeee" stroke-width="12"/><circle id="ring" cx="85" cy="85" r="74" fill="none" stroke="#202020" stroke-width="12" stroke-linecap="round" pathLength="1" stroke-dasharray="1"/></svg>
+        <div class="abs jk" style="inset:0;display:grid;place-items:center;font-size:22px;font-weight:700;color:var(--ink)">${TEXT.expires}</div>
+      </div>
+      <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center">
+        <div style="position:relative;height:44px;width:180px">
+          <span class="pill abs" id="s5active" style="left:0;height:44px;padding:0 18px;font-size:18px;color:var(--success);background:var(--success-soft)"><span class="dot"></span>${TEXT.active}</span>
+          <span class="pill abs" id="s5revoked" style="left:0;height:44px;padding:0 18px;font-size:18px;color:var(--danger);background:var(--danger-soft)"><span class="dot"></span>${TEXT.revoked}</span>
+        </div>
+        <span class="pill" id="s5revoke" style="height:52px;padding:0 24px;font-size:19px;color:var(--white);background:var(--ink)">${TEXT.revoke}</span>
+      </div>
+    </div>
+    <div class="lcard">
+      <div style="display:flex;gap:18px;align-items:center"><div class="chip">${icon('chart')}</div><div><div class="ctitle">${TEXT.tax[0]}</div><div class="csub">${TEXT.tax[1]}</div></div></div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:26px">
+        <div class="jk" style="font-size:46px;font-weight:800;letter-spacing:-0.03em;color:var(--ink)"><span id="s5amt" style="font-variant-numeric:tabular-nums">0</span> <span style="font-size:26px;color:var(--slate)">MAD</span></div>
+        <span class="pill" style="height:34px;padding:0 14px;font-size:15px;color:var(--warning);background:var(--warning-soft)"><span class="dot"></span>${TEXT.estimate}</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;height:170px;margin-top:18px;padding:0 6px;border-bottom:2px solid var(--ink)">
+        ${TAX_BARS.map((h) => `<div class="tbar" style="height:${h}%"></div>`).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 18px 0;font:600 16px 'Inter';color:var(--slate)">${TEXT.months.map((m) => `<span>${m}</span>`).join('')}</div>
+      <div style="margin-top:auto;font:500 16px 'Inter';color:var(--slate)">${TEXT.taxNote}</div>
+    </div>
+  </div>`);
+const s5Cards = $$(L6, '.lcard'), s5Head = $(L6, '#s5head');
+
+/* ================= Scene 6: end card (night) ================= */
+const L7 = layer('var(--night)');
+const z7 = zellige(L7);
+L7.insertAdjacentHTML('beforeend', `
+  <div class="abs" id="endlogo" style="top:150px;left:0;display:flex;align-items:center;gap:40px">
+    <svg viewBox="0 0 64 64" width="130" height="130" id="endmark" style="overflow:visible">${markSvg('b', '#0f0f10')}</svg>
+    <div class="jk" id="endword" style="font-size:96px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--white);white-space:nowrap">Riad<span style="color:var(--lime)">Tax</span></div>
+  </div>
+  <div class="abs" style="left:0;right:0;top:360px;text-align:center"><div class="hl" id="s6h" style="font-size:132px;color:var(--white);display:inline-block">${headline(TEXT.s6h)}</div></div>
+  <div class="abs" style="left:0;right:0;top:790px;text-align:center">
+    <div class="pill" id="cta" style="position:relative;overflow:hidden;height:96px;padding:0 52px;font-size:36px;background:var(--lime);color:var(--ink);gap:20px">${TEXT.cta}<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#202020" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><div class="shine" id="shine"></div></div>
+  </div>
+  <div class="abs" id="foot" style="left:0;right:0;top:972px;text-align:center;font:500 22px 'Inter';color:var(--ash-d)">${TEXT.foot}</div>`);
+const endLogo = $(L7, '#endlogo'), endMark = $(L7, '#endmark'), endWord = $(L7, '#endword'), cta = $(L7, '#cta');
+
+/* ---------- layout measured once fonts are in ---------- */
+const M = {};
+async function prepare() {
+  await document.fonts.ready;
+  for (const l of [L1, L2, L3, L4, L5, L6, L7]) show(l, true);
+  s1Words.forEach(({ wrap }) => { fit(wrap.firstElementChild, 1560); });
+  s1Words.forEach((w) => { const r = w.word.getBoundingClientRect(); w.width = r.width; wrapTop(w.wrap); });
+  wrapTop(L2.querySelector('.word-wrap'));
+  fit(L2.querySelector('.word'), 1560);
+  fit($(L4, '#s3h'), 780); fit($(L5, '#s4h'), 800); fit($(L6, '#s5h'), 1640); fit($(L7, '#s6h'), 1700);
+  M.wm = wordmark.getBoundingClientRect().width;
+  const total = 240 + 72 + M.wm;
+  M.lockTx = 120 - total / 2;
+  css(wordmark, { left: (960 - total / 2 + 240 + 72) + 'px', top: (500 - 150 * 0.5) + 'px' });
+  const cardH = s3card.getBoundingClientRect().height;
+  s3wrap.style.top = (540 - cardH / 2) + 'px';
+  const endW = endLogo.getBoundingClientRect().width;
+  endLogo.style.left = (960 - endW / 2) + 'px';
+  for (const l of [L1, L2, L3, L4, L5, L6, L7]) show(l, false);
+}
+function wrapTop(wrap) { const h = wrap.getBoundingClientRect().height; wrap.style.top = (540 - h / 2) + 'px'; }
+
+/* ================= the timeline ================= */
+function seek(t) {
+  /* ---- S1 0 → 2.5 ---- */
+  show(L1, t < 2.5);
+  if (t < 2.5) {
+    const wi = Math.min(3, Math.floor(t / 0.5));
+    z1.g.setAttribute('transform', `rotate(${t * 1.6} 960 540) translate(960 540) scale(${L(1.12, 1.02, P(t, 0, 2.5, 'outCubic'))}) translate(-960 -540)`);
+    for (const it of z1.items) {
+      let pulse = 0;
+      for (let i = 0; i < 4; i++) { const age = t - i * 0.5; if (age > 0) { const ring = age * 2400; pulse += Math.exp(-Math.pow((it.d - ring) / 150, 2)) * Math.max(0, 1 - age / 0.9); } }
+      it.el.style.strokeDashoffset = 1 - P(t, (it.d / 1100) * 0.7, 0.55, 'outCubic');
+      it.el.setAttribute('stroke', mix('#232327', '#e4f222', Math.min(1, pulse * 0.55)));
+    }
+    s1Words.forEach((w, i) => {
+      const a = i * 0.5;
+      const inn = P(t, a, 0.26, 'outExpo');
+      const out = P(t, a + 0.5, 0.26, 'outExpo'); /* leaves in lockstep with the next word: a slot-machine roll */
+      show(w.wrap, t >= a && out < 1);
+      css(w.word, { transform: `translateY(${(1 - inn) * 125 - out * 125}%) scale(${L(1.08, 1, inn)})` });
+    });
+    const prevW = wi > 0 ? s1Words[wi - 1].width : 0;
+    let lw = L(prevW, s1Words[wi].width, P(t, wi * 0.5, 0.32, 'outExpo')) * (1 - P(t, 1.95, 0.2, 'inCubic'));
+    css($(L1, '#s1line'), { width: lw + 'px', left: (960 - lw / 2) + 'px' });
+    $(L1, '#s1count').textContent = `0${wi + 1} / 04`;
+    $(L1, '#s1prog').style.width = (P(t, 0, 2.0, 'lin') * 100) + '%';
+    s1Cards.forEach((c, i) => {
+      const [x, y, r] = s1CardPos[i];
+      const a = i * 0.5;
+      const act = P(t, a, 0.2, 'outCubic') * (1 - P(t, a + 0.5, 0.25, 'outCubic'));
+      const enter = P(t, 0.05 + i * 0.06, 0.5, 'outBack');
+      const suck = P(t, 1.92, 0.3, 'inExpo');
+      const fx = x + Math.sin(t * 1.1 + i * 1.7) * 14, fy = y + Math.cos(t * 0.9 + i) * 16;
+      const cx = L(fx, 960 - 78, suck), cy = L(fy, 540 - 78, suck);
+      css(c, { left: cx + 'px', top: cy + 'px', opacity: Math.min(1, enter * 1.4) * (1 - suck), transform: `rotate(${r + Math.sin(t * 0.8 + i) * 4 + act * -r}deg) scale(${Math.max(0, enter) * (1 + act * 0.22) * (1 - suck * 0.7)})`, borderColor: mix('#2e2e33', '#e4f222', act) });
+      c.querySelector('svg').style.stroke = mix('#6b6b73', '#e4f222', act);
+    });
+  }
+
+  /* ---- Lime wipe 2.0 → 2.95 ---- */
+  show(L2, t >= 2.0 && t < 2.98);
+  if (t >= 2.0 && t < 2.98) {
+    L2.style.clipPath = circle(L(0, 1150, P(t, 2.0, 0.45, 'outExpo')));
+    const inn = P(t, 2.08, 0.32, 'outExpo'), out = P(t, 2.5, 0.2, 'inCubic');
+    css(s2Word, { transform: `translateY(${(1 - inn) * 110 - out * 110}%) scale(${L(1.1, 1, inn)})` });
+  }
+
+  /* ---- S2 logo 2.55 → 4.65 ---- */
+  show(L3, t >= 2.55 && t < 4.66);
+  if (t >= 2.55 && t < 4.66) {
+    L3.style.clipPath = circle(L(0, 1150, P(t, 2.55, 0.45, 'outExpo')));
+    playMark(tileMark, t, 2.72);
+    const pop = P(t, 2.6, 0.42, 'outBack');
+    const lock = P(t, 3.55, 0.45, 'inOutCubic');
+    const zoom = P(t, 4.28, 0.34, 'inExpo');
+    const back = P(t, 4.28, 0.3, 'inOutCubic');
+    const tx = L(L(0, M.lockTx, lock), 0, back);
+    const s = Math.max(0, pop) * L(1, 11.5, zoom);
+    css(tile, { transform: `translateX(${tx}px) rotate(${L(-90, 0, P(t, 2.6, 0.55, 'outExpo'))}deg) scale(${s})` });
+    tileMark.style.opacity = 1 - P(t, 4.28, 0.1, 'lin');
+    const wr = P(t, 3.7, 0.45, 'outExpo'), gone = P(t, 4.2, 0.12, 'lin');
+    css(wordmark, { clipPath: `inset(-10% ${(1 - wr) * 100}% -10% 0)`, transform: `translateX(${(1 - wr) * -50}px)`, opacity: 1 - gone });
+    css(tagline, { opacity: P(t, 3.88, 0.35) * (1 - gone), transform: `translateY(${(1 - P(t, 3.88, 0.45, 'outExpo')) * 28}px)` });
+  }
+
+  /* ---- S3 night counter 4.62 → 7.1 ---- */
+  show(L4, t >= 4.62 && t < 7.12);
+  if (t >= 4.62 && t < 7.12) {
+    const push = P(t, 6.8, 0.32, 'inOutCubic');
+    css(L4, { transform: `translateX(${-push * 640}px)`, filter: `brightness(${1 - push * 0.5})` });
+    css($(L4, '.eyebrow'), { opacity: P(t, 4.66, 0.3), transform: `translateY(${(1 - P(t, 4.66, 0.4, 'outExpo')) * 20}px)` });
+    playHeadline($(L4, '#s3h'), t, 4.72);
+    css($(L4, '#s3sub'), { opacity: P(t, 5.05, 0.4), transform: `translateY(${(1 - P(t, 5.05, 0.5, 'outExpo')) * 24}px)` });
+    const ce = P(t, 4.66, 0.6, 'outExpo');
+    css(s3card, { opacity: Math.min(1, ce * 1.5), transform: `translateY(${(1 - ce) * 140}px) rotateX(${(1 - ce) * 22 + Math.sin(t * 1.3) * 1.2}deg) rotateY(${-4 + Math.sin(t * 0.9) * 2}deg)` });
+    s3Days.forEach((c, i) => {
+      const p = P(t, 5.0 + i * 0.032, 0.22, 'outBack');
+      css(c, { background: p > 0.02 ? mix('#26262b', '#e4f222', Math.min(1, p)) : '', color: p > 0.5 ? '#202020' : '', transform: `scale(${L(0.7, 1, Math.max(0, Math.min(1.1, p)))})` });
+    });
+    const synced = t >= 5.9;
+    show($(L4, '#s3syncing'), !synced); show($(L4, '#s3synced'), synced);
+    $(L4, '#s3spin').style.transform = `rotate(${t * 720}deg)`;
+    $(L4, '#s3synced').style.transform = `scale(${synced ? L(0.8, 1, P(t, 5.9, 0.3, 'outBack')) : 1})`;
+    const n = P(t, 5.15, 1.25, 'outCubic');
+    $(L4, '#s3num').textContent = Math.round(87 * n);
+    $(L4, '#s3gauge').style.width = (n * 87 / 120 * 100) + '%';
+    css($(L4, '#s3level'), { opacity: P(t, 6.3, 0.2), transform: `scale(${L(0.85, 1, P(t, 6.3, 0.3, 'outBack'))})` });
+  }
+
+  /* ---- S4 check-in 6.8 → 9.7 ---- */
+  show(L5, t >= 6.8 && t < 9.7);
+  if (t >= 6.8 && t < 9.7) {
+    const slide = P(t, 6.8, 0.32, 'inOutCubic');
+    css(L5, { transform: `translateX(${(1 - slide) * 1920}px)`, filter: slide < 1 ? `blur(${Math.sin(slide * Math.PI) * 6}px)` : 'none' });
+    css(phone, { transform: `translateY(${Math.sin(t * 1.4) * 8}px) rotate(${-2 + Math.sin(t * 0.9) * 0.8}deg)` });
+    css($(L5, '.eyebrow'), { opacity: P(t, 7.0, 0.3), transform: `translateY(${(1 - P(t, 7.0, 0.4, 'outExpo')) * 20}px)` });
+    playHeadline($(L5, '#s4h'), t, 7.05);
+    css($(L5, '#s4sub'), { opacity: P(t, 7.4, 0.4), transform: `translateY(${(1 - P(t, 7.4, 0.5, 'outExpo')) * 24}px)` });
+    const f = P(t, 7.25, 0.3, 'outBack');
+    css($(L5, '#finder'), { opacity: P(t, 7.25, 0.12), transform: `scale(${L(1.18, 1, f)})`, stroke: t > 8.15 ? '#0f7b4b' : '#202020' });
+    const scan = P(t, 7.5, 0.65, 'inOutCubic');
+    const scanning = t >= 7.5 && t < 8.2;
+    css($(L5, '#scanline'), { top: (scan * 222) + 'px', opacity: scanning ? 1 : 0 });
+    css($(L5, '#scanglow'), { top: (scan * 222 - 90) + 'px', opacity: scanning ? 1 : 0 });
+    css($(L5, '#docok'), { transform: `scale(${Math.max(0, P(t, 8.15, 0.3, 'outBack'))})` });
+    s4Vals.forEach((v, i) => {
+      const k = Math.round(P(t, 8.2 + i * 0.13, 0.22, 'lin') * 8);
+      v.textContent = '•'.repeat(k);
+      s4Carets[i].style.opacity = t > 8.15 + i * 0.13 && t < 8.48 + i * 0.13 && Math.floor(t * 8) % 2 === 0 ? 1 : 0;
+    });
+    css($(L5, '[data-flag]'), { opacity: P(t, 8.5, 0.2), transform: `scale(${L(0.7, 1, P(t, 8.5, 0.3, 'outBack'))})` });
+    const press = P(t, 8.7, 0.08, 'outCubic') * (1 - P(t, 8.78, 0.16, 'outCubic'));
+    css($(L5, '#send'), { transform: `scale(${1 - press * 0.06})`, background: press > 0.1 ? '#cddd12' : '#e4f222' });
+    const fl = P(t, 8.78, 0.5, 'outExpo');
+    const fx = L(545 - 150, 650, fl), fy = L(560 - 195, 500, fl) - Math.sin(fl * Math.PI) * 90;
+    css(fiche, { left: fx + 'px', top: fy + 'px', opacity: Math.min(1, P(t, 8.78, 0.12) * 1), transform: `rotate(${L(-14, 6, fl) + Math.sin(t * 1.2) * 0.6}deg) scale(${L(0.3, 1, P(t, 8.78, 0.45, 'outBack'))})` });
+  }
+
+  /* ---- S5 trio 9.3 → 12.0 ---- */
+  show(L6, t >= 9.3 && t < 12.0);
+  show(L6edge, t >= 9.3 && t < 9.75);
+  if (t >= 9.3 && t < 12.0) {
+    const R = L(0, 2100, P(t, 9.3, 0.42, 'inOutCubic')), rot = L(-60, 0, P(t, 9.3, 0.5, 'outCubic'));
+    const pts = [];
+    for (let k = 0; k < 16; k++) { const a = (k * 22.5 - 90 + rot) * Math.PI / 180, r = k % 2 ? R * 0.7654 : R; pts.push(`${(960 + r * Math.cos(a)).toFixed(1)}px ${(540 + r * Math.sin(a)).toFixed(1)}px`); }
+    L6.style.clipPath = `polygon(${pts.join(',')})`;
+    L6edge.style.clipPath = `polygon(${pts.map((p) => p.replace(/([\d.-]+)px ([\d.-]+)px/, (_, x, y) => `${(960 + (x - 960) * 1.09).toFixed(1)}px ${(540 + (y - 540) * 1.09).toFixed(1)}px`)).join(',')})`;
+    const leave = P(t, 11.5, 0.3, 'inCubic');
+    css(s5Head, { opacity: 1 - leave });
+    css($(L6, '.eyebrow'), { opacity: P(t, 9.5, 0.3) });
+    playHeadline($(L6, '#s5h'), t, 9.52);
+    s5Cards.forEach((c, i) => {
+      const e = P(t, 9.6 + i * 0.25, 0.55, 'outBack'), e2 = P(t, 9.6 + i * 0.25, 0.45, 'outExpo');
+      const gone = P(t, 11.5 + i * 0.04, 0.3, 'inCubic');
+      const dx = (1 - i) * 550 * gone;
+      css(c, { opacity: Math.min(1, e2 * 1.6) * (1 - gone), transform: `translate(${dx}px, ${(1 - e2) * 90 - gone * 60}px) rotateY(${(1 - e) * -70}deg) scale(${L(1, 0.35, gone)})` });
+    });
+    $$(s5Cards[0], '.row').forEach((r, i) => {
+      const p = P(t, 10.05 + i * 0.13, 0.22, 'outBack');
+      const chk = $(r, '.chk');
+      css(chk, { background: p > 0.05 ? '#0f7b4b' : 'transparent', borderColor: p > 0.05 ? '#0f7b4b' : '#d4d4d4', transform: `scale(${p > 0.05 ? L(0.6, 1, Math.min(1.15, p)) : 1})` });
+    });
+    const revoked = t >= 11.08;
+    $(L6, '#ring').style.strokeDashoffset = revoked ? 1 : L(0, 0.38, P(t, 10.2, 0.85, 'inOutCubic'));
+    $(L6, '#ring').style.stroke = '#202020';
+    const press = P(t, 10.95, 0.08) * (1 - P(t, 11.03, 0.15));
+    $(L6, '#s5revoke').style.transform = `scale(${1 - press * 0.08})`;
+    show($(L6, '#s5active'), !revoked); show($(L6, '#s5revoked'), revoked);
+    $(L6, '#s5revoked').style.transform = `scale(${revoked ? L(0.8, 1, P(t, 11.08, 0.3, 'outBack')) : 1})`;
+    $$(s5Cards[2], '.tbar').forEach((b, i) => { b.style.transform = `scaleY(${Math.max(0, P(t, 10.4 + i * 0.07, 0.4, 'outBack'))})`; });
+    const amt = Math.round(12480 * P(t, 10.4, 0.9, 'outCubic'));
+    $(L6, '#s5amt').textContent = amt.toLocaleString('fr-FR').replace(/ | /g, ' ');
+  }
+
+  /* ---- S6 end card 11.65 → 15 ---- */
+  show(L7, t >= 11.65);
+  if (t >= 11.65) {
+    L7.style.clipPath = t < 12.05 ? circle(L(0, 1150, P(t, 11.65, 0.4, 'outExpo'))) : 'none';
+    z7.g.setAttribute('transform', `rotate(${(t - 11.65) * -1.2} 960 540)`);
+    for (const it of z7.items) {
+      const age1 = t - 11.72, age2 = t - 12.95;
+      let pulse = 0;
+      if (age1 > 0) pulse += Math.exp(-Math.pow((it.d - age1 * 1700) / 170, 2)) * Math.max(0, 1 - age1 / 1.3);
+      if (age2 > 0) pulse += 0.6 * Math.exp(-Math.pow((it.d - age2 * 1500) / 140, 2)) * Math.max(0, 1 - age2 / 1.2);
+      it.el.style.strokeDashoffset = 0;
+      it.el.setAttribute('stroke', mix('#1d1d21', '#e4f222', Math.min(1, pulse * 0.6)));
+    }
+    css(endMark, { transform: `scale(${Math.max(0, P(t, 11.85, 0.45, 'outBack'))}) rotate(${L(-30, 0, P(t, 11.85, 0.5, 'outExpo'))}deg)` });
+    playMark(endMark, t, 11.88);
+    const wr = P(t, 12.1, 0.45, 'outExpo');
+    css(endWord, { clipPath: `inset(-10% ${(1 - wr) * 100}% -10% 0)`, transform: `translateX(${(1 - wr) * -40}px)` });
+    playHeadline($(L7, '#s6h'), t, 12.25, 0.1);
+    const c = P(t, 12.95, 0.45, 'outBack');
+    css(cta, { opacity: P(t, 12.95, 0.15), transform: `scale(${L(0.6, 1, c)})` });
+    const sh = P(t, 13.55, 0.65, 'inOutCubic');
+    $(L7, '#shine').style.left = L(-200, cta.offsetWidth + 60, sh) + 'px';
+    css($(L7, '#foot'), { opacity: P(t, 13.1, 0.5) });
+  }
+}
+
+window.ready = prepare().then(() => { seek(0); return true; });
+window.seek = seek;
+window.DURATION = 15;
+</script>
+</body>
+</html>
