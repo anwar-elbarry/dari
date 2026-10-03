@@ -1,5 +1,5 @@
 // Renders promo.html frame by frame with Chromium and encodes an MP4 with ffmpeg.
-// Usage: node render.mjs [en|fr] [15|60]       -> out/riadtax-promo[-60]-<lang>.mp4 (with out/soundtrack[-60].wav if present)
+// Usage: node render.mjs [en|fr] [15|60]       -> out/riadtax-promo[-60]-<lang>.mp4 (audio: out/mix[-60]-<lang>.wav, else out/soundtrack[-60].wav)
 //        STILLS=1,3.5,8 node render.mjs en 60  -> out/still[-60]-<lang>-<t>.png only
 //        AUDIO_ONLY=1 node render.mjs en 60     -> re-mux the current soundtrack into the existing video
 import { chromium } from 'playwright';
@@ -16,11 +16,17 @@ const fps = Number(process.env.FPS || 60);
 const outDir = path.join(here, 'out');
 mkdirSync(outDir, { recursive: true });
 
+// The voiceover mix (voiceover.py) wins over the bare score when it exists.
+function audioFor() {
+  const mix = path.join(outDir, `mix${cut}-${lang}.wav`);
+  return existsSync(mix) ? mix : path.join(outDir, `soundtrack${cut}.wav`);
+}
+
 // AUDIO_ONLY=1 swaps the soundtrack into an already rendered video (no frame capture).
 if (process.env.AUDIO_ONLY) {
   const video = path.join(outDir, `riadtax-promo${cut}-${lang}.mp4`);
   const tmp = video.replace(/\.mp4$/, '.tmp.mp4');
-  const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-i', video, '-i', path.join(outDir, `soundtrack${cut}.wav`), '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', tmp], { stdio: 'inherit' });
+  const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-i', video, '-i', audioFor(), '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', tmp], { stdio: 'inherit' });
   const [code] = await once(ff, 'close');
   if (code !== 0) process.exit(code);
   renameSync(tmp, video);
@@ -49,7 +55,7 @@ if (process.env.STILLS) {
 }
 
 const out = path.join(outDir, `riadtax-promo${cut}-${lang}.mp4`);
-const audio = path.join(outDir, `soundtrack${cut}.wav`);
+const audio = audioFor();
 const args = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-'];
 if (existsSync(audio)) args.push('-i', audio, '-c:a', 'aac', '-b:a', '192k', '-shortest');
 args.push('-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-tune', 'animation', '-pix_fmt', 'yuv420p', '-r', String(fps), '-movflags', '+faststart', out);

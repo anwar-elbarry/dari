@@ -1,12 +1,13 @@
 # RiadTax promo films
 
-Two motion pieces, 1920×1080 at 60 fps, each in French and English: a 15-second promo and a 60-second film. Both are built in code, so every word, colour and cue can be edited and re-rendered.
+Two motion pieces, 1920×1080 at 60 fps, each in French and English: a 15-second promo and a 60-second film, with a female voiceover that explains what is on screen. Both are built in code, so every word, colour and cue can be edited and re-rendered.
 
 | File | Role |
 |---|---|
 | `promo.html` / `promo-60.html` | The compositions (15 s / 60 s). `window.seek(t)` sets every element for time `t`; there is no CSS animation. Open `promo-60.html?lang=fr` in a browser and call `seek(5)` in the console to inspect a frame. |
 | `shared.js` / `shared.css` | Helpers both compositions use: easing, headline masks and markers, the zellige field, the animated logo, tokens and fonts. |
-| `soundtrack.py` | The score: a "gnawa-house" palette synthesised from scratch (numpy only, no samples, free to use): guembri bass, qraqeb castanets (also the UI clicks), darbuka, kick and claps, oud phrases in Hijaz, a ney in the breakdown, over the Andalusian cadence (Am G F E). Cues are locked to the timeline; mastered to -14 LUFS. `python3 soundtrack.py 60` writes the 60 s track. |
+| `soundtrack.py` | Synthesises the music and sound design (numpy only, no samples), with cues locked to the timeline. `python3 soundtrack.py 60` writes the 60 s track. |
+| `voiceover.py` | The voiceover script (FR and EN, one line per scene with its time slot) and the mix: Kokoro TTS run locally (open weights, Apache-2.0; voices `af_heart` and `ff_siwis`), lines sped up at most 1.22× to fit, the score ducked about 9 dB under the voice, mastered to -14 LUFS. `--check` transcribes each line back with Whisper. |
 | `render.mjs` | Captures each frame with Chromium and encodes `out/riadtax-promo[-60]-<lang>.mp4` with the soundtrack. |
 
 ## Render
@@ -18,8 +19,9 @@ python3 soundtrack.py                        # out/soundtrack.wav
 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node render.mjs en
 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node render.mjs fr
 python3 soundtrack.py 60 && PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node render.mjs en 60   # 60 s film, about 20 min
+python voiceover.py en 60                     # voice + score -> out/mix-60-en.wav (venv with kokoro-onnx, see voiceover.py)
 STILLS=2.3,8.4 node render.mjs en 60         # PNG stills only, for review
-AUDIO_ONLY=1 node render.mjs en 60           # after changing the score: swap the audio, no re-render
+AUDIO_ONLY=1 node render.mjs en 60           # after changing the score or the voice: swap the audio, no re-render
 ```
 
 Requires `ffmpeg` and a Chromium (`PW_CHROMIUM_PATH`, or Playwright's own browser).
