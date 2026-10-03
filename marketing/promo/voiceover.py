@@ -1,13 +1,17 @@
 """Female voiceover for the promos, mixed over the score with ducking.
 
-Voice: Kokoro TTS (open weights, Apache-2.0), run locally: "af_heart" in English, "ff_siwis" in French. Each line has a
-time slot tied to the picture; a line that runs long is sped up (at most 1.22x), and one that still does not fit
+Voice, run locally: Kokoro TTS (open weights, Apache-2.0) with "af_heart" in English and "ff_siwis" in French; in Arabic
+the Piper voice "ar_JO-SA_dii-high" (female, Modern Standard Arabic) through sherpa-onnx, fed fully vowelled text (the
+voice expects tashkil; the plain text is what the script shows). Each line has a
+time slot tied to the picture; a line that runs long is sped up (at most 1.22x, 1.3x in Arabic), and one that still does not fit
 stops the script rather than overlap the next scene.
 
-Setup (once, any virtualenv):  pip install kokoro-onnx soundfile
+Setup (once, any virtualenv):  pip install kokoro-onnx soundfile sherpa-onnx
   model files in $KOKORO_DIR (default ./kokoro): kokoro-v1.0.onnx and voices-v1.0.bin from
   https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0
-Usage:  python voiceover.py <en|fr> [15|60]  ->  out/mix[-60]-<lang>.wav (needs out/soundtrack[-60].wav first)
+  Arabic voice in $AR_VOICE_DIR (default ./vits-piper-ar_JO-SA_dii-high), unpacked from
+  https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ar_JO-SA_dii-high.tar.bz2
+Usage:  python voiceover.py <en|fr|ar> [15|60]  ->  out/mix[-60]-<lang>.wav (needs out/soundtrack[-60].wav first)
         add --check to transcribe every line back with Whisper (pip install sherpa-onnx, model in $WHISPER_DIR).
 """
 import json
@@ -70,9 +74,32 @@ LINES = {
         (9.6, 11.95, 'Registre, partage, estimations fiscales.'),
         (12.0, 14.9, 'Vos locations, sous contrôle. Rejoignez le pilote.'),
     ],
+    ('ar', '60'): [
+        (0.15, 2.2, 'تدير إيجارات في مراكش؟', 'تُدِيرُ إِيجَارَاتٍ فِي مُرَّاكُش؟'),
+        (2.3, 6.3, 'جوازات في واتساب، جداول، أوراق، وضرائب بالتخمين.', 'جَوَازَاتٌ فِي وَاتْسَابْ، جَدَاوِلْ، أَوْرَاقْ، وَضَرَائِبُ بِالتَّخْمِينْ.'),
+        (6.4, 8.35, 'مألوف؟ هناك طريقة أبسط.', 'مَأْلُوف؟ هُنَاكَ طَرِيقَةٌ أَبْسَط.'),
+        (8.45, 11.8, 'تعرّف على RiadTax: الامتثال والضرائب لإيجاراتك.', 'تَعَرَّفْ عَلَى رِيَادْ تَاكْس: الاِمْتِثَالُ وَالضَّرَائِبُ لِإِيجَارَاتِكَ.'),
+        (12.3, 18.9, 'اربط تقويمات الحجز أو استورد ملف CSV. كل الحجوزات والإلغاءات في مكان واحد.', 'اِرْبِطْ تَقْوِيمَاتِ الحَجْزِ أَوِ اسْتَوْرِدْ مِلَفَّ سِي إِسْ فِي. كُلُّ الحُجُوزَاتِ وَالإِلْغَاءَاتِ فِي مَكَانٍ وَاحِدٍ.'),
+        (19.4, 25.9, 'يحسب RiadTax كل ليلة لكل عقار، وينبّهك بالبريد قبل بلوغ العتبة.', 'يَحْسُبُ رِيَادْ تَاكْس كُلَّ لَيْلَةٍ لِكُلِّ عَقَارٍ، وَيُنَبِّهُكَ بِالبَرِيدِ قَبْلَ بُلُوغِ العَتَبَةِ.'),
+        (26.4, 33.9, 'أرسل رابط تسجيل الوصول. يمسح النزيل جوازه من هاتفه، فتصبح استمارة الشرطة جاهزة بصيغة PDF.', 'أَرْسِلْ رَابِطَ تَسْجِيلِ الوُصُولِ. يَمْسَحُ النَّزِيلُ جَوَازَهُ مِنْ هَاتِفِهِ، فَتُصْبِحُ اِسْتِمَارَةُ الشُّرْطَةِ جَاهِزَةً بِصِيغَةِ بِي دِي إِفْ.'),
+        (34.4, 40.9, 'سجل الشرطة الشهري يُملأ تلقائياً. شاركه برابط مؤقت، وألغه متى شئت.', 'سِجِلُّ الشُّرْطَةِ الشَّهْرِيُّ يُمْلَأُ تِلْقَائِيًّا. شَارِكْهُ بِرَابِطٍ مُؤَقَّتٍ، وَأَلْغِهِ مَتَى شِئْتَ.'),
+        (41.4, 47.9, 'تقديرات ضريبية شهرية لكل عقار، بصيغتي PDF وExcel، لمراجعتها مع محاسبك.', 'تَقْدِيرَاتٌ ضَرِيبِيَّةٌ شَهْرِيَّةٌ لِكُلِّ عَقَارٍ، بِصِيغَتَيْ بِي دِي إِفْ وَإِكْسِلْ، لِمُرَاجَعَتِهَا مَعَ مُحَاسِبِكَ.'),
+        (48.35, 54.3, 'بيانات النزلاء بعناية: وثائق مشفّرة، حذف تلقائي، وكل اطلاع مسجّل.', 'بَيَانَاتُ النُّزَلَاءِ بِعِنَايَةْ: وَثَائِقُ مُشَفَّرَةْ، حَذْفٌ تِلْقَائِيّْ، وَكُلُّ اِطِّلَاعٍ مُسَجَّلْ.'),
+        (54.4, 56.1, 'كل شيء في مكان واحد.', 'كُلُّ شَيْءٍ فِي مَكَانٍ وَاحِدْ.'),
+        (56.2, 59.92, 'إيجاراتك تحت السيطرة. انضم إلى التجربة في مراكش.', 'إِيجَارَاتُكَ تَحْتَ السَّيْطَرَةِ. اِنْضَمَّ إِلَى التَّجْرِبَةِ فِي مُرَّاكُش.'),
+    ],
+    ('ar', '15'): [
+        (0.05, 2.05, 'جوازات، تقويمات، أوراق، ضرائب.', 'جَوَازَاتْ، تَقْوِيمَاتْ، أَوْرَاقْ، ضَرَائِبْ.'),
+        (2.08, 2.85, 'ببساطة.', 'بِبَسَاطَة.'),
+        (2.9, 4.45, 'تعرّف على RiadTax.', 'تَعَرَّفْ عَلَى رِيَادْ تَاكْس.'),
+        (4.7, 6.95, 'كل ليلة محسوبة.', 'كُلُّ لَيْلَةٍ مَحْسُوبَةٌ.'),
+        (7.1, 9.55, 'مسح الجواز، والاستمارة جاهزة.', 'مَسْحُ الجَوَازِ، وَالاِسْتِمَارَةُ جَاهِزَةٌ.'),
+        (9.5, 12.07, 'سجلات، روابط آمنة، تقديرات ضريبية.', 'سِجِلَّاتْ، رَوَابِطُ آمِنَةْ، تَقْدِيرَاتٌ ضَرِيبِيَّةْ.'),
+        (12.12, 14.95, 'إيجاراتك تحت السيطرة. انضم إلى التجربة.', 'إِيجَارَاتُكَ تَحْتَ السَّيْطَرَةِ. اِنْضَمَّ إِلَى التَّجْرِبَةِ.'),
+    ],
 }
-VOICE = {'en': ('af_heart', 'en-us'), 'fr': ('ff_siwis', 'fr-fr')}
-MAX_SPEED = 1.22
+VOICE = {'en': ('af_heart', 'en-us'), 'fr': ('ff_siwis', 'fr-fr'), 'ar': ('ar_JO-SA_dii-high', 'ar')}
+MAX_SPEED = {'en': 1.22, 'fr': 1.22, 'ar': 1.3}
 
 
 def read_wav(path):
@@ -137,18 +164,36 @@ def voice_chain(x):
     return x * (0.12 / rms)
 
 
+class Piper:
+    """sherpa-onnx VITS/Piper voice with the same create() shape as Kokoro."""
+    def __init__(self, folder, name):
+        import sherpa_onnx
+        vits = sherpa_onnx.OfflineTtsVitsModelConfig(model=os.path.join(folder, name + '.onnx'), tokens=os.path.join(folder, 'tokens.txt'), data_dir=os.path.join(folder, 'espeak-ng-data'), noise_scale=0.45, noise_scale_w=0.6)
+        self.tts = sherpa_onnx.OfflineTts(sherpa_onnx.OfflineTtsConfig(model=sherpa_onnx.OfflineTtsModelConfig(vits=vits, num_threads=4)))
+
+    def create(self, text, voice, speed, lang):
+        a = self.tts.generate(text, sid=0, speed=speed)
+        return a.samples, a.sample_rate
+
+
+def engine(lang):
+    if lang == 'ar':
+        return Piper(os.environ.get('AR_VOICE_DIR', os.path.join(HERE, 'vits-piper-ar_JO-SA_dii-high')), VOICE['ar'][0])
+    from kokoro_onnx import Kokoro
+    kdir = os.environ.get('KOKORO_DIR', os.path.join(HERE, 'kokoro'))
+    return Kokoro(os.path.join(kdir, 'kokoro-v1.0.onnx'), os.path.join(kdir, 'voices-v1.0.bin'))
+
+
 def tts(kokoro, text, voice, lang, speed):
     samples, sr = kokoro.create(text, voice=voice, speed=speed, lang=lang)
     return trim(resample(np.asarray(samples, dtype=float), sr))
 
 
 def main():
-    lang = 'fr' if 'fr' in sys.argv[1:] else 'en'
+    lang = next((a for a in sys.argv[1:] if a in ('en', 'fr', 'ar')), 'en')
     cut = '60' if '60' in sys.argv[1:] else '15'
     check = '--check' in sys.argv
-    from kokoro_onnx import Kokoro
-    kdir = os.environ.get('KOKORO_DIR', os.path.join(HERE, 'kokoro'))
-    kokoro = Kokoro(os.path.join(kdir, 'kokoro-v1.0.onnx'), os.path.join(kdir, 'voices-v1.0.bin'))
+    kokoro = engine(lang)
     voice, code = VOICE[lang]
     lines = LINES[(lang, cut)]
     music = read_wav(os.path.join(OUT, 'soundtrack-60.wav' if cut == '60' else 'soundtrack.wav'))
@@ -161,8 +206,8 @@ def main():
         slot = end - start
         speed = 1.0
         x = tts(kokoro, say, voice, code, speed)
-        while len(x) / SR > slot and speed < MAX_SPEED:
-            speed = min(MAX_SPEED, speed * len(x) / SR / slot * 1.03)
+        while len(x) / SR > slot and speed < MAX_SPEED[lang]:
+            speed = min(MAX_SPEED[lang], speed * len(x) / SR / slot * 1.03)
             x = tts(kokoro, say, voice, code, speed)
         dur = len(x) / SR
         nxt = lines[k + 1][0] if k + 1 < len(lines) else n / SR

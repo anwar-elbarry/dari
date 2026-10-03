@@ -1,5 +1,5 @@
 // Renders promo.html frame by frame with Chromium and encodes an MP4 with ffmpeg.
-// Usage: node render.mjs [en|fr] [15|60]       -> out/riadtax-promo[-60]-<lang>.mp4 (audio: out/mix[-60]-<lang>.wav, else out/soundtrack[-60].wav)
+// Usage: node render.mjs [en|fr|ar] [15|60]       -> out/riadtax-promo[-60]-<lang>.mp4 (audio: out/mix[-60]-<lang>.wav, else out/soundtrack[-60].wav)
 //        STILLS=1,3.5,8 node render.mjs en 60  -> out/still[-60]-<lang>-<t>.png only
 //        AUDIO_ONLY=1 node render.mjs en 60     -> re-mux the current soundtrack into the existing video
 import { chromium } from 'playwright';
@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const lang = process.argv[2] === 'fr' ? 'fr' : 'en';
+const lang = ['fr', 'ar'].includes(process.argv[2]) ? process.argv[2] : 'en';
 const cut = process.argv[3] === '60' ? '-60' : '';
 const fps = Number(process.env.FPS || 60);
 const outDir = path.join(here, 'out');

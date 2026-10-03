@@ -26,6 +26,8 @@ const show = (el, on) => { el.style.visibility = on ? 'visible' : 'hidden'; };
 const vis = (el, on) => { el.style.visibility = on ? 'inherit' : 'hidden'; };
 const circle = (r, x = 960, y = 540) => `circle(${Math.max(0, r)}px at ${x}px ${y}px)`;
 
+/* The lime marker sweeps in the reading direction: left to right, or right to left in Arabic. */
+const markerClip = (p) => (document.documentElement.dir === 'rtl' ? `inset(0 0 0 ${(1 - p) * 100}% round 0.14em)` : `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`);
 /* Headline markup: one masked line per entry; <m>..</m> becomes a lime marker. */
 function headline(lines) {
   return lines.map((l) => `<span class="line"><span class="li">${l.replace(/<m>(.*?)<\/m>/, (_, w) => `<span class="mk"><span>${w}</span><span class="mk-fill"><span>${w}</span></span></span>`)}</span></span>`).join('');
@@ -40,7 +42,7 @@ function fit(el, maxWidth) {
 function playHeadline(el, t, start, gap = 0.08) {
   $$(el, '.li').forEach((li, i) => { li.style.transform = `translateY(${(1 - P(t, start + i * gap, 0.55, 'outExpo')) * 110}%)`; });
   const p = P(t, start + 0.32, 0.42, 'inOutCubic');
-  $$(el, '.mk-fill').forEach((m) => { m.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`; m.style.visibility = p > 0 ? 'inherit' : 'hidden'; });
+  $$(el, '.mk-fill').forEach((m) => { m.style.clipPath = markerClip(p); m.style.visibility = p > 0 ? 'inherit' : 'hidden'; });
 }
 
 /* Zellige field: 8-point stars (two squares) with diamonds between, centred on the stage. */

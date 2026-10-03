@@ -15,7 +15,8 @@
 <script src="shared.js"></script>
 <script>
 'use strict';
-const LANG = new URLSearchParams(location.search).get('lang') === 'fr' ? 'fr' : 'en';
+const LANG = ['fr', 'ar'].includes(new URLSearchParams(location.search).get('lang')) ? new URLSearchParams(location.search).get('lang') : 'en';
+document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
 const TEXT = {
   en: {
     words: ['Passports.', 'Calendars.', 'Police forms.', 'Taxes.'], sorted: 'Sorted.',
@@ -45,6 +46,20 @@ const TEXT = {
     tax: ['Estimation fiscale', 'Mensuelle, pour votre comptable'], estimate: 'Estimation', months: ['F', 'M', 'A', 'M', 'J', 'J'], taxNote: 'Estimation uniquement. À confirmer avec votre comptable.',
     s6h: ['Vos locations,', '<m>sous contrôle.</m>'], cta: 'Rejoignez le pilote à Marrakech', foot: 'Les montants fiscaux sont des estimations. À confirmer avec votre comptable.',
   },
+  ar: {
+    words: ['جوازات السفر.', 'التقويمات.', 'استمارات الشرطة.', 'الضرائب.'], sorted: 'ببساطة.',
+    tagline: 'الامتثال والضرائب للإيجار قصير المدة',
+    s3eyebrow: '01 · عدّاد الليالي', s3h: ['كل ليلة', '<m>محسوبة.</m>'], s3sub: 'كل تقويماتك، متزامنة في مكان واحد.',
+    property: 'رياض الياسمين', syncing: 'جارٍ التزامن', synced: 'متزامن', month: 'يوليوز 2026', days: ['ن', 'ث', 'ر', 'خ', 'ج', 'س', 'ح'],
+    nightsLabel: 'الليالي هذا العام', nights: 'ليلة', level: 'تحت العتبة',
+    s4eyebrow: '02 · تسجيل وصول النزلاء', s4h: ['استمارة الشرطة', '<m>بلمسة واحدة.</m>'], s4sub: 'يمسح النزيل جواز سفره، وتتسلّم استمارة الشرطة بصيغة PDF.',
+    phoneKicker: 'تسجيل الوصول', phoneTitle: 'امسح جواز سفرك', fields: ['الجنسية', 'رقم الوثيقة', 'تاريخ الميلاد'], check: 'للتحقق', send: 'إرسال', fiche: 'FICHE DE POLICE', ready: 'جاهزة',
+    s5eyebrow: '03 · السجل · المشاركة · الضرائب', s5h: ['جاهز <m>عند الطلب.</m>'],
+    reg: ['السجل', 'سجل الشرطة الشهري'], regFoot: 'يوليوز · 14 إقامة',
+    share: ['مشاركة آمنة', 'روابط مؤقتة وقابلة للإلغاء'], expires: 'تنتهي', active: 'نشط', revoked: 'ملغى', revoke: 'إلغاء',
+    tax: ['تقدير ضريبي', 'شهرياً، لمحاسبك'], estimate: 'تقدير', months: ['ف', 'م', 'أ', 'م', 'ي', 'ي'], taxNote: 'تقدير فقط. تحقّق منه مع محاسبك.',
+    s6h: ['إيجاراتك،', '<m>تحت السيطرة.</m>'], cta: 'انضم إلى البرنامج التجريبي في مراكش', foot: 'الأرقام الضريبية تقديرية. تحقّق منها مع محاسبك.',
+  },
 }[LANG];
 document.documentElement.lang = LANG;
 
@@ -72,7 +87,7 @@ L3.insertAdjacentHTML('beforeend', `
   <svg class="abs" id="tile" viewBox="0 0 64 64" width="240" height="240" style="left:840px;top:380px;overflow:visible">
     <rect width="64" height="64" rx="14" fill="#0f0f10"/><g id="tilemark" transform="translate(7 7) scale(0.78125)">${markSvg('a', '#0f0f10')}</g>
   </svg>
-  <div class="abs jk" id="wordmark" style="top:0;left:0;font-size:150px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--ink);white-space:nowrap">Riad<span style="color:var(--olive)">Tax</span></div>
+  <div class="abs jk" id="wordmark" dir="ltr" style="top:0;left:0;font-size:150px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--ink);white-space:nowrap">Riad<span style="color:var(--olive)">Tax</span></div>
   <div class="abs" id="tagline" style="left:0;right:0;top:668px;text-align:center;font:500 36px 'Inter';color:var(--slate);letter-spacing:-0.01em">${TEXT.tagline}</div>`);
 const tile = $(L3, '#tile'), tileMark = $(L3, '#tilemark'), wordmark = $(L3, '#wordmark'), tagline = $(L3, '#tagline');
 
@@ -106,8 +121,8 @@ L4.insertAdjacentHTML('beforeend', `
       </div>
       <div style="position:relative;height:16px;border-radius:8px;background:var(--merc-d);margin-top:22px;overflow:hidden">
         <div id="s3gauge" style="height:100%;width:0;border-radius:8px;background:var(--success-d)"></div>
-        <span style="position:absolute;top:0;bottom:0;width:4px;background:var(--card-d);left:75%"></span>
-        <span style="position:absolute;top:0;bottom:0;width:4px;background:var(--card-d);left:91.6%"></span>
+        <span style="position:absolute;top:0;bottom:0;width:4px;background:var(--card-d);inset-inline-start:75%"></span>
+        <span style="position:absolute;top:0;bottom:0;width:4px;background:var(--card-d);inset-inline-start:91.6%"></span>
       </div>
     </div>
   </div>`);
@@ -203,7 +218,7 @@ L6.insertAdjacentHTML('beforeend', `
     <div class="lcard">
       <div style="display:flex;gap:18px;align-items:center"><div class="chip">${icon('chart')}</div><div><div class="ctitle">${TEXT.tax[0]}</div><div class="csub">${TEXT.tax[1]}</div></div></div>
       <div style="display:flex;align-items:center;gap:14px;margin-top:26px">
-        <div class="jk" style="font-size:46px;font-weight:800;letter-spacing:-0.03em;color:var(--ink)"><span id="s5amt" style="font-variant-numeric:tabular-nums">0</span> <span style="font-size:26px;color:var(--slate)">MAD</span></div>
+        <div class="jk amount" style="font-size:46px;font-weight:800;letter-spacing:-0.03em;color:var(--ink)"><span id="s5amt" style="font-variant-numeric:tabular-nums">0</span> <span style="font-size:26px;color:var(--slate)">MAD</span></div>
         <span class="pill" style="height:34px;padding:0 14px;font-size:15px;color:var(--warning);background:var(--warning-soft)"><span class="dot"></span>${TEXT.estimate}</span>
       </div>
       <div style="display:flex;align-items:flex-end;justify-content:space-between;height:170px;margin-top:18px;padding:0 6px;border-bottom:2px solid var(--ink)">
@@ -219,7 +234,7 @@ const s5Cards = $$(L6, '.lcard'), s5Head = $(L6, '#s5head');
 const L7 = layer('var(--night)');
 const z7 = zellige(L7);
 L7.insertAdjacentHTML('beforeend', `
-  <div class="abs" id="endlogo" style="top:150px;left:0;display:flex;align-items:center;gap:40px">
+  <div class="abs" id="endlogo" dir="ltr" style="top:150px;left:0;display:flex;align-items:center;gap:40px">
     <svg viewBox="0 0 64 64" width="130" height="130" id="endmark" style="overflow:visible">${markSvg('b', '#0f0f10')}</svg>
     <div class="jk" id="endword" style="font-size:96px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--white);white-space:nowrap">Riad<span style="color:var(--lime)">Tax</span></div>
   </div>

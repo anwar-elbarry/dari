@@ -1,13 +1,13 @@
 # RiadTax promo films
 
-Two motion pieces, 1920×1080 at 60 fps, each in French and English: a 15-second promo and a 60-second film, with a female voiceover that explains what is on screen. Both are built in code, so every word, colour and cue can be edited and re-rendered.
+Two motion pieces, 1920×1080 at 60 fps, each in French, English and Arabic: a 15-second promo and a 60-second film, with a female voiceover that explains what is on screen. Both are built in code, so every word, colour and cue can be edited and re-rendered.
 
 | File | Role |
 |---|---|
-| `promo.html` / `promo-60.html` | The compositions (15 s / 60 s). `window.seek(t)` sets every element for time `t`; there is no CSS animation. Open `promo-60.html?lang=fr` in a browser and call `seek(5)` in the console to inspect a frame. |
+| `promo.html` / `promo-60.html` | The compositions (15 s / 60 s). `window.seek(t)` sets every element for time `t`; there is no CSS animation. Open `promo-60.html?lang=fr` (or `?lang=ar`, right to left) in a browser and call `seek(5)` in the console to inspect a frame. |
 | `shared.js` / `shared.css` | Helpers both compositions use: easing, headline masks and markers, the zellige field, the animated logo, tokens and fonts. |
 | `soundtrack.py` | Synthesises the music and sound design (numpy only, no samples), with cues locked to the timeline. `python3 soundtrack.py 60` writes the 60 s track. |
-| `voiceover.py` | The voiceover script (FR and EN, one line per scene with its time slot) and the mix: Kokoro TTS run locally (open weights, Apache-2.0; voices `af_heart` and `ff_siwis`), lines sped up at most 1.22× to fit, the score ducked about 9 dB under the voice, mastered to -14 LUFS. `--check` transcribes each line back with Whisper. |
+| `voiceover.py` | The voiceover script (FR and EN, one line per scene with its time slot) and the mix: Kokoro TTS run locally (open weights, Apache-2.0; voices `af_heart` and `ff_siwis`), and for Arabic the Piper voice `ar_JO-SA_dii-high` (female, Modern Standard Arabic) through sherpa-onnx, fed fully vowelled text; lines sped up at most 1.22× (1.3× in Arabic) to fit, the score ducked about 9 dB under the voice, mastered to -14 LUFS. `--check` transcribes each line back with Whisper. |
 | `render.mjs` | Captures each frame with Chromium and encodes `out/riadtax-promo[-60]-<lang>.mp4` with the soundtrack. |
 
 ## Render
@@ -54,6 +54,13 @@ Requires `ffmpeg` and a Chromium (`PW_CHROMIUM_PATH`, or Playwright's own browse
 | 48–54 | Privacy (breakdown) | Diagonal lime wipe; the drums drop out. Four tiles: encrypted ID scans, automatic deletion, every access logged, team roles. |
 | 54–56 | Montage (drop) | The six modules fly into a tilted 3D grid that lights up on the beat, then collapses. |
 | 56–60 | End card | Logo, "Your rentals, under control.", the pilot CTA with a shine, and the estimate footnote. |
+
+## Arabic version
+
+- `?lang=ar` sets `dir="rtl"`: text aligns and flows right to left, markers sweep right to left, gauges fill from the right (`inset-inline-start`), calendars and charts mirror. The RiadTax wordmark, codes, links and amounts stay left to right (`.mono`, `.amount`).
+- Font: IBM Plex Sans Arabic (the RiadTax system's Arabic face), OFL, in `fonts/`. No letter-spacing in Arabic (it breaks letter joining) and taller line height.
+- Copy in Modern Standard Arabic with Moroccan month names (يوليوز، غشت…) and Latin digits, as used in Morocco. "Fiche de police" is rendered as استمارة الشرطة.
+- The Arabic voice is understandable but less natural than the English and French ones; see the note in the hand-over.
 
 ## Wording rules kept
 

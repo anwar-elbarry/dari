@@ -37,7 +37,8 @@
 <script src="shared.js"></script>
 <script>
 'use strict';
-const LANG = new URLSearchParams(location.search).get('lang') === 'fr' ? 'fr' : 'en';
+const LANG = ['fr', 'ar'].includes(new URLSearchParams(location.search).get('lang')) ? new URLSearchParams(location.search).get('lang') : 'en';
+document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
 const TEXT = {
   en: {
     q: ['Running rentals', 'in <m>Marrakech?</m>'],
@@ -91,6 +92,32 @@ const TEXT = {
     minis: ['Calendriers', 'Compteur de nuits', 'Check-in voyageur', 'Registre de police', 'Partage sécurisé', 'Estimations fiscales'],
     endh: ['Vos locations,', '<m>sous contrôle.</m>'], cta: 'Rejoignez le pilote à Marrakech', foot: 'Les montants fiscaux sont des estimations. À confirmer avec votre comptable.',
   },
+  ar: {
+    q: ['تدير إيجارات', 'في <m>مراكش؟</m>'],
+    chaos: ['جوازات سفر <m>في واتساب.</m>', 'ليالٍ تُحصى <m>في جداول.</m>', 'استمارات <m>بخط اليد.</m>', 'ضرائب <m>بالتخمين.</m>', '<m>مألوف؟</m>'],
+    chatName: 'فريق الرياض', chatMeta: '5 أعضاء', chat: ['جواز السفر لهذه الليلة؟', 'photo_0412.jpg', 'والنزيل الثاني؟'],
+    sheetName: 'nights_2026.xlsx', sheetCols: ['الشهر', 'الليالي'], sheetMonths: ['يناير', 'فبراير', 'مارس', 'أبريل', 'ماي'], receipt: 'ضرائب 2026',
+    better: 'هناك طريقة أبسط.',
+    tagline: 'الامتثال والضرائب للإيجار قصير المدة', chips: ['عدّاد الليالي', 'تسجيل الوصول', 'سجل الشرطة', 'تقديرات ضريبية'],
+    s5eyebrow: '01 · التقويمات', s5h: ['كل تقويماتك،', '<m>في مكان واحد.</m>'], s5sub: 'مزامنة iCal واستيراد CSV، بتحديث تلقائي.',
+    feeds: ['iCal · إعلان 1', 'iCal · إعلان 2', 'استيراد CSV'], waiting: 'في الانتظار', upToDate: 'محدّث', month: 'يوليوز 2026', days: ['ن', 'ث', 'ر', 'خ', 'ج', 'س', 'ح'], toast: 'تمت مزامنة إلغاء واحد',
+    s6eyebrow: '02 · عدّاد الليالي', s6h: ['كل ليلة محسوبة.', '<m>تنبيه قبل العتبة.</m>'], s6sub: 'تنبيه بالبريد الإلكتروني عندما يقترب عقار من عتبته.',
+    nightsLabel: 'الليالي هذا العام', props: ['رياض الياسمين', 'دار ليلى', 'فيلا أطلس'], green: 'تحت العتبة', amber: 'إنذار مبكر',
+    mailTitle: 'رياض الياسمين: إنذار مبكر', mailBody: '92 ليلة هذا العام', now: 'الآن',
+    s7a: 'يسجّل النزيل وصوله <m>من هاتفه.</m>', s7b: '<m>استمارة الشرطة</m> جاهزة.',
+    arrivals: 'الوصول', stay: '12–15 يوليوز · شخصان', linkActive: 'الرابط نشط', submitted: 'مُرسَل', linkTitle: 'رابط تسجيل الوصول', sendLink: 'إرسال الرابط',
+    banner: 'تسجيل الوصول · رياض الياسمين', scan: 'امسح جواز سفرك', fields: ['الجنسية', 'رقم الوثيقة', 'تاريخ الميلاد'], check: 'للتحقق', consent: 'الموافقة', send: 'إرسال', fiche: 'FICHE DE POLICE', ready: 'جاهزة',
+    s8eyebrow: '03 · سجل الشرطة', s8h: ['سجل شهري.', '<m>مشاركة آمنة.</m>'], s8sub: 'روابط مؤقتة بدل جوازات السفر في واتساب.',
+    regTitle: 'سجل الشرطة · يوليوز 2026', cols: ['الوصول', 'النزلاء', 'الجنسية', 'الحالة'], complete: 'مكتمل', missing: 'حقل ناقص', regFoot: '6 إقامات · 14 نزيلاً', genPdf: 'إنشاء PDF', generated: 'تم الإنشاء',
+    shareTitle: 'مشاركة آمنة', expires: 'تنتهي', opened: 'فُتح', revoke: 'إلغاء', active: 'نشط', revoked: 'ملغى',
+    s9eyebrow: '04 · تقديرات ضريبية', s9h: ['تقديرات ضريبية،', '<m>جاهزة لمحاسبك.</m>'], s9sub: 'أرقام شهرية لكل عقار، بصيغتي PDF وExcel.',
+    reportTitle: 'تقدير ضريبي · 2026', estimate: 'تقدير', ytd: 'منذ بداية السنة', months: ['ي', 'ف', 'م', 'أ', 'م', 'ي', 'ي', 'غ', 'ش', 'أ', 'ن', 'د'],
+    taxNote: 'تقدير فقط. تحقّق منه مع محاسبك.', accountant: 'المحاسب', accRole: 'التقارير فقط', received: 'تم الاستلام',
+    s10eyebrow: '05 · الخصوصية', s10h: ['بيانات النزلاء،', '<m>بعناية تامة.</m>'],
+    tiles: [['وثائق هوية مشفّرة', 'لا تُقرأ إلا عبر التطبيق.'], ['حذف تلقائي', 'تُحذف بعد الإقامة.'], ['كل اطلاع مسجّل', 'من فتح ماذا، ومتى.'], ['أدوار لفريقك', 'مالك، فريق، محاسب.']],
+    minis: ['التقويمات', 'عدّاد الليالي', 'تسجيل الوصول', 'سجل الشرطة', 'مشاركة آمنة', 'تقديرات ضريبية'],
+    endh: ['إيجاراتك،', '<m>تحت السيطرة.</m>'], cta: 'انضم إلى البرنامج التجريبي في مراكش', foot: 'الأرقام الضريبية تقديرية. تحقّق منها مع محاسبك.',
+  },
 }[LANG];
 document.documentElement.lang = LANG;
 
@@ -101,7 +128,7 @@ const pop = (el, t, s, d = 0.35, from = 0.6) => css(el, { opacity: P(t, s, 0.12)
 function hl(el, t, at, { gap = 0.08, mark = at + 0.32, out = Infinity } = {}) {
   $$(el, '.li').forEach((li, i) => { const o = P(t, out + i * 0.04, 0.3, 'inCubic'); li.style.transform = `translateY(${(1 - P(t, at + i * gap, 0.55, 'outExpo')) * 110 - o * 120}%)`; });
   const p = P(t, mark, 0.42, 'inOutCubic');
-  $$(el, '.mk-fill').forEach((m) => { m.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`; m.style.visibility = p > 0 ? 'inherit' : 'hidden'; });
+  $$(el, '.mk-fill').forEach((m) => { m.style.clipPath = markerClip(p); m.style.visibility = p > 0 ? 'inherit' : 'hidden'; });
 }
 /* Zellige: optional radial draw-in, base colour, lime rings [start, speed px/s, width px, amount, life s]. */
 function zel(z, t, { draw = null, base = '#232327', rings = [], rot = 0 }) {
@@ -192,7 +219,7 @@ const S2 = scene(2.0, 7.25, 'transparent', `
       vis(w, t >= at && out < 1);
       $(w, '.li').style.transform = `translateY(${(1 - inn) * 125 - out * 125}%)`;
       const p = P(t, at + 0.25, 0.4, 'inOutCubic');
-      $$(w, '.mk-fill').forEach((m) => { m.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`; m.style.visibility = p > 0 ? 'inherit' : 'hidden'; });
+      $$(w, '.mk-fill').forEach((m) => { m.style.clipPath = markerClip(p); m.style.visibility = p > 0 ? 'inherit' : 'hidden'; });
     });
   });
 const PROPS = [
@@ -214,7 +241,7 @@ const S4 = scene(8.0, 12.0, 'var(--white)', `
   <svg class="abs" id="tile" viewBox="0 0 64 64" width="240" height="240" style="left:840px;top:330px;overflow:visible">
     <rect width="64" height="64" rx="14" fill="#0f0f10"/><g id="tilemark" transform="translate(7 7) scale(0.78125)">${markSvg('a', '#0f0f10')}</g>
   </svg>
-  <div class="abs jk" id="wordmark" style="font-size:150px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--ink);white-space:nowrap">Riad<span style="color:var(--olive)">Tax</span></div>
+  <div class="abs jk" id="wordmark" dir="ltr" style="font-size:150px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--ink);white-space:nowrap">Riad<span style="color:var(--olive)">Tax</span></div>
   <div class="abs" id="tagline" style="left:0;right:0;top:620px;text-align:center;font:500 36px 'Inter';color:var(--slate);letter-spacing:-0.01em">${TEXT.tagline}</div>
   <div class="abs" id="chips" style="left:0;right:0;top:730px;text-align:center">${TEXT.chips.map((c) => `<span class="chip2">${c}</span>`).join('')}</div>`,
   (t, el) => {
@@ -244,7 +271,7 @@ const S5 = scene(11.97, 19.32, 'var(--night)', `
   <svg class="abs" id="s5paths" viewBox="0 0 1920 1080" width="1920" height="1080" style="left:0;top:0" fill="none"></svg>
   ${TEXT.feeds.map((f, i) => `<div class="abs feed" data-feed style="left:930px;top:${328 + i * 160}px"><div class="ic">${icon(i === 2 ? 'register' : 'calendar')}</div><div><div class="jk" style="font-size:22px;font-weight:700;color:var(--white)">${f}</div><div data-st style="font:600 16px 'Inter';margin-top:4px"></div></div></div>`).join('')}
   <div class="abs dcard" id="s5cal" style="left:1370px;top:0;width:430px;padding:26px;border-radius:28px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="jk" style="font-size:24px;font-weight:700;color:var(--white)">Riad Yasmine</div><div style="font:600 16px 'Inter';color:var(--slate-d)">${TEXT.month}</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="jk" style="font-size:24px;font-weight:700;color:var(--white)">${TEXT.props[0]}</div><div style="font:600 16px 'Inter';color:var(--slate-d)">${TEXT.month}</div></div>
     <div class="mcal">${TEXT.days.map((d) => `<div class="wd">${d}</div>`).join('')}${Array.from({ length: 35 }, (_, i) => i - 1).map((d) => `<div class="c${d >= 1 && d <= 31 ? '' : ' e'}" data-d="${d}">${d >= 1 && d <= 31 ? d : ''}</div>`).join('')}</div>
   </div>
   <div class="abs" id="s5toast" style="left:1370px;top:0;width:430px;height:64px;border-radius:20px;background:var(--card-d);border:1.5px solid var(--bone-d);display:flex;align-items:center;gap:12px;padding:0 20px;font:600 19px 'Inter';color:var(--carbon-d)"><span style="width:12px;height:12px;border-radius:50%;background:var(--danger-soft)"></span>${TEXT.toast}</div>
@@ -295,7 +322,7 @@ const S6 = scene(19.0, 26.65, 'var(--mist)', `
       <div style="position:relative;width:300px;height:48px">${statusPill('abs s6g', 'var(--success)', 'var(--success-soft)', TEXT.green, 20, 48, 'right:0;top:0;')}${statusPill('abs s6a', 'var(--warning)', 'var(--warning-soft)', TEXT.amber, 20, 48, 'right:0;top:0;')}</div></div>
     <div style="font:600 22px 'Inter';color:var(--slate);margin-top:22px">${TEXT.nightsLabel}</div>
     <div class="jk" style="font-weight:800;letter-spacing:-0.04em;line-height:1;color:var(--ink);margin-top:8px"><span id="s6num" style="font-size:132px;font-variant-numeric:tabular-nums">0</span><span style="font-size:46px;color:var(--line);letter-spacing:-0.02em"> / 120</span></div>
-    <div class="track" style="margin-top:24px;height:20px"><i id="s6fill" style="width:0;background:var(--success)"></i><b style="left:75%"></b><b style="left:91.6%"></b></div>
+    <div class="track" style="margin-top:24px;height:20px"><i id="s6fill" style="width:0;background:var(--success)"></i><b style="inset-inline-start:75%"></b><b style="inset-inline-start:91.6%"></b></div>
     <div style="height:1.5px;background:var(--mercury);margin:34px 0 8px"></div>
     ${[[1, 64], [2, 41]].map(([i, n]) => `<div class="s6row" style="display:grid;grid-template-columns:220px 1fr 120px auto;align-items:center;gap:22px;height:78px;border-bottom:1.5px solid var(--mercury)"><div class="jk" style="font-size:24px;font-weight:700;color:var(--ink)">${TEXT.props[i]}</div><div class="track" style="height:12px"><i data-mini="${n}" style="width:0;background:var(--success)"></i></div><div style="font:700 22px 'Inter';color:var(--ink);font-variant-numeric:tabular-nums">${n} / 120</div>${statusPill('', 'var(--success)', 'var(--success-soft)', TEXT.green, 16, 36)}</div>`).join('')}
   </div>
@@ -337,7 +364,7 @@ const S7 = scene(26.0, 34.4, 'transparent', `
   <div class="cap-wrap hl" id="s7a" style="top:74px;font-size:80px"><span class="li" style="color:var(--white)">${marker(TEXT.s7a).replace(/^<span class="line"><span class="li">|<\/span><\/span>$/g, '')}</span></div>
   <div class="cap-wrap hl" id="s7b" style="top:74px;font-size:80px"><span class="li" style="color:var(--white)">${marker(TEXT.s7b).replace(/^<span class="line"><span class="li">|<\/span><\/span>$/g, '')}</span></div>
   ${phoneHTML('mphone', `
-    <div style="font:600 17px 'Inter';color:var(--slate)">Riad Yasmine</div>
+    <div style="font:600 17px 'Inter';color:var(--slate)">${TEXT.props[0]}</div>
     <div class="jk" style="font-size:30px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-top:4px">${TEXT.arrivals}</div>
     <div style="margin-top:22px;border-radius:18px;background:var(--mist);padding:18px;border:1.5px solid var(--mercury)">
       <div style="font:700 19px 'Inter';color:var(--ink)">${TEXT.stay}</div>
@@ -380,7 +407,7 @@ const S7 = scene(26.0, 34.4, 'transparent', `
   </div>`,
   (t, el) => {
     $$(el, '.blind').forEach((b, i) => { b.style.transform = `scaleY(${P(t, 26.0 + i * 0.03, 0.35, 'inOutCubic')})`; });
-    const roll = (w, at, out) => { const inn = P(t, at, 0.45, 'outExpo'), o = P(t, out, 0.35, 'outExpo'); vis(w, t >= at && o < 1); $(w, '.li').style.transform = `translateY(${(1 - inn) * 125 - o * 125}%)`; const p = P(t, at + 0.35, 0.42, 'inOutCubic'); $$(w, '.mk-fill').forEach((m) => { m.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`; m.style.visibility = p > 0 ? 'inherit' : 'hidden'; }); };
+    const roll = (w, at, out) => { const inn = P(t, at, 0.45, 'outExpo'), o = P(t, out, 0.35, 'outExpo'); vis(w, t >= at && o < 1); $(w, '.li').style.transform = `translateY(${(1 - inn) * 125 - o * 125}%)`; const p = P(t, at + 0.35, 0.42, 'inOutCubic'); $$(w, '.mk-fill').forEach((m) => { m.style.clipPath = markerClip(p); m.style.visibility = p > 0 ? 'inherit' : 'hidden'; }); };
     roll($(el, '#s7a'), 26.4, 31.2); roll($(el, '#s7b'), 31.2, 99);
     const mp = $(el, '#mphone'), gp = $(el, '#gphone');
     const me = P(t, 26.3, 0.6, 'outExpo'), ge = P(t, 26.45, 0.6, 'outExpo');
@@ -484,7 +511,7 @@ const S9 = scene(41.0, 48.5, 'transparent', `
   <div class="abs wcard" id="s9card" style="left:960px;top:150px;width:840px;padding:38px">
     <div style="display:flex;justify-content:space-between;align-items:center"><div class="jk" style="font-size:28px;font-weight:700;color:var(--ink)">${TEXT.reportTitle}</div>${statusPill('', 'var(--warning)', 'var(--warning-soft)', TEXT.estimate, 17, 40)}</div>
     <div style="font:600 19px 'Inter';color:var(--slate);margin-top:22px">${TEXT.ytd}</div>
-    <div class="jk" style="font-weight:800;letter-spacing:-0.04em;color:var(--ink);line-height:1.05"><span id="s9amt" style="font-size:84px;font-variant-numeric:tabular-nums">0</span><span style="font-size:34px;color:var(--slate)"> MAD</span></div>
+    <div class="jk amount" style="font-weight:800;letter-spacing:-0.04em;color:var(--ink);line-height:1.05"><span id="s9amt" style="font-size:84px;font-variant-numeric:tabular-nums">0</span><span style="font-size:34px;color:var(--slate)"> MAD</span></div>
     <div style="display:flex;align-items:flex-end;justify-content:space-between;height:200px;margin-top:22px;border-bottom:2px solid var(--ink);padding:0 4px">
       ${TEXT.months.map((m, i) => i < 7 ? `<div class="tbar s9bar" style="width:42px;height:${TAX12[i]}%"></div>` : `<div style="width:42px;height:${50 + i * 3}%;border-radius:12px 12px 6px 6px;border:2px dashed var(--cloud);border-bottom:none"></div>`).join('')}
     </div>
@@ -583,7 +610,7 @@ const S12 = scene(56.0, 60.01, 'var(--night)', '', (t, el) => {
 });
 const z12 = zellige(S12);
 S12.insertAdjacentHTML('beforeend', `
-  <div class="abs" id="endlogo" style="top:150px;left:0;display:flex;align-items:center;gap:40px">
+  <div class="abs" id="endlogo" dir="ltr" style="top:150px;left:0;display:flex;align-items:center;gap:40px">
     <svg viewBox="0 0 64 64" width="130" height="130" id="endmark" style="overflow:visible">${markSvg('b', '#0f0f10')}</svg>
     <div class="jk" id="endword" style="font-size:96px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--white);white-space:nowrap">Riad<span style="color:var(--lime)">Tax</span></div>
   </div>
