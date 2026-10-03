@@ -1,10 +1,11 @@
 // Renders promo.html frame by frame with Chromium and encodes an MP4 with ffmpeg.
 // Usage: node render.mjs [en|fr] [15|60]       -> out/riadtax-promo[-60]-<lang>.mp4 (with out/soundtrack[-60].wav if present)
 //        STILLS=1,3.5,8 node render.mjs en 60  -> out/still[-60]-<lang>-<t>.png only
+//        AUDIO_ONLY=1 node render.mjs en 60     -> re-mux the current soundtrack into the existing video
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 
@@ -14,6 +15,18 @@ const cut = process.argv[3] === '60' ? '-60' : '';
 const fps = Number(process.env.FPS || 60);
 const outDir = path.join(here, 'out');
 mkdirSync(outDir, { recursive: true });
+
+// AUDIO_ONLY=1 swaps the soundtrack into an already rendered video (no frame capture).
+if (process.env.AUDIO_ONLY) {
+  const video = path.join(outDir, `riadtax-promo${cut}-${lang}.mp4`);
+  const tmp = video.replace(/\.mp4$/, '.tmp.mp4');
+  const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-i', video, '-i', path.join(outDir, `soundtrack${cut}.wav`), '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', tmp], { stdio: 'inherit' });
+  const [code] = await once(ff, 'close');
+  if (code !== 0) process.exit(code);
+  renameSync(tmp, video);
+  console.log(`new soundtrack in ${video}`);
+  process.exit(0);
+}
 
 const browser = await chromium.launch({
   executablePath: process.env.PW_CHROMIUM_PATH || undefined,

@@ -6,7 +6,7 @@ Two motion pieces, 1920×1080 at 60 fps, each in French and English: a 15-second
 |---|---|
 | `promo.html` / `promo-60.html` | The compositions (15 s / 60 s). `window.seek(t)` sets every element for time `t`; there is no CSS animation. Open `promo-60.html?lang=fr` in a browser and call `seek(5)` in the console to inspect a frame. |
 | `shared.js` / `shared.css` | Helpers both compositions use: easing, headline masks and markers, the zellige field, the animated logo, tokens and fonts. |
-| `soundtrack.py` | Synthesises the music and sound design (numpy only, no samples), with cues locked to the timeline. `python3 soundtrack.py 60` writes the 60 s track. |
+| `soundtrack.py` | The score: a "gnawa-house" palette synthesised from scratch (numpy only, no samples, free to use): guembri bass, qraqeb castanets (also the UI clicks), darbuka, kick and claps, oud phrases in Hijaz, a ney in the breakdown, over the Andalusian cadence (Am G F E). Cues are locked to the timeline; mastered to -14 LUFS. `python3 soundtrack.py 60` writes the 60 s track. |
 | `render.mjs` | Captures each frame with Chromium and encodes `out/riadtax-promo[-60]-<lang>.mp4` with the soundtrack. |
 
 ## Render
@@ -19,6 +19,7 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node render.mjs en
 PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node render.mjs fr
 python3 soundtrack.py 60 && PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node render.mjs en 60   # 60 s film, about 20 min
 STILLS=2.3,8.4 node render.mjs en 60         # PNG stills only, for review
+AUDIO_ONLY=1 node render.mjs en 60           # after changing the score: swap the audio, no re-render
 ```
 
 Requires `ffmpeg` and a Chromium (`PW_CHROMIUM_PATH`, or Playwright's own browser).
