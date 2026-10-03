@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RiadTax film</title>
+<!--
+  60 s film, 1920x1080, 120 BPM (a scene starts on a bar line). Same rules as promo.html: window.seek(t) sets the
+  whole stage, nothing animates by itself. Language: promo-60.html?lang=fr (default en). Shared helpers in shared.js.
+-->
+<link rel="stylesheet" href="shared.css">
+<style>
+.row4 { display: grid; grid-template-columns: 150px 130px 190px 1fr; align-items: center; height: 62px; border-bottom: 1.5px solid var(--mercury); font: 600 21px 'Inter'; color: var(--ink); padding: 0 6px; }
+.row4.head { font: 600 16px 'Inter'; color: var(--slate); height: 44px; }
+.feed { width: 330px; height: 104px; border-radius: 24px; background: var(--card-d); border: 1.5px solid var(--bone-d); display: flex; align-items: center; gap: 16px; padding: 0 20px; }
+.feed .ic { width: 54px; height: 54px; border-radius: 16px; background: var(--merc-d); display: grid; place-items: center; flex: none; }
+.feed .ic svg, .tile .ic svg, .mini .ic svg { width: 30px; height: 30px; fill: none; stroke: var(--lime); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.mcal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.mcal .c { height: 40px; border-radius: 10px; background: var(--merc-d); font: 600 13px 'Inter'; color: var(--ash-d); padding: 5px 7px; }
+.mcal .c.e { background: transparent; }
+.mcal .wd { font: 600 14px 'Inter'; color: var(--ash-d); text-align: center; }
+.wcard { background: var(--white); border-radius: 32px; box-shadow: 0 34px 70px rgba(15, 15, 16, 0.10), 0 0 0 1px rgba(15, 15, 16, 0.05); padding: 40px; }
+.track { position: relative; height: 16px; border-radius: 8px; background: var(--mercury); overflow: hidden; }
+.track > i { display: block; height: 100%; border-radius: 8px; }
+.track > b { position: absolute; top: 0; bottom: 0; width: 4px; background: var(--white); }
+.tile { width: 380px; height: 330px; border-radius: 32px; background: var(--card-d); border: 1.5px solid var(--bone-d); padding: 34px; display: flex; flex-direction: column; }
+.tile .ic { width: 96px; height: 96px; border-radius: 26px; background: var(--merc-d); display: grid; place-items: center; }
+.tile .ic svg { width: 56px; height: 56px; stroke-width: 2.6; }
+.mini { width: 440px; height: 290px; border-radius: 30px; background: var(--white); box-shadow: 0 30px 60px rgba(15, 15, 16, 0.14); padding: 32px; display: flex; flex-direction: column; justify-content: space-between; }
+.mini .ic { width: 70px; height: 70px; border-radius: 20px; background: var(--night); display: grid; place-items: center; }
+.mini .ic svg { width: 38px; height: 38px; }
+.cap-wrap { position: absolute; left: 0; right: 0; text-align: center; overflow: hidden; padding: 0.04em 0 0.14em; }
+.chip2 { display: inline-flex; align-items: center; height: 56px; padding: 0 26px; border-radius: 999px; background: var(--mercury); color: var(--carbon); font: 700 24px 'Jakarta'; margin: 0 7px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="shared.js"></script>
+<script>
+'use strict';
+const LANG = new URLSearchParams(location.search).get('lang') === 'fr' ? 'fr' : 'en';
+const TEXT = {
+  en: {
+    q: ['Running rentals', 'in <m>Marrakech?</m>'],
+    chaos: ['Passports in <m>group chats.</m>', 'Nights counted in <m>spreadsheets.</m>', 'Police forms <m>by hand.</m>', 'Taxes guessed at <m>year end.</m>', '<m>Sound familiar?</m>'],
+    chatName: 'Riad team', chatMeta: '5 members', chat: ['Passport for tonight?', 'photo_0412.jpg', 'And the second guest?'],
+    sheetName: 'nights_2026.xlsx', sheetCols: ['Month', 'Nights'], sheetMonths: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], receipt: 'Tax 2026',
+    better: 'There’s a better way.',
+    tagline: 'Short-term rental compliance and tax', chips: ['Night counter', 'Guest check-in', 'Police register', 'Tax estimates'],
+    s5eyebrow: '01 · Calendars', s5h: ['All your calendars,', '<m>one place.</m>'], s5sub: 'iCal sync and CSV import, updated automatically.',
+    feeds: ['iCal · Listing 1', 'iCal · Listing 2', 'CSV import'], waiting: 'Waiting', upToDate: 'Up to date', month: 'July 2026', days: ['M', 'T', 'W', 'T', 'F', 'S', 'S'], toast: '1 cancellation synced',
+    s6eyebrow: '02 · Night counter', s6h: ['Every night counted.', '<m>Alerts before the limit.</m>'], s6sub: 'An email alert when a property gets close to its threshold.',
+    nightsLabel: 'Nights this year', props: ['Riad Yasmine', 'Dar Lila', 'Villa Atlas'], green: 'Below the threshold', amber: 'Early warning',
+    mailTitle: 'Riad Yasmine: early warning', mailBody: '92 nights this year', now: 'now',
+    s7a: 'Guests check in <m>from their phone.</m>', s7b: '<m>Fiche de police,</m> generated.',
+    arrivals: 'Arrivals', stay: '12–15 July · 2 adults', linkActive: 'Link active', submitted: 'Submitted', linkTitle: 'Check-in link', sendLink: 'Send link',
+    banner: 'Check-in · Riad Yasmine', scan: 'Scan your passport', fields: ['Nationality', 'Document number', 'Date of birth'], check: 'Check', consent: 'Consent', send: 'Send', fiche: 'FICHE DE POLICE', ready: 'Ready',
+    s8eyebrow: '03 · Police register', s8h: ['Monthly register.', '<m>Shared securely.</m>'], s8sub: 'Expiring links instead of passports in WhatsApp.',
+    regTitle: 'Police register · July 2026', cols: ['Arrival', 'Guests', 'Nationality', 'Status'], complete: 'Complete', missing: 'Missing field', regFoot: '6 stays · 14 guests', genPdf: 'Generate PDF', generated: 'Generated',
+    shareTitle: 'Secure share', expires: 'Expires', opened: 'Opened', revoke: 'Revoke', active: 'Active', revoked: 'Revoked',
+    s9eyebrow: '04 · Tax estimates', s9h: ['Tax estimates,', '<m>ready for your accountant.</m>'], s9sub: 'Monthly figures per property, exported to PDF and Excel.',
+    reportTitle: 'Tax estimate · 2026', estimate: 'Estimate', ytd: 'Year to date', months: ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'],
+    taxNote: 'Estimate only. Confirm with your accountant.', accountant: 'Accountant', accRole: 'Reports only', received: 'Received',
+    s10eyebrow: '05 · Privacy', s10h: ['Guest data,', '<m>handled with care.</m>'],
+    tiles: [['Encrypted ID scans', 'Readable only through the app.'], ['Automatic deletion', 'Purged after the stay.'], ['Every access logged', 'Who opened what, and when.'], ['Roles for your team', 'Owner, Staff, Accountant.']],
+    minis: ['Calendars', 'Night counter', 'Guest check-in', 'Police register', 'Secure share', 'Tax estimates'],
+    endh: ['Your rentals,', '<m>under control.</m>'], cta: 'Join the Marrakech pilot', foot: 'Tax figures are estimates. Confirm with your accountant.',
+  },
+  fr: {
+    q: ['Location courte durée', 'à <m>Marrakech ?</m>'],
+    chaos: ['Des passeports <m>sur WhatsApp.</m>', 'Des nuits comptées <m>dans un tableur.</m>', 'Des fiches de police <m>à la main.</m>', 'Des impôts estimés <m>en fin d’année.</m>', '<m>Ça vous parle ?</m>'],
+    chatName: 'Équipe riad', chatMeta: '5 membres', chat: ['Le passeport pour ce soir ?', 'photo_0412.jpg', 'Et le deuxième voyageur ?'],
+    sheetName: 'nuits_2026.xlsx', sheetCols: ['Mois', 'Nuits'], sheetMonths: ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai'], receipt: 'Impôts 2026',
+    better: 'Il y a plus simple.',
+    tagline: 'Conformité et fiscalité de la location courte durée', chips: ['Compteur de nuits', 'Check-in voyageur', 'Registre de police', 'Estimations fiscales'],
+    s5eyebrow: '01 · Calendriers', s5h: ['Tous vos calendriers,', '<m>au même endroit.</m>'], s5sub: 'Synchro iCal et import CSV, mis à jour automatiquement.',
+    feeds: ['iCal · Annonce 1', 'iCal · Annonce 2', 'Import CSV'], waiting: 'En attente', upToDate: 'À jour', month: 'Juillet 2026', days: ['L', 'M', 'M', 'J', 'V', 'S', 'D'], toast: '1 annulation synchronisée',
+    s6eyebrow: '02 · Compteur de nuits', s6h: ['Chaque nuit comptée.', '<m>Alerté avant le seuil.</m>'], s6sub: 'Une alerte e-mail quand un bien approche de son seuil.',
+    nightsLabel: 'Nuits cette année', props: ['Riad Yasmine', 'Dar Lila', 'Villa Atlas'], green: 'Sous le seuil', amber: 'Seuil préventif',
+    mailTitle: 'Riad Yasmine : seuil préventif', mailBody: '92 nuits cette année', now: 'maintenant',
+    s7a: 'Le voyageur s’enregistre <m>depuis son téléphone.</m>', s7b: '<m>Fiche de police,</m> générée.',
+    arrivals: 'Arrivées', stay: '12–15 juillet · 2 adultes', linkActive: 'Lien actif', submitted: 'Envoyé', linkTitle: 'Lien de check-in', sendLink: 'Envoyer le lien',
+    banner: 'Check-in · Riad Yasmine', scan: 'Scannez votre passeport', fields: ['Nationalité', 'Numéro du document', 'Date de naissance'], check: 'À vérifier', consent: 'Consentement', send: 'Envoyer', fiche: 'FICHE DE POLICE', ready: 'Prête',
+    s8eyebrow: '03 · Registre de police', s8h: ['Registre mensuel.', '<m>Partagé en sécurité.</m>'], s8sub: 'Des liens qui expirent, plutôt que des passeports sur WhatsApp.',
+    regTitle: 'Registre de police · Juillet 2026', cols: ['Arrivée', 'Voyageurs', 'Nationalité', 'Statut'], complete: 'Complet', missing: 'Champ manquant', regFoot: '6 séjours · 14 voyageurs', genPdf: 'Générer le PDF', generated: 'Généré',
+    shareTitle: 'Partage sécurisé', expires: 'Expire', opened: 'Ouvert', revoke: 'Révoquer', active: 'Actif', revoked: 'Révoqué',
+    s9eyebrow: '04 · Estimations fiscales', s9h: ['Estimations fiscales,', '<m>prêtes pour votre comptable.</m>'], s9sub: 'Chiffres mensuels par bien, export PDF et Excel.',
+    reportTitle: 'Estimation fiscale · 2026', estimate: 'Estimation', ytd: 'Depuis janvier', months: ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'],
+    taxNote: 'Estimation uniquement. À confirmer avec votre comptable.', accountant: 'Comptable', accRole: 'Rapports uniquement', received: 'Reçu',
+    s10eyebrow: '05 · Confidentialité', s10h: ['Données voyageurs,', '<m>traitées avec soin.</m>'],
+    tiles: [['Pièces d’identité chiffrées', 'Lisibles uniquement via l’application.'], ['Suppression automatique', 'Purgées après le séjour.'], ['Chaque accès journalisé', 'Qui a ouvert quoi, et quand.'], ['Des rôles pour l’équipe', 'Gérant, équipe, comptable.']],
+    minis: ['Calendriers', 'Compteur de nuits', 'Check-in voyageur', 'Registre de police', 'Partage sécurisé', 'Estimations fiscales'],
+    endh: ['Vos locations,', '<m>sous contrôle.</m>'], cta: 'Rejoignez le pilote à Marrakech', foot: 'Les montants fiscaux sont des estimations. À confirmer avec votre comptable.',
+  },
+}[LANG];
+document.documentElement.lang = LANG;
+
+/* ---------- film helpers ---------- */
+const fade = (el, t, s, d = 0.4, dist = 24) => css(el, { opacity: P(t, s, d), transform: `translateY(${(1 - P(t, s, d + 0.15, 'outExpo')) * dist}px)` });
+const pop = (el, t, s, d = 0.35, from = 0.6) => css(el, { opacity: P(t, s, 0.12), transform: `scale(${L(from, 1, P(t, s, d, 'outBack'))})` });
+/* Headline: lines slide up out of their masks from `at` (one `gap` apart), the marker sweeps at `mark`, optional exit at `out`. */
+function hl(el, t, at, { gap = 0.08, mark = at + 0.32, out = Infinity } = {}) {
+  $$(el, '.li').forEach((li, i) => { const o = P(t, out + i * 0.04, 0.3, 'inCubic'); li.style.transform = `translateY(${(1 - P(t, at + i * gap, 0.55, 'outExpo')) * 110 - o * 120}%)`; });
+  const p = P(t, mark, 0.42, 'inOutCubic');
+  $$(el, '.mk-fill').forEach((m) => { m.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`; m.style.visibility = p > 0 ? 'inherit' : 'hidden'; });
+}
+/* Zellige: optional radial draw-in, base colour, lime rings [start, speed px/s, width px, amount, life s]. */
+function zel(z, t, { draw = null, base = '#232327', rings = [], rot = 0 }) {
+  z.g.setAttribute('transform', `rotate(${rot} 960 540)`);
+  for (const it of z.items) {
+    let pulse = 0;
+    for (const [s, v, w, a, life] of rings) { const age = t - s; if (age > 0 && age < life) pulse += a * Math.exp(-Math.pow((it.d - age * v) / w, 2)) * (1 - age / life); }
+    it.el.style.strokeDashoffset = draw ? 1 - P(t, draw[0] + (it.d / 1100) * draw[1], 0.55, 'outCubic') : 0;
+    it.el.setAttribute('stroke', mix(base, '#e4f222', Math.min(1, pulse)));
+  }
+}
+const phoneHTML = (id, inner, style) => `<div class="abs phone" id="${id}" style="${style}"><div class="screen"><div class="abs" style="left:50%;top:14px;width:120px;height:32px;margin-left:-60px;border-radius:16px;background:var(--night)"></div>${inner}</div></div>`;
+const statusPill = (cls, color, bg, text, size = 20, h = 46, extra = cls.includes('abs') ? 'left:0;top:0;' : '') => `<span class="pill ${cls}" style="${extra}height:${h}px;padding:0 ${Math.round(size * 0.9)}px;font-size:${size}px;color:${color};background:${bg}"><span class="dot"></span>${text}</span>`;
+Object.assign(ICONS, {
+  mail: '<rect x="8" y="14" width="48" height="36" rx="6"/><path d="M10 18L32 34L54 18"/>',
+  lock: '<rect x="14" y="28" width="36" height="28" rx="6"/><path class="shackle" d="M22 28V20a10 10 0 0 1 20 0v8"/><path d="M32 38v8"/>',
+  clock: '<circle cx="32" cy="32" r="22" class="sweep" pathLength="1" stroke-dasharray="1"/><path d="M32 20V32L40 38"/>',
+  log: '<path class="l1" d="M24 18H50" pathLength="1" stroke-dasharray="1"/><path class="l2" d="M24 32H50" pathLength="1" stroke-dasharray="1"/><path class="l3" d="M24 46H42" pathLength="1" stroke-dasharray="1"/><path d="M14 18h.01M14 32h.01M14 46h.01" stroke-width="6"/>',
+  people: '<circle class="p1" cx="18" cy="24" r="7"/><path class="p1" d="M8 48a10 10 0 0 1 20 0"/><circle class="p2" cx="32" cy="20" r="8"/><path class="p2" d="M20 48a12 12 0 0 1 24 0"/><circle class="p3" cx="46" cy="24" r="7"/><path class="p3" d="M36 48a10 10 0 0 1 20 0"/>',
+  download: '<path d="M32 10V40M20 28L32 40L44 28M14 52H50"/>',
+  user: '<circle cx="32" cy="22" r="10"/><path d="M14 54a18 18 0 0 1 36 0"/>',
+});
+const scenes = [];
+function scene(start, end, bg, html, play) {
+  const el = layer(bg);
+  if (html) el.insertAdjacentHTML('beforeend', html);
+  scenes.push({ start, end, el, play });
+  return el;
+}
+const marker = (t) => headline([t]);
+
+/* ================= S1 0 → 2.6: the question (night) ================= */
+const S1 = scene(0, 2.6, 'var(--night)', '', (t, el) => {
+  zel(z1, t, { draw: [0, 0.7], rings: [0, 0.5, 1, 1.5].map((s) => [s, 2400, 150, 0.55, 0.9]), rot: t * 1.6 });
+  z1.svg.style.opacity = 1 - P(t, 2.0, 0.5, 'lin');
+  hl($(el, '#s1h'), t, 0.0, { gap: 0.5, mark: 1.0, out: 1.85 });
+  $(el, '#s1h').style.transform = `scale(${L(1, 1.05, P(t, 0, 2.2, 'lin'))})`;
+});
+const z1 = zellige(S1);
+S1.insertAdjacentHTML('beforeend', `<div class="abs" style="left:0;right:0;top:330px;text-align:center"><div class="hl" id="s1h" style="font-size:156px;color:var(--white);display:inline-block">${headline(TEXT.q)}</div></div>`);
+
+/* ================= S2 2.0 → 7.25: the chaos (transparent over night) ================= */
+const SHEET_VALUES = ['18', '21', '24', '19', '?'];
+const S2 = scene(2.0, 7.25, 'transparent', `
+  <div class="abs prop" id="pchat" style="width:470px;height:430px;border-radius:32px;background:var(--card-d);border:1.5px solid var(--bone-d);padding:26px">
+    <div style="display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:1.5px solid var(--bone-d)"><div style="width:48px;height:48px;border-radius:50%;background:var(--merc-d)"></div><div><div class="jk" style="font-size:22px;font-weight:700;color:var(--white)">${TEXT.chatName}</div><div style="font:500 16px 'Inter';color:var(--ash-d)">${TEXT.chatMeta}</div></div></div>
+    <div class="bub" style="margin-top:18px;max-width:300px;padding:14px 18px;border-radius:18px 18px 18px 6px;background:var(--merc-d);font:500 19px 'Inter';color:var(--carbon-d)">${TEXT.chat[0]}</div>
+    <div class="bub" style="margin:12px 0 0 auto;width:250px;padding:10px;border-radius:18px 18px 6px 18px;background:var(--cloud-d)">
+      <div style="height:120px;border-radius:12px;background:var(--plaster);display:flex;gap:12px;padding:14px"><div style="width:62px;height:80px;border-radius:8px;background:var(--fog)"></div><div style="flex:1"><div class="bar" style="background:var(--cloud);width:80%"></div><div class="bar" style="background:var(--cloud)"></div><div class="bar" style="background:var(--cloud);width:60%"></div></div></div>
+      <div class="mono" style="font-size:14px;color:var(--fog);margin-top:8px">${TEXT.chat[1]}</div></div>
+    <div class="bub" style="margin-top:12px;max-width:320px;padding:14px 18px;border-radius:18px 18px 18px 6px;background:var(--merc-d);font:500 19px 'Inter';color:var(--carbon-d);display:inline-block">${TEXT.chat[2]}</div>
+  </div>
+  <div class="abs prop" id="psheet" style="width:500px;height:390px;border-radius:24px;background:var(--white);overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.4)">
+    <div class="mono" style="height:52px;background:var(--mercury);display:flex;align-items:center;padding:0 22px;font-size:17px;color:var(--carbon)">${TEXT.sheetName}</div>
+    <div class="mono" style="height:40px;border-bottom:1.5px solid var(--cloud);display:flex;align-items:center;padding:0 22px;font-size:15px;color:var(--slate)">fx&nbsp;&nbsp;=SUM(B2:B6)</div>
+    ${[TEXT.sheetCols, ...TEXT.sheetMonths.map((m, i) => [m, SHEET_VALUES[i]])].map((r, i) => `<div style="display:grid;grid-template-columns:60px 1fr 1fr;height:49px;border-bottom:1.5px solid var(--mercury);font:${i ? 500 : 700} 19px 'Inter';color:var(--ink);align-items:center"><span style="color:var(--line);text-align:center;font-size:15px">${i + 1}</span><span>${r[0]}</span><span class="${r[1] === '?' ? 'qcell' : ''}" style="${r[1] === '?' ? 'background:var(--danger-soft);color:var(--danger);font-weight:800;height:100%;display:flex;align-items:center;padding-left:10px' : ''}">${r[1]}</span></div>`).join('')}
+  </div>
+  <div class="abs prop paper" id="pform" style="width:390px;height:490px">
+    <div class="mono" style="font-size:15px;font-weight:700;letter-spacing:0.14em;color:var(--slate)">FICHE DE POLICE</div>
+    <div style="height:2px;background:var(--ink);margin:12px 0 10px"></div>
+    <svg viewBox="0 0 340 380" width="340" height="380" fill="none" stroke="#2a3a8a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      ${['M10 40 C40 20 60 60 90 38 S140 30 170 44 S220 26 250 40', 'M10 100 C30 80 70 120 100 96 S150 90 190 104', 'M10 160 C50 140 80 180 120 154 S170 150 210 166 S260 148 300 160', 'M10 220 C30 200 60 240 90 214', 'M10 280 C40 262 70 298 110 276 S160 270 200 286', 'M200 350 C220 320 240 360 260 330 S300 350 320 326'].map((d) => `<path class="ink" d="${d}" pathLength="1" stroke-dasharray="1"/>`).join('')}
+      ${[54, 114, 174, 234, 294].map((y) => `<path d="M10 ${y}H330" stroke="#d4d4d4" stroke-width="1.5"/>`).join('')}
+    </svg>
+  </div>
+  <div class="abs prop" id="preceipt" style="width:330px;height:450px;background:var(--white);border-radius:14px 14px 0 0;padding:30px;clip-path:polygon(0 0,100% 0,100% 94%,90% 100%,80% 94%,70% 100%,60% 94%,50% 100%,40% 94%,30% 100%,20% 94%,10% 100%,0 94%)">
+    <div class="jk" style="font-size:26px;font-weight:800;color:var(--ink)">${TEXT.receipt}</div>
+    ${[70, 55, 80, 45].map((w) => `<div style="position:relative;height:30px;margin-top:18px"><div class="bar" style="width:${w}%;height:12px;background:var(--cloud)"></div><div class="strike" style="position:absolute;left:-6px;top:2px;height:3px;width:${w + 8}%;background:var(--danger);transform-origin:left"></div></div>`).join('')}
+    <div class="jk" style="position:absolute;bottom:56px;left:30px;font-size:100px;font-weight:800;letter-spacing:-0.04em;color:var(--ink)">≈ ?</div>
+  </div>
+  ${TEXT.chaos.map((c) => `<div class="cap-wrap hl" style="top:884px;font-size:76px"><span class="li" style="color:var(--white)">${headline([c]).replace(/^<span class="line"><span class="li">|<\/span><\/span>$/g, '')}</span></div>`).join('')}`,
+  (t, el) => {
+    const shake = P(t, 6.2, 0.5, 'lin') * (1 - P(t, 6.85, 0.1, 'lin'));
+    const suck = P(t, 6.85, 0.32, 'inExpo');
+    PROPS.forEach((p, i) => {
+      const e = P(t, p.at, 0.6, 'outExpo'), eb = P(t, p.at, 0.7, 'outBack');
+      const jx = Math.sin(t * 83 + i * 7) * 9 * shake, jy = Math.cos(t * 71 + i * 3) * 7 * shake;
+      const fx = L(p.x + p.from[0], p.x, e) + Math.sin(t * 1.1 + i) * 8 + jx, fy = L(p.y + p.from[1], p.y, e) + Math.cos(t * 0.9 + i) * 8 + jy;
+      const x = L(fx, 960, suck) - p.w / 2, y = L(fy, 540, suck) - p.h / 2;
+      css(p.el, { left: x + 'px', top: y + 'px', opacity: t < p.at ? 0 : Math.min(1, e * 2) * (1 - suck), transform: `rotate(${L(p.r + p.spin, p.r, eb)}deg) scale(${L(0.7, 1, eb) * (1 - suck * 0.8)})`, filter: `grayscale(${shake}) brightness(${1 - shake * 0.25})` });
+    });
+    $$(el, '#pchat .bub').forEach((b, i) => pop(b, t, [2.4, 2.55, 2.95][i], 0.3, 0.7));
+    css($(el, '.qcell'), { transform: `scale(${1 + Math.max(0, Math.sin((t - 3.6) * 12)) * 0.08 * (t > 3.6 && t < 4.4 ? 1 : 0)})` });
+    $$(el, '#pform .ink').forEach((p, i) => { p.style.strokeDashoffset = 1 - P(t, 4.35 + i * 0.12, 0.3, 'inOutCubic'); });
+    $$(el, '#preceipt .strike').forEach((s, i) => { s.style.transform = `scaleX(${P(t, 5.4 + i * 0.1, 0.18, 'outCubic')})`; });
+    $$(el, '.cap-wrap').forEach((w, i) => {
+      const at = 2.2 + i, inn = P(t, at, 0.3, 'outExpo'), out = i < 4 ? P(t, at + 1, 0.3, 'outExpo') : P(t, 6.9, 0.25, 'inCubic');
+      vis(w, t >= at && out < 1);
+      $(w, '.li').style.transform = `translateY(${(1 - inn) * 125 - out * 125}%)`;
+      const p = P(t, at + 0.25, 0.4, 'inOutCubic');
+      $$(w, '.mk-fill').forEach((m) => { m.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`; m.style.visibility = p > 0 ? 'inherit' : 'hidden'; });
+    });
+  });
+const PROPS = [
+  { el: $(S2, '#pchat'), x: 560, y: 450, w: 470, h: 430, r: -7, spin: -40, from: [-900, 60], at: 2.2 },
+  { el: $(S2, '#psheet'), x: 1370, y: 420, w: 500, h: 390, r: 6, spin: 40, from: [900, -80], at: 3.2 },
+  { el: $(S2, '#pform'), x: 860, y: 520, w: 390, h: 490, r: 9, spin: 30, from: [100, -900], at: 4.2 },
+  { el: $(S2, '#preceipt'), x: 1150, y: 560, w: 330, h: 450, r: -10, spin: -30, from: [0, 900], at: 5.2 },
+];
+
+/* ================= S3 7.0 → 8.6: lime "There's a better way." ================= */
+const S3 = scene(7.0, 8.6, 'radial-gradient(circle at 50% 50%, #e4f222 0%, #e4f222 55%, #cddd12 100%)', `<div class="abs word-wrap hl" style="font-size:150px"><span class="word" style="color:var(--ink)">${TEXT.better}</span></div>`, (t, el) => {
+  el.style.clipPath = circle(L(0, 1150, P(t, 7.0, 0.45, 'outExpo')));
+  const inn = P(t, 7.1, 0.35, 'outExpo'), out = P(t, 7.95, 0.25, 'inCubic');
+  css($(el, '.word'), { transform: `translateY(${(1 - inn) * 125 - out * 125}%) scale(${L(1.08, 1, inn)})` });
+});
+
+/* ================= S4 8.0 → 12.0: logo lockup (white), zoom through the tile ================= */
+const S4 = scene(8.0, 12.0, 'var(--white)', `
+  <svg class="abs" id="tile" viewBox="0 0 64 64" width="240" height="240" style="left:840px;top:330px;overflow:visible">
+    <rect width="64" height="64" rx="14" fill="#0f0f10"/><g id="tilemark" transform="translate(7 7) scale(0.78125)">${markSvg('a', '#0f0f10')}</g>
+  </svg>
+  <div class="abs jk" id="wordmark" style="font-size:150px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--ink);white-space:nowrap">Riad<span style="color:var(--olive)">Tax</span></div>
+  <div class="abs" id="tagline" style="left:0;right:0;top:620px;text-align:center;font:500 36px 'Inter';color:var(--slate);letter-spacing:-0.01em">${TEXT.tagline}</div>
+  <div class="abs" id="chips" style="left:0;right:0;top:730px;text-align:center">${TEXT.chips.map((c) => `<span class="chip2">${c}</span>`).join('')}</div>`,
+  (t, el) => {
+    el.style.clipPath = circle(L(0, 1150, P(t, 8.0, 0.45, 'outExpo')));
+    const tile = $(el, '#tile'), mark = $(el, '#tilemark');
+    playMark(mark, t, 8.17);
+    const popv = P(t, 8.05, 0.42, 'outBack'), lock = P(t, 9.0, 0.45, 'inOutCubic');
+    const zoom = P(t, 11.62, 0.34, 'inExpo'), back = P(t, 11.62, 0.3, 'inOutCubic');
+    const tx = L(L(0, M.lockTx, lock), 0, back);
+    css(tile, { transform: `translateX(${tx}px) rotate(${L(-90, 0, P(t, 8.05, 0.55, 'outExpo'))}deg) scale(${Math.max(0, popv) * L(1, 11.5, zoom)})` });
+    mark.style.opacity = 1 - P(t, 11.62, 0.1, 'lin');
+    const wr = P(t, 9.15, 0.45, 'outExpo'), gone = P(t, 11.45, 0.14, 'lin');
+    css($(el, '#wordmark'), { clipPath: `inset(-10% ${(1 - wr) * 100}% -10% 0)`, transform: `translateX(${(1 - wr) * -50}px)`, opacity: 1 - gone });
+    css($(el, '#tagline'), { opacity: P(t, 9.33, 0.35) * (1 - gone), transform: `translateY(${(1 - P(t, 9.33, 0.45, 'outExpo')) * 28}px)` });
+    $$(el, '.chip2').forEach((c, i) => { pop(c, t, 9.9 + i * 0.12, 0.35, 0.5); c.style.opacity = P(t, 9.9 + i * 0.12, 0.12) * (1 - gone); });
+  });
+
+/* ================= S5 11.97 → 19.32: calendars (night) ================= */
+const BOOKINGS = [[2, 5, 0], [6, 8, 1], [11, 15, 0], [17, 19, 2], [20, 24, 1], [26, 28, 0], [29, 31, 2]];
+const CANCELLED = 5;
+const S5 = scene(11.97, 19.32, 'var(--night)', `
+  <div class="abs" id="s5left" style="left:140px;top:300px;width:760px">
+    <div class="pill eyebrow" style="color:var(--carbon-d);border-color:var(--cloud-d)">${TEXT.s5eyebrow}</div>
+    <div class="hl" id="s5h" style="font-size:100px;color:var(--white);margin-top:34px">${headline(TEXT.s5h)}</div>
+    <div id="s5sub" style="font:500 32px/1.4 'Inter';color:var(--fog);margin-top:30px;max-width:620px">${TEXT.s5sub}</div>
+  </div>
+  <svg class="abs" id="s5paths" viewBox="0 0 1920 1080" width="1920" height="1080" style="left:0;top:0" fill="none"></svg>
+  ${TEXT.feeds.map((f, i) => `<div class="abs feed" data-feed style="left:930px;top:${328 + i * 160}px"><div class="ic">${icon(i === 2 ? 'register' : 'calendar')}</div><div><div class="jk" style="font-size:22px;font-weight:700;color:var(--white)">${f}</div><div data-st style="font:600 16px 'Inter';margin-top:4px"></div></div></div>`).join('')}
+  <div class="abs dcard" id="s5cal" style="left:1370px;top:0;width:430px;padding:26px;border-radius:28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="jk" style="font-size:24px;font-weight:700;color:var(--white)">Riad Yasmine</div><div style="font:600 16px 'Inter';color:var(--slate-d)">${TEXT.month}</div></div>
+    <div class="mcal">${TEXT.days.map((d) => `<div class="wd">${d}</div>`).join('')}${Array.from({ length: 35 }, (_, i) => i - 1).map((d) => `<div class="c${d >= 1 && d <= 31 ? '' : ' e'}" data-d="${d}">${d >= 1 && d <= 31 ? d : ''}</div>`).join('')}</div>
+  </div>
+  <div class="abs" id="s5toast" style="left:1370px;top:0;width:430px;height:64px;border-radius:20px;background:var(--card-d);border:1.5px solid var(--bone-d);display:flex;align-items:center;gap:12px;padding:0 20px;font:600 19px 'Inter';color:var(--carbon-d)"><span style="width:12px;height:12px;border-radius:50%;background:var(--danger-soft)"></span>${TEXT.toast}</div>
+  ${BOOKINGS.map(() => '<div class="abs" data-block style="left:0;top:0;width:40px;height:22px;border-radius:8px;background:var(--lime);box-shadow:0 0 22px rgba(228,242,34,0.6)"></div>').join('')}`,
+  (t, el) => {
+    const push = P(t, 19.0, 0.32, 'inOutCubic');
+    css(el, { transform: `translateX(${-push * 640}px)`, filter: `brightness(${1 - push * 0.5})` });
+    css($(el, '.eyebrow'), { opacity: P(t, 12.1, 0.3) });
+    hl($(el, '#s5h'), t, 12.15);
+    fade($(el, '#s5sub'), t, 12.6);
+    const ce = P(t, 12.3, 0.6, 'outExpo');
+    css($(el, '#s5cal'), { opacity: Math.min(1, ce * 1.5), transform: `translateY(${(1 - ce) * 120}px) rotateY(${-6 + Math.sin(t * 0.9) * 2}deg)` });
+    $$(el, '[data-feed]').forEach((f, i) => {
+      const e = P(t, 12.5 + i * 0.15, 0.5, 'outExpo');
+      css(f, { opacity: Math.min(1, e * 1.5), transform: `translateX(${(1 - e) * -60}px)` });
+      const st = $(f, '[data-st]'), done = t >= 16.6, busy = t >= 13.6 + i * 0.38;
+      const key = done ? 'done' : busy ? 'busy' : 'wait';
+      if (st.dataset.k !== key) { st.dataset.k = key; st.innerHTML = `<span style="display:inline-flex;align-items:center;gap:8px;color:${done ? 'var(--success-d)' : busy ? 'var(--carbon-d)' : 'var(--ash-d)'}"><span class="dot" style="${done ? '' : busy ? 'background:var(--lime)' : 'background:transparent;border:2px solid currentColor;box-sizing:border-box'}"></span>${done ? TEXT.upToDate : TEXT.waiting}</span>`; }
+    });
+    S5P.forEach((p, i) => {
+      const draw = P(t, 13.0 + i * 0.1, 0.5, 'inOutCubic');
+      if (draw < 1) { p.el.setAttribute('stroke-dasharray', `${p.len} ${p.len}`); p.el.setAttribute('stroke-dashoffset', p.len * (1 - draw)); }
+      else { p.el.setAttribute('stroke-dasharray', '6 12'); p.el.setAttribute('stroke-dashoffset', -t * 60); }
+    });
+    const blocks = $$(el, '[data-block]');
+    BOOKINGS.forEach(([a, b, f], k) => {
+      const at = 13.6 + k * 0.38, p = P(t, at, 0.55, 'inOutCubic');
+      const pt = S5P[f].el.getPointAtLength(S5P[f].len * p);
+      css(blocks[k], { left: (pt.x - 20) + 'px', top: (pt.y - 11) + 'px', opacity: t >= at && p < 1 ? 1 : 0 });
+      for (let d = a; d <= b; d++) {
+        const c = S5DAY[d], q = P(t, at + 0.55 + (d - a) * 0.05, 0.22, 'outBack');
+        const off = k === CANCELLED ? P(t, 17.1 + (d - a) * 0.05, 0.25, 'outCubic') : 0;
+        const lit = Math.min(1, q) * (1 - off);
+        css(c, { background: lit > 0.02 ? mix('#26262b', '#e4f222', lit) : '', color: lit > 0.5 ? '#202020' : '', transform: `scale(${L(0.7, 1, Math.max(0, Math.min(1.1, q))) * (1 - Math.sin(off * Math.PI) * 0.15)})` });
+      }
+    });
+    const te = P(t, 17.0, 0.45, 'outExpo');
+    css($(el, '#s5toast'), { opacity: Math.min(1, te * 1.5), transform: `translateY(${(1 - te) * 30}px)` });
+  });
+const S5DAY = {};
+$$(S5, '.mcal .c[data-d]').forEach((c) => { S5DAY[+c.dataset.d] = c; });
+let S5P = [];
+
+/* ================= S6 19.0 → 26.45: night counter and alert (mist) ================= */
+const S6 = scene(19.0, 26.65, 'var(--mist)', `
+  <div class="abs wcard" id="s6card" style="left:140px;top:0;width:860px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><div class="jk" style="font-size:38px;font-weight:700;letter-spacing:-0.02em;color:var(--ink)">${TEXT.props[0]}</div>
+      <div style="position:relative;width:300px;height:48px">${statusPill('abs s6g', 'var(--success)', 'var(--success-soft)', TEXT.green, 20, 48, 'right:0;top:0;')}${statusPill('abs s6a', 'var(--warning)', 'var(--warning-soft)', TEXT.amber, 20, 48, 'right:0;top:0;')}</div></div>
+    <div style="font:600 22px 'Inter';color:var(--slate);margin-top:22px">${TEXT.nightsLabel}</div>
+    <div class="jk" style="font-weight:800;letter-spacing:-0.04em;line-height:1;color:var(--ink);margin-top:8px"><span id="s6num" style="font-size:132px;font-variant-numeric:tabular-nums">0</span><span style="font-size:46px;color:var(--line);letter-spacing:-0.02em"> / 120</span></div>
+    <div class="track" style="margin-top:24px;height:20px"><i id="s6fill" style="width:0;background:var(--success)"></i><b style="left:75%"></b><b style="left:91.6%"></b></div>
+    <div style="height:1.5px;background:var(--mercury);margin:34px 0 8px"></div>
+    ${[[1, 64], [2, 41]].map(([i, n]) => `<div class="s6row" style="display:grid;grid-template-columns:220px 1fr 120px auto;align-items:center;gap:22px;height:78px;border-bottom:1.5px solid var(--mercury)"><div class="jk" style="font-size:24px;font-weight:700;color:var(--ink)">${TEXT.props[i]}</div><div class="track" style="height:12px"><i data-mini="${n}" style="width:0;background:var(--success)"></i></div><div style="font:700 22px 'Inter';color:var(--ink);font-variant-numeric:tabular-nums">${n} / 120</div>${statusPill('', 'var(--success)', 'var(--success-soft)', TEXT.green, 16, 36)}</div>`).join('')}
+  </div>
+  <div class="abs" id="s6right" style="left:1090px;top:250px;width:730px">
+    <div class="pill eyebrow" style="color:var(--carbon);border-color:var(--cloud)">${TEXT.s6eyebrow}</div>
+    <div class="hl" id="s6h" style="font-size:88px;color:var(--ink);margin-top:30px">${headline(TEXT.s6h)}</div>
+    <div id="s6sub" style="font:500 30px/1.4 'Inter';color:var(--slate);margin-top:26px;max-width:660px">${TEXT.s6sub}</div>
+  </div>
+  <div class="abs" id="s6mail" style="left:1110px;top:760px;width:640px;height:116px;border-radius:26px;background:var(--white);box-shadow:0 30px 60px rgba(15,15,16,0.16),0 0 0 1px rgba(15,15,16,0.05);display:flex;align-items:center;gap:20px;padding:0 26px">
+    <div class="chip" style="width:64px;height:64px">${icon('mail')}</div>
+    <div style="flex:1"><div class="jk" style="font-size:23px;font-weight:700;color:var(--ink)">${TEXT.mailTitle}</div><div style="font:500 19px 'Inter';color:var(--slate);margin-top:4px">${TEXT.mailBody}</div></div>
+    <div style="font:600 17px 'Inter';color:var(--slate);align-self:flex-start;margin-top:26px">${TEXT.now}</div>
+  </div>`,
+  (t, el) => {
+    const slide = P(t, 19.0, 0.32, 'inOutCubic');
+    css(el, { transform: `translateX(${(1 - slide) * 1920}px)`, filter: slide < 1 ? `blur(${Math.sin(slide * Math.PI) * 6}px)` : 'none' });
+    const ce = P(t, 19.2, 0.6, 'outExpo');
+    css($(el, '#s6card'), { opacity: Math.min(1, ce * 1.5), transform: `translateY(${(1 - ce) * 80 + Math.sin(t * 1.2) * 4}px)` });
+    css($(el, '.eyebrow'), { opacity: P(t, 19.35, 0.3) });
+    hl($(el, '#s6h'), t, 19.4, { mark: 22.6 });
+    fade($(el, '#s6sub'), t, 19.85);
+    const n = t < 21.9 ? 87 * P(t, 19.6, 1.4, 'outCubic') : L(87, 92, P(t, 21.9, 0.8, 'inOutCubic'));
+    const v = Math.round(n), amber = v >= 90;
+    $(el, '#s6num').textContent = v;
+    css($(el, '#s6fill'), { width: (n / 120 * 100) + '%', background: amber ? '#8a5300' : '#0f7b4b' });
+    vis($(el, '.s6g'), !amber); vis($(el, '.s6a'), amber);
+    const at = 21.9 + 0.8 * 0.55;
+    $(el, '.s6a').style.transform = `scale(${amber ? L(0.75, 1, P(t, at, 0.35, 'outBack')) : 1})`;
+    $(el, '#s6num').style.color = amber ? '#8a5300' : '#202020';
+    $$(el, '.s6row').forEach((r, i) => fade(r, t, 20.3 + i * 0.15, 0.4, 20));
+    $$(el, '[data-mini]').forEach((m, i) => { m.style.width = (+m.dataset.mini / 120 * 100 * P(t, 20.4 + i * 0.15, 0.9, 'outCubic')) + '%'; });
+    const me = P(t, 22.9, 0.55, 'outExpo');
+    css($(el, '#s6mail'), { opacity: Math.min(1, me * 1.6), transform: `translateX(${(1 - me) * 500}px) rotate(${(1 - me) * 6}deg)` });
+  });
+
+/* ================= S7 26.0 → 34.4: guest check-in (night) ================= */
+const S7 = scene(26.0, 34.4, 'transparent', `
+  ${Array.from({ length: 10 }, (_, i) => `<div class="abs blind" style="left:${i * 192}px;top:0;width:193px;height:1080px;background:var(--night);transform-origin:top"></div>`).join('')}
+  <div class="cap-wrap hl" id="s7a" style="top:74px;font-size:80px"><span class="li" style="color:var(--white)">${marker(TEXT.s7a).replace(/^<span class="line"><span class="li">|<\/span><\/span>$/g, '')}</span></div>
+  <div class="cap-wrap hl" id="s7b" style="top:74px;font-size:80px"><span class="li" style="color:var(--white)">${marker(TEXT.s7b).replace(/^<span class="line"><span class="li">|<\/span><\/span>$/g, '')}</span></div>
+  ${phoneHTML('mphone', `
+    <div style="font:600 17px 'Inter';color:var(--slate)">Riad Yasmine</div>
+    <div class="jk" style="font-size:30px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-top:4px">${TEXT.arrivals}</div>
+    <div style="margin-top:22px;border-radius:18px;background:var(--mist);padding:18px;border:1.5px solid var(--mercury)">
+      <div style="font:700 19px 'Inter';color:var(--ink)">${TEXT.stay}</div>
+      <div style="position:relative;height:36px;margin-top:12px">${statusPill('abs m-act', 'var(--info, #0b62c4)', '#e5f0fc', TEXT.linkActive, 15, 36)}${statusPill('abs m-sub', 'var(--success)', 'var(--success-soft)', TEXT.submitted, 15, 36)}</div>
+    </div>
+    <div id="mdialog" style="margin-top:26px;border-radius:22px;background:var(--white);box-shadow:0 20px 40px rgba(15,15,16,0.14),0 0 0 1px var(--mercury);padding:22px">
+      <div class="jk" style="font-size:22px;font-weight:700;color:var(--ink)">${TEXT.linkTitle}</div>
+      <div class="mono" style="margin-top:14px;height:50px;border-radius:12px;border:1.5px solid var(--line);display:flex;align-items:center;padding:0 14px;font-size:16px;color:var(--carbon)">/checkin#••••••••••</div>
+      <div id="msend" class="pill" style="margin-top:16px;height:58px;justify-content:center;background:var(--lime);color:var(--ink);font-size:20px;display:flex">${TEXT.sendLink}</div>
+    </div>
+    ${['06–09', '02–05'].map((d) => `<div style="margin-top:14px;border-radius:18px;background:var(--mist);padding:16px 18px;border:1.5px solid var(--mercury);display:flex;justify-content:space-between;align-items:center"><span style="font:700 17px 'Inter';color:var(--ink)">${d}</span>${statusPill('', 'var(--success)', 'var(--success-soft)', TEXT.submitted, 14, 32)}</div>`).join('')}`, 'left:360px;top:196px;transform-origin:0 0')}
+  ${phoneHTML('gphone', `
+    <div id="gbanner" class="abs" style="left:14px;right:14px;top:0;height:78px;border-radius:22px;background:var(--night);display:flex;align-items:center;gap:14px;padding:0 18px;z-index:2"><div style="width:44px;height:44px;border-radius:12px;background:var(--lime);display:grid;place-items:center"><svg viewBox="0 0 64 64" width="26" height="26" fill="none" stroke="#202020" stroke-width="5" stroke-linecap="round">${ICONS.link}</svg></div><div class="jk" style="font-size:18px;font-weight:700;color:var(--white)">${TEXT.banner}</div></div>
+    <div id="gflow">
+      <div style="font:600 17px 'Inter';color:var(--slate)">Check-in</div>
+      <div class="jk" style="font-size:29px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);margin-top:4px">${TEXT.scan}</div>
+      <div style="position:relative;margin-top:22px;height:196px">
+        <div style="position:absolute;inset:0;border-radius:18px;background:var(--plaster);padding:16px;overflow:hidden">
+          <div style="display:flex;gap:16px"><div style="width:82px;height:104px;border-radius:10px;background:var(--cloud);position:relative;overflow:hidden"><div style="position:absolute;left:24px;top:18px;width:34px;height:34px;border-radius:50%;background:var(--fog)"></div><div style="position:absolute;left:12px;top:60px;width:58px;height:54px;border-radius:29px 29px 0 0;background:var(--fog)"></div></div>
+            <div style="flex:1;padding-top:6px"><div class="bar" style="width:60%;background:var(--cloud)"></div><div class="bar" style="width:85%;background:var(--cloud)"></div><div class="bar" style="width:45%;background:var(--cloud)"></div></div></div>
+          <div class="mono" style="font-size:12px;line-height:1.55;color:var(--slate);margin-top:12px;letter-spacing:0.04em">P&lt;UTO&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br>&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;0UTO&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</div>
+          <div id="gglow" style="position:absolute;left:0;right:0;height:80px;background:linear-gradient(to bottom, rgba(228,242,34,0), rgba(228,242,34,0.45))"></div>
+          <div id="gline" style="position:absolute;left:0;right:0;height:4px;background:var(--lime);box-shadow:0 0 18px 4px rgba(228,242,34,0.8)"></div>
+        </div>
+        <svg id="gfinder" viewBox="0 0 370 216" width="370" height="216" style="position:absolute;left:-10px;top:-10px;overflow:visible" fill="none" stroke="#202020" stroke-width="5" stroke-linecap="round"><path d="M2 40V14A12 12 0 0 1 14 2H40M330 2H356A12 12 0 0 1 368 14V40M368 176V202A12 12 0 0 1 356 214H330M40 214H14A12 12 0 0 1 2 202V176"/></svg>
+        <div id="gok" class="abs" style="right:12px;top:12px;width:44px;height:44px;border-radius:50%;background:var(--success);display:grid;place-items:center"><svg viewBox="0 0 18 18" width="22" height="22" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${ICONS.check}</svg></div>
+      </div>
+      <div style="margin-top:22px">${TEXT.fields.map((f, i) => `<div class="field-l"><span>${f}</span>${i === 1 ? `<span class="pill" data-flag style="font-size:13px;height:24px;padding:0 10px;color:var(--warning);background:var(--warning-soft)"><span class="dot"></span>${TEXT.check}</span>` : ''}</div><div class="field-i" style="height:48px"><span data-val></span></div>`).join('')}</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:4px"><div id="gbox" style="width:28px;height:28px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;flex:none"><svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="#202020" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${ICONS.check}</svg></div><div style="flex:1"><div style="font:600 15px 'Inter';color:var(--slate);margin-bottom:6px">${TEXT.consent}</div><div class="bar" style="margin:0;height:8px;width:90%"></div></div></div>
+      <div id="gsend" class="pill" style="position:absolute;left:26px;right:26px;bottom:40px;height:62px;justify-content:center;background:var(--lime);color:var(--ink);font-size:22px">${TEXT.send}</div>
+    </div>`, 'left:1152px;top:196px;transform-origin:0 0')}
+  <div class="abs" id="flylink" style="width:64px;height:64px;border-radius:50%;background:var(--lime);display:grid;place-items:center;box-shadow:0 0 30px rgba(228,242,34,0.7)"><svg viewBox="0 0 64 64" width="34" height="34" fill="none" stroke="#202020" stroke-width="5" stroke-linecap="round">${ICONS.link}</svg></div>
+  <div class="abs paper" id="s7fiche">
+    <div class="mono" style="font-size:14px;font-weight:700;letter-spacing:0.14em;color:var(--slate)">${TEXT.fiche}</div>
+    <div style="height:2px;background:var(--ink);margin:14px 0 20px"></div>
+    <div class="bar" style="width:80%"></div><div class="bar" style="width:55%"></div><div class="bar" style="width:70%"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0">${'<div style="height:44px;border-radius:8px;background:var(--mist);border:1.5px solid var(--mercury)"></div>'.repeat(4)}</div>
+    <div class="bar" style="width:65%"></div><div class="bar" style="width:40%"></div>
+    <div style="position:absolute;left:26px;right:26px;bottom:24px;display:flex;justify-content:space-between;align-items:center"><span class="pill" style="height:36px;padding:0 14px;font-size:16px;background:var(--night);color:var(--white)">PDF</span><span class="pill" style="height:36px;padding:0 14px;font-size:16px;color:var(--success);background:var(--success-soft)"><span class="dot"></span>${TEXT.ready}</span></div>
+  </div>`,
+  (t, el) => {
+    $$(el, '.blind').forEach((b, i) => { b.style.transform = `scaleY(${P(t, 26.0 + i * 0.03, 0.35, 'inOutCubic')})`; });
+    const roll = (w, at, out) => { const inn = P(t, at, 0.45, 'outExpo'), o = P(t, out, 0.35, 'outExpo'); vis(w, t >= at && o < 1); $(w, '.li').style.transform = `translateY(${(1 - inn) * 125 - o * 125}%)`; const p = P(t, at + 0.35, 0.42, 'inOutCubic'); $$(w, '.mk-fill').forEach((m) => { m.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0 round 0.14em)`; m.style.visibility = p > 0 ? 'inherit' : 'hidden'; }); };
+    roll($(el, '#s7a'), 26.4, 31.2); roll($(el, '#s7b'), 31.2, 99);
+    const mp = $(el, '#mphone'), gp = $(el, '#gphone');
+    const me = P(t, 26.3, 0.6, 'outExpo'), ge = P(t, 26.45, 0.6, 'outExpo');
+    css(mp, { opacity: Math.min(1, me * 1.5), transform: `translateY(${(1 - me) * 160 + Math.sin(t * 1.3) * 6}px) rotate(${-3 + Math.sin(t * 0.8) * 0.6}deg) scale(0.95)` });
+    css(gp, { opacity: Math.min(1, ge * 1.5), transform: `translateY(${(1 - ge) * 160 + Math.cos(t * 1.2) * 6}px) rotate(${3 + Math.sin(t * 0.7) * 0.6}deg) scale(0.95)` });
+    pop($(el, '#mdialog'), t, 26.8, 0.4, 0.85);
+    const press = P(t, 27.55, 0.08) * (1 - P(t, 27.63, 0.15));
+    css($(el, '#msend'), { transform: `scale(${1 - press * 0.06})`, background: press > 0.1 ? '#cddd12' : '#e4f222' });
+    const sub = t >= 31.6;
+    vis($(el, '.m-act'), !sub); vis($(el, '.m-sub'), sub);
+    $(el, '.m-sub').style.transform = `scale(${sub ? L(0.7, 1, P(t, 31.6, 0.35, 'outBack')) : 1})`;
+    const fl = P(t, 27.65, 0.65, 'inOutCubic');
+    const a = $(el, '#msend').getBoundingClientRect(), b = gp.getBoundingClientRect();
+    css($(el, '#flylink'), { left: (L(a.x + a.width / 2, b.x + b.width / 2, fl) - 32) + 'px', top: (L(a.y + a.height / 2, b.y + 70, fl) - 32 - Math.sin(fl * Math.PI) * 260) + 'px', opacity: t >= 27.65 && fl < 1 ? 1 : 0, transform: `scale(${L(0.6, 1, Math.sin(fl * Math.PI))}) rotate(${fl * 360}deg)` });
+    const bIn = P(t, 28.25, 0.3, 'outBack'), bOut = P(t, 28.75, 0.25, 'inCubic');
+    css($(el, '#gbanner'), { transform: `translateY(${L(-100, 16, bIn) - bOut * 120}px)` });
+    css($(el, '#gflow'), { opacity: L(0.25, 1, P(t, 28.6, 0.3)) });
+    css($(el, '#gfinder'), { opacity: P(t, 28.9, 0.12), transform: `scale(${L(1.18, 1, P(t, 28.9, 0.3, 'outBack'))})`, stroke: t > 29.75 ? '#0f7b4b' : '#202020' });
+    const scan = P(t, 29.1, 0.6, 'inOutCubic'), scanning = t >= 29.1 && t < 29.72;
+    css($(el, '#gline'), { top: (scan * 192) + 'px', opacity: scanning ? 1 : 0 });
+    css($(el, '#gglow'), { top: (scan * 192 - 80) + 'px', opacity: scanning ? 1 : 0 });
+    css($(el, '#gok'), { transform: `scale(${Math.max(0, P(t, 29.75, 0.3, 'outBack'))})` });
+    $$(el, '#gphone [data-val]').forEach((v, i) => { v.textContent = '•'.repeat(Math.round(P(t, 29.8 + i * 0.13, 0.22, 'lin') * 8)); });
+    pop($(el, '#gphone [data-flag]'), t, 30.25, 0.3, 0.7);
+    const box = P(t, 30.55, 0.25, 'outBack');
+    css($(el, '#gbox'), { background: box > 0.05 ? '#e4f222' : 'transparent', borderColor: box > 0.05 ? '#e4f222' : '#8a8a8a', transform: `scale(${box > 0.05 ? L(0.7, 1, box) : 1})` });
+    $(el, '#gbox svg').style.opacity = box > 0.05 ? 1 : 0;
+    const gpress = P(t, 30.9, 0.08) * (1 - P(t, 30.98, 0.15));
+    css($(el, '#gsend'), { transform: `scale(${1 - gpress * 0.06})`, background: gpress > 0.1 ? '#cddd12' : '#e4f222' });
+    const ff = P(t, 31.0, 0.55, 'outExpo');
+    const g = $(el, '#gsend').getBoundingClientRect();
+    css($(el, '#s7fiche'), { left: (L(g.x + g.width / 2, 960, ff) - 150) + 'px', top: (L(g.y, 620, ff) - 195 - Math.sin(ff * Math.PI) * 120) + 'px', opacity: t >= 31.0 ? Math.min(1, P(t, 31.0, 0.12)) : 0, transform: `rotate(${L(18, -4, ff) + Math.sin(t * 1.1) * 0.6}deg) scale(${L(0.3, 1, P(t, 31.0, 0.5, 'outBack'))})` });
+  });
+
+/* ================= S8 34.0 → 41.4: police register and secure share (plaster) ================= */
+const REG_ROWS = [['02/07', '2', 'FRA'], ['06/07', '1', 'ESP'], ['11/07', '3', 'GBR'], ['17/07', '2', 'DEU'], ['20/07', '2', 'ITA'], ['26/07', '4', 'MAR']];
+const S8edge = scene(34.0, 34.5, 'var(--lime)', '', () => {});
+const S8 = scene(34.0, 41.4, 'var(--plaster)', `
+  <div class="abs wcard" id="s8reg" style="left:120px;top:210px;width:900px;padding:38px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px"><div class="jk" style="font-size:30px;font-weight:700;letter-spacing:-0.02em;color:var(--ink)">${TEXT.regTitle}</div><div class="chip" style="width:52px;height:52px">${icon('register')}</div></div>
+    <div class="row4 head">${TEXT.cols.map((c) => `<span>${c}</span>`).join('')}</div>
+    ${REG_ROWS.map((r, i) => `<div class="row4 r8"><span>${r[0]}</span><span>${r[1]}</span><span class="mono" style="font-size:20px">${i === 3 ? '<span class="natv">—</span>' : r[2]}</span><span style="position:relative;height:38px">${statusPill('abs st-ok', 'var(--success)', 'var(--success-soft)', TEXT.complete, 16, 38)}${i === 3 ? statusPill('abs st-miss', 'var(--warning)', 'var(--warning-soft)', TEXT.missing, 16, 38) : ''}</span></div>`).join('')}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:26px"><span style="font:600 19px 'Inter';color:var(--slate)">${TEXT.regFoot}</span>
+      <span style="position:relative;width:260px;height:56px"><span class="pill abs" id="s8gen" style="right:0;height:56px;padding:0 26px;font-size:20px;background:var(--ink);color:var(--white)">${TEXT.genPdf}</span><span class="abs" id="s8done" style="right:0;display:flex;gap:10px;align-items:center;height:56px"><span class="pill" style="height:40px;padding:0 14px;font-size:16px;background:var(--night);color:var(--white)">PDF</span>${statusPill('', 'var(--success)', 'var(--success-soft)', TEXT.generated, 16, 40)}</span></span></div>
+  </div>
+  <div class="abs" id="s8right" style="left:1100px;top:150px;width:700px">
+    <div class="pill eyebrow" style="color:var(--carbon);border-color:var(--fog)">${TEXT.s8eyebrow}</div>
+    <div class="hl" id="s8h" style="font-size:84px;color:var(--ink);margin-top:28px">${headline(TEXT.s8h)}</div>
+    <div id="s8sub" style="font:500 28px/1.4 'Inter';color:var(--slate);margin-top:22px;max-width:660px">${TEXT.s8sub}</div>
+  </div>
+  <div class="abs wcard" id="s8share" style="left:1100px;top:620px;width:700px;padding:30px;display:grid;grid-template-columns:150px 1fr;gap:10px 28px">
+    <div style="grid-column:1/3;display:flex;align-items:center;gap:16px"><div class="chip" style="width:52px;height:52px">${icon('link')}</div><div class="ctitle" style="font-size:26px">${TEXT.shareTitle}</div>
+      <div class="mono" style="margin-left:auto;height:46px;border-radius:12px;border:1.5px solid var(--line);display:flex;align-items:center;padding:0 14px;font-size:16px;color:var(--carbon)">/s#••••••••••</div></div>
+    <div style="position:relative;width:150px;height:150px;margin-top:8px"><svg viewBox="0 0 150 150" width="150" height="150" style="transform:rotate(-90deg)"><circle cx="75" cy="75" r="64" fill="none" stroke="#eeeeee" stroke-width="12"/><circle id="s8ring" cx="75" cy="75" r="64" fill="none" stroke="#202020" stroke-width="12" stroke-linecap="round" pathLength="1" stroke-dasharray="1"/></svg><div class="abs jk" style="inset:0;display:grid;place-items:center;font-size:20px;font-weight:700;color:var(--ink)">${TEXT.expires}</div></div>
+    <div style="display:flex;flex-direction:column;margin-top:8px">
+      ${['10:42', '14:05'].map((h) => `<div class="s8log" style="display:flex;align-items:center;gap:12px;height:44px;border-bottom:1.5px solid var(--mercury);font:600 19px 'Inter';color:var(--carbon)"><span style="width:10px;height:10px;border-radius:50%;background:var(--line)"></span>${TEXT.opened} · ${h}</div>`).join('')}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto"><span style="position:relative;width:160px;height:42px">${statusPill('abs sh-act', 'var(--success)', 'var(--success-soft)', TEXT.active, 17, 42)}${statusPill('abs sh-rev', 'var(--danger)', 'var(--danger-soft)', TEXT.revoked, 17, 42)}</span><span class="pill" id="s8revoke" style="height:50px;padding:0 24px;font-size:19px;color:var(--white);background:var(--ink)">${TEXT.revoke}</span></div>
+    </div>
+  </div>`,
+  (t, el) => {
+    const R = L(0, 2100, P(t, 34.0, 0.42, 'inOutCubic')), rot = L(-60, 0, P(t, 34.0, 0.5, 'outCubic'));
+    const star = (k) => { const pts = []; for (let i = 0; i < 16; i++) { const a = (i * 22.5 - 90 + rot) * Math.PI / 180, r = (i % 2 ? R * 0.7654 : R) * k; pts.push(`${(960 + r * Math.cos(a)).toFixed(1)}px ${(540 + r * Math.sin(a)).toFixed(1)}px`); } return `polygon(${pts.join(',')})`; };
+    el.style.clipPath = star(1); S8edge.style.clipPath = star(1.09);
+    const ce = P(t, 34.3, 0.6, 'outExpo');
+    css($(el, '#s8reg'), { opacity: Math.min(1, ce * 1.5), transform: `translateY(${(1 - ce) * 100}px) rotate(${(1 - ce) * -3}deg)` });
+    $$(el, '.r8').forEach((r, i) => fade(r, t, 34.6 + i * 0.12, 0.35, 16));
+    const fixed = t >= 36.0;
+    const miss = $(el, '.st-miss'); vis(miss, !fixed);
+    $$(el, '.r8')[3].querySelector('.st-ok').style.visibility = fixed ? 'inherit' : 'hidden';
+    $$(el, '.r8')[3].querySelector('.st-ok').style.transform = `scale(${fixed ? L(0.7, 1, P(t, 36.0, 0.35, 'outBack')) : 1})`;
+    $(el, '.natv').textContent = fixed ? 'DEU' : '—';
+    $$(el, '.r8')[3].style.background = mix('#ffffff', '#fff4d6', (t > 35.0 ? 1 : 0) * (1 - P(t, 36.0, 0.5)));
+    const gp = P(t, 36.5, 0.08) * (1 - P(t, 36.58, 0.15));
+    $(el, '#s8gen').style.transform = `scale(${1 - gp * 0.07})`;
+    const done = t >= 36.65; vis($(el, '#s8gen'), !done); vis($(el, '#s8done'), done);
+    $(el, '#s8done').style.transform = `scale(${done ? L(0.7, 1, P(t, 36.65, 0.35, 'outBack')) : 1})`;
+    css($(el, '.eyebrow'), { opacity: P(t, 34.4, 0.3) });
+    hl($(el, '#s8h'), t, 34.45, { mark: 37.0 });
+    fade($(el, '#s8sub'), t, 34.9);
+    const se = P(t, 37.0, 0.55, 'outExpo');
+    css($(el, '#s8share'), { opacity: Math.min(1, se * 1.6), transform: `perspective(1600px) translateY(${(1 - se) * 80}px) rotateX(${(1 - se) * 30}deg)` });
+    const revoked = t >= 39.6;
+    $(el, '#s8ring').style.strokeDashoffset = revoked ? 1 : L(0, 0.4, P(t, 37.3, 2.1, 'inOutCubic'));
+    $$(el, '.s8log').forEach((r, i) => fade(r, t, 38.0 + i * 0.6, 0.3, 12));
+    const rp = P(t, 39.5, 0.08) * (1 - P(t, 39.58, 0.15));
+    $(el, '#s8revoke').style.transform = `scale(${1 - rp * 0.08})`;
+    vis($(el, '.sh-act'), !revoked); vis($(el, '.sh-rev'), revoked);
+    $(el, '.sh-rev').style.transform = `scale(${revoked ? L(0.75, 1, P(t, 39.6, 0.35, 'outBack')) : 1})`;
+  });
+
+/* ================= S9 41.0 → 48.5: tax estimate and accountant (white) ================= */
+const TAX12 = [44, 52, 60, 58, 74, 88, 96];
+const S9 = scene(41.0, 48.5, 'transparent', `
+  <div class="abs door" style="left:0;top:0;width:1920px;height:541px;background:var(--white)"></div>
+  <div class="abs door" style="left:0;top:540px;width:1920px;height:540px;background:var(--white)"></div>
+  <div class="abs" id="s9left" style="left:140px;top:260px;width:760px">
+    <div class="pill eyebrow" style="color:var(--carbon);border-color:var(--cloud)">${TEXT.s9eyebrow}</div>
+    <div class="hl" id="s9h" style="font-size:88px;color:var(--ink);margin-top:30px">${headline(TEXT.s9h)}</div>
+    <div id="s9sub" style="font:500 30px/1.4 'Inter';color:var(--slate);margin-top:26px;max-width:640px">${TEXT.s9sub}</div>
+  </div>
+  <div class="abs wcard" id="s9card" style="left:960px;top:150px;width:840px;padding:38px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><div class="jk" style="font-size:28px;font-weight:700;color:var(--ink)">${TEXT.reportTitle}</div>${statusPill('', 'var(--warning)', 'var(--warning-soft)', TEXT.estimate, 17, 40)}</div>
+    <div style="font:600 19px 'Inter';color:var(--slate);margin-top:22px">${TEXT.ytd}</div>
+    <div class="jk" style="font-weight:800;letter-spacing:-0.04em;color:var(--ink);line-height:1.05"><span id="s9amt" style="font-size:84px;font-variant-numeric:tabular-nums">0</span><span style="font-size:34px;color:var(--slate)"> MAD</span></div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;height:200px;margin-top:22px;border-bottom:2px solid var(--ink);padding:0 4px">
+      ${TEXT.months.map((m, i) => i < 7 ? `<div class="tbar s9bar" style="width:42px;height:${TAX12[i]}%"></div>` : `<div style="width:42px;height:${50 + i * 3}%;border-radius:12px 12px 6px 6px;border:2px dashed var(--cloud);border-bottom:none"></div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:8px 16px 0;font:600 16px 'Inter';color:var(--slate)">${TEXT.months.map((m) => `<span>${m}</span>`).join('')}</div>
+    <div style="margin-top:22px;padding:14px 18px;border-radius:14px;background:var(--warning-soft);font:600 17px 'Inter';color:var(--warning)">${TEXT.taxNote}</div>
+  </div>
+  <div class="abs" id="s9exp" style="left:960px;top:860px;display:flex;gap:16px">
+    ${['PDF', 'Excel'].map((x) => `<span class="pill s9btn" style="height:62px;padding:0 28px;font-size:21px;border:2px solid var(--ink);color:var(--ink);background:var(--white);gap:12px"><svg viewBox="0 0 64 64" width="24" height="24" fill="none" stroke="#202020" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">${ICONS.download}</svg>${x}</span>`).join('')}
+  </div>
+  <div class="abs wcard" id="s9acc" style="left:1430px;top:840px;width:370px;padding:22px 24px;display:flex;align-items:center;gap:16px;border-radius:26px">
+    <div class="chip" style="width:58px;height:58px">${icon('user')}</div>
+    <div style="flex:1"><div class="jk" style="font-size:22px;font-weight:700;color:var(--ink)">${TEXT.accountant}</div><div style="font:500 16px 'Inter';color:var(--slate)">${TEXT.accRole}</div></div>
+    <div id="s9rec">${statusPill('', 'var(--success)', 'var(--success-soft)', TEXT.received, 15, 34)}</div>
+  </div>
+  ${['PDF', 'XLSX'].map((x) => `<div class="abs s9file" style="width:96px;height:118px;border-radius:12px;background:var(--white);box-shadow:0 16px 30px rgba(15,15,16,0.18),0 0 0 1px var(--mercury);display:grid;place-items:center"><span class="pill" style="height:30px;padding:0 10px;font-size:14px;background:var(--night);color:var(--white)">${x}</span></div>`).join('')}`,
+  (t, el) => {
+    $$(el, '.door').forEach((d, i) => { d.style.transform = `translateY(${(1 - P(t, 41.0, 0.36, 'inOutCubic')) * (i ? 540 : -541)}px)`; });
+    css($(el, '.eyebrow'), { opacity: P(t, 41.35, 0.3) });
+    hl($(el, '#s9h'), t, 41.4);
+    fade($(el, '#s9sub'), t, 41.85);
+    const ce = P(t, 41.4, 0.6, 'outExpo');
+    css($(el, '#s9card'), { opacity: Math.min(1, ce * 1.5), transform: `translateY(${(1 - ce) * 100}px)` });
+    $$(el, '.s9bar').forEach((b, i) => { b.style.transform = `scaleY(${Math.max(0, P(t, 41.8 + i * 0.07, 0.45, 'outBack'))})`; });
+    $(el, '#s9amt').textContent = Math.round(38640 * P(t, 41.9, 1.2, 'outCubic')).toLocaleString('fr-FR').replace(/ | /g, ' ');
+    $$(el, '.s9btn').forEach((b, i) => { const p = P(t, 44.3 + i * 0.4, 0.08) * (1 - P(t, 44.38 + i * 0.4, 0.15)); css(b, { opacity: P(t, 43.2 + i * 0.1, 0.25), transform: `scale(${1 - p * 0.08})`, background: p > 0.1 ? '#e4f222' : '#ffffff' }); });
+    const ae = P(t, 43.6, 0.5, 'outExpo');
+    css($(el, '#s9acc'), { opacity: Math.min(1, ae * 1.5), transform: `translateX(${(1 - ae) * 120}px)` });
+    $$(el, '.s9file').forEach((f, i) => {
+      const at = 44.4 + i * 0.4, p = P(t, at, 0.6, 'inOutCubic');
+      const x0 = 1040 + i * 170, y0 = 860, x1 = 1480, y1 = 870;
+      css(f, { left: (L(x0, x1, p) - 48) + 'px', top: (L(y0, y1, p) - 59 - Math.sin(p * Math.PI) * 220) + 'px', opacity: t >= at && p < 1 ? 1 : 0, transform: `rotate(${L(0, i ? 14 : -14, Math.sin(p * Math.PI))}deg) scale(${L(1, 0.5, p)})` });
+    });
+    pop($(el, '#s9rec'), t, 45.45, 0.35, 0.6);
+  });
+
+/* ================= S10 48.0 → 54.4: privacy (night) ================= */
+const S10edge = scene(48.0, 48.6, 'var(--lime)', '', () => {});
+const S10 = scene(48.0, 54.4, 'var(--night)', '', (t, el) => {
+  const x = L(-700, 2620, P(t, 48.0, 0.5, 'inOutCubic'));
+  const poly = (o) => `polygon(0 0, ${x + o}px 0, ${x + o - 600}px 1080px, 0 1080px)`;
+  el.style.clipPath = poly(0); S10edge.style.clipPath = poly(60);
+  zel(z10, t, { base: '#1b1b1f', rings: [[48.3, 2000, 160, 0.4, 1.2], [52.0, 1600, 150, 0.35, 1.3], [53.0, 1600, 150, 0.35, 1.3]], rot: (t - 48) * 1.0 });
+  css($(el, '.eyebrow'), { opacity: P(t, 48.4, 0.3) });
+  hl($(el, '#s10h'), t, 48.45, { mark: 49.0 });
+  $$(el, '.tile').forEach((tl, i) => {
+    const at = 49.4 + i * 0.4, e = P(t, at, 0.6, 'outExpo'), eb = P(t, at, 0.6, 'outBack');
+    const leave = P(t, 53.7 + i * 0.04, 0.35, 'inCubic');
+    css(tl, { opacity: Math.min(1, e * 1.6) * (1 - leave), transform: `perspective(1400px) translateY(${(1 - e) * 120 - leave * 80}px) rotateX(${(1 - eb) * 50}deg) scale(${1 - leave * 0.2})`, borderColor: mix('#2e2e33', '#e4f222', Math.max(0, 1 - Math.abs(t - at - 0.5) * 3)) });
+    if (i === 0) $(tl, '.shackle').style.transform = `translateY(${(1 - P(t, at + 0.4, 0.3, 'outBack')) * -10}px)`;
+    if (i === 1) { $(tl, '.sweep').style.strokeDashoffset = 1 - P(t, at + 0.3, 1.2, 'inOutCubic'); }
+    if (i === 2) ['.l1', '.l2', '.l3'].forEach((c, k) => { $(tl, c).style.strokeDashoffset = 1 - P(t, at + 0.35 + k * 0.18, 0.25); });
+    if (i === 3) ['.p1', '.p2', '.p3'].forEach((c, k) => $$(tl, c).forEach((p) => { p.style.opacity = P(t, at + 0.35 + k * 0.12, 0.15); }));
+  });
+});
+const z10 = zellige(S10);
+S10.insertAdjacentHTML('beforeend', `
+  <div class="abs" style="left:0;right:0;top:130px;text-align:center"><div class="pill eyebrow" style="color:var(--carbon-d);border-color:var(--cloud-d)">${TEXT.s10eyebrow}</div></div>
+  <div class="abs" style="left:0;right:0;top:206px;text-align:center"><div class="hl" id="s10h" style="font-size:104px;color:var(--white);display:inline-block">${headline(TEXT.s10h)}</div></div>
+  <div class="abs" style="left:155px;top:560px;display:flex;gap:30px">
+    ${TEXT.tiles.map(([a, b], i) => `<div class="tile"><div class="ic">${icon(['lock', 'clock', 'log', 'people'][i])}</div><div class="jk" style="font-size:27px;font-weight:700;letter-spacing:-0.02em;color:var(--white);margin-top:auto">${a}</div><div style="font:500 19px/1.35 'Inter';color:var(--slate-d);margin-top:8px">${b}</div></div>`).join('')}
+  </div>`);
+$$(S10, '.tile .shackle, .tile .sweep').forEach((p) => { p.style.transformBox = 'fill-box'; });
+
+/* ================= S11 54.0 → 56.4: montage (plaster) ================= */
+const S11 = scene(54.0, 56.4, 'var(--plaster)', `
+  <div class="abs" id="grid" style="left:50%;top:50%;width:1400px;height:640px;margin:-320px 0 0 -700px;display:grid;grid-template-columns:repeat(3,440px);gap:40px 40px;transform-style:preserve-3d">
+    ${TEXT.minis.map((m, i) => `<div class="mini"><div class="ic">${icon(['calendar', 'chart', 'passport', 'register', 'link', 'tax'][i])}</div><div class="jk" style="font-size:34px;font-weight:800;letter-spacing:-0.03em;color:var(--ink)">${m}</div></div>`).join('')}
+  </div>`,
+  (t, el) => {
+    el.style.clipPath = t < 54.5 ? circle(L(0, 1150, P(t, 54.0, 0.45, 'outExpo'))) : 'none';
+    const collapse = P(t, 55.85, 0.3, 'inExpo');
+    css($(el, '#grid'), { transform: `perspective(2200px) rotateX(${L(32, 22, P(t, 54, 2, 'lin'))}deg) rotateZ(${L(-14, -8, P(t, 54, 2, 'lin'))}deg) scale(${L(1.25, 0.95, P(t, 54.0, 1.9, 'outCubic'))})` });
+    $$(el, '.mini').forEach((m, i) => {
+      const at = 54.05 + i * 0.07, e = P(t, at, 0.55, 'outExpo');
+      const col = i % 3, row = Math.floor(i / 3);
+      const cx = (1 - col) * 480, cy = (0.5 - row) * 330;
+      const lit = [54.5, 55.0, 55.5].some((b, k) => (i % 3 === k) && t >= b && t < b + 0.35) ? 1 : 0;
+      css(m, { opacity: Math.min(1, e * 1.5) * (1 - collapse), transform: `translate3d(${cx * collapse}px, ${cy * collapse}px, ${(1 - e) * 700}px) scale(${1 - collapse * 0.7})`, boxShadow: lit ? '0 0 0 4px #e4f222, 0 30px 60px rgba(15,15,16,0.14)' : '' });
+    });
+  });
+
+/* ================= S12 56.0 → 60: end card (night) ================= */
+const S12 = scene(56.0, 60.01, 'var(--night)', '', (t, el) => {
+  el.style.clipPath = t < 56.4 ? circle(L(0, 1150, P(t, 56.0, 0.4, 'outExpo'))) : 'none';
+  zel(z12, t, { base: '#1d1d21', rings: [[56.07, 1700, 170, 0.6, 1.3], [57.3, 1500, 140, 0.36, 1.2], [58.6, 1500, 140, 0.25, 1.2]], rot: (t - 56) * -1.2 });
+  css($(el, '#endmark'), { transform: `scale(${Math.max(0, P(t, 56.2, 0.45, 'outBack'))}) rotate(${L(-30, 0, P(t, 56.2, 0.5, 'outExpo'))}deg)` });
+  playMark($(el, '#endmark'), t, 56.23);
+  const wr = P(t, 56.45, 0.45, 'outExpo');
+  css($(el, '#endword'), { clipPath: `inset(-10% ${(1 - wr) * 100}% -10% 0)`, transform: `translateX(${(1 - wr) * -40}px)` });
+  hl($(el, '#endh'), t, 56.6, { gap: 0.1 });
+  const c = P(t, 57.3, 0.45, 'outBack'), cta = $(el, '#cta');
+  css(cta, { opacity: P(t, 57.3, 0.15), transform: `scale(${L(0.6, 1, c)})` });
+  const sh = Math.max(P(t, 57.9, 0.65, 'inOutCubic') * (t < 58.8 ? 1 : 0), P(t, 59.0, 0.65, 'inOutCubic'));
+  $(el, '#shine').style.left = L(-200, cta.offsetWidth + 60, sh) + 'px';
+  css($(el, '#foot'), { opacity: P(t, 57.45, 0.5) });
+});
+const z12 = zellige(S12);
+S12.insertAdjacentHTML('beforeend', `
+  <div class="abs" id="endlogo" style="top:150px;left:0;display:flex;align-items:center;gap:40px">
+    <svg viewBox="0 0 64 64" width="130" height="130" id="endmark" style="overflow:visible">${markSvg('b', '#0f0f10')}</svg>
+    <div class="jk" id="endword" style="font-size:96px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--white);white-space:nowrap">Riad<span style="color:var(--lime)">Tax</span></div>
+  </div>
+  <div class="abs" style="left:0;right:0;top:360px;text-align:center"><div class="hl" id="endh" style="font-size:132px;color:var(--white);display:inline-block">${headline(TEXT.endh)}</div></div>
+  <div class="abs" style="left:0;right:0;top:790px;text-align:center">
+    <div class="pill" id="cta" style="position:relative;overflow:hidden;height:96px;padding:0 52px;font-size:36px;background:var(--lime);color:var(--ink);gap:20px">${TEXT.cta}<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#202020" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><div class="shine" id="shine"></div></div>
+  </div>
+  <div class="abs" id="foot" style="left:0;right:0;top:972px;text-align:center;font:500 22px 'Inter';color:var(--ash-d)">${TEXT.foot}</div>`);
+
+/* ---------- layout measured once fonts are in ---------- */
+const M = {};
+async function prepare() {
+  await document.fonts.ready;
+  for (const s of scenes) show(s.el, true);
+  const wordWrap = $(S3, '.word-wrap'); fit($(S3, '.word'), 1640); wordWrap.style.top = (540 - wordWrap.getBoundingClientRect().height / 2) + 'px';
+  fit($(S1, '#s1h'), 1700); fit($(S5, '#s5h'), 780); fit($(S6, '#s6h'), 740); fit($(S8, '#s8h'), 700); fit($(S9, '#s9h'), 780); fit($(S10, '#s10h'), 1700); fit($(S12, '#endh'), 1700);
+  $$(S2, '.cap-wrap').forEach((w) => fit(w.querySelector('.li'), 1700));
+  $$(S7, '.cap-wrap').forEach((w) => fit(w.querySelector('.li'), 1720));
+  const wm = $(S4, '#wordmark'), total = 240 + 72 + wm.getBoundingClientRect().width;
+  M.lockTx = 120 - total / 2;
+  css(wm, { left: (960 - total / 2 + 240 + 72) + 'px', top: (450 - 75) + 'px' });
+  const cal = $(S5, '#s5cal'), calH = cal.getBoundingClientRect().height;
+  cal.style.top = (520 - calH / 2) + 'px';
+  $(S5, '#s5toast').style.top = (520 + calH / 2 + 20) + 'px';
+  const svg = $(S5, '#s5paths');
+  S5P = [0, 1, 2].map((i) => {
+    const y0 = 380 + i * 160, y1 = 520 + (i - 1) * 70;
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', `M1262 ${y0} C1320 ${y0} 1310 ${y1} 1368 ${y1}`);
+    p.setAttribute('stroke', '#4a4a50'); p.setAttribute('stroke-width', '3'); p.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(p);
+    return { el: p, len: p.getTotalLength() };
+  });
+  const card6 = $(S6, '#s6card'); card6.style.top = (540 - card6.getBoundingClientRect().height / 2) + 'px';
+  const endLogo = $(S12, '#endlogo'); endLogo.style.left = (960 - endLogo.getBoundingClientRect().width / 2) + 'px';
+  for (const s of scenes) show(s.el, false);
+}
+
+function seek(t) {
+  for (const s of scenes) {
+    const on = t >= s.start && t < s.end;
+    show(s.el, on);
+    if (on) s.play(t, s.el);
+  }
+}
+window.ready = prepare().then(() => { seek(0); return true; });
+window.seek = seek;
+window.DURATION = 60;
+</script>
+</body>
+</html>

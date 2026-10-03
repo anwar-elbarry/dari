@@ -1,0 +1,67 @@
+/* Shared styles for promo.html and promo-60.html (fonts, RiadTax colour tokens, common blocks). */
+@font-face { font-family: 'Jakarta'; src: url('../../node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); font-weight: 200 800; }
+@font-face { font-family: 'Inter'; src: url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2'); font-weight: 100 900; }
+@font-face { font-family: 'Mono'; src: url('../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2'); font-weight: 100 800; }
+
+:root {
+  --night: #0f0f10; --ink: #202020; --carbon: #2a2a2a; --slate: #646464; --line: #8a8a8a; --fog: #b3b3b3; --cloud: #d4d4d4;
+  --mercury: #eeeeee; --bone: #e8e8e8; --mist: #f8f9fa; --plaster: #e9ebf0; --white: #ffffff;
+  --lime: #e4f222; --lime-600: #cddd12; --lime-deep: #b9cc00; --olive: #5c6600;
+  --card-d: #1a1a1d; --plaster-d: #1f1f23; --merc-d: #26262b; --bone-d: #2e2e33; --cloud-d: #38383e; --ash-d: #8a8a8a; --slate-d: #a8a8a8; --carbon-d: #d6d6d6;
+  --success: #0f7b4b; --success-soft: #dcf5e8; --success-d: #5ee0a0; --success-soft-d: #10281c;
+  --warning: #8a5300; --warning-soft: #fff4d6; --danger: #b42318; --danger-soft: #fde8e6;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--night); }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--night); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+.layer { position: absolute; inset: 0; overflow: hidden; visibility: hidden; }
+.abs { position: absolute; }
+.jk { font-family: 'Jakarta', sans-serif; }
+.mono { font-family: 'Mono', monospace; }
+.zel { position: absolute; inset: 0; }
+
+/* Headlines: each line is a mask; the marker is a lime block revealed with clip-path, ink text inside. */
+.hl { font-family: 'Jakarta', sans-serif; font-weight: 800; letter-spacing: -0.045em; line-height: 1.02; white-space: nowrap; }
+.line { display: block; overflow: hidden; padding: 0.02em 0.12em 0.1em; margin: 0 -0.12em; }
+.li { display: inline-block; will-change: transform; }
+.mk { position: relative; display: inline-block; padding: 0 0.12em; margin: 0 -0.02em; }
+.mk-fill { position: absolute; inset: 0.04em 0 0.02em 0; padding: 0 0.12em; background: var(--lime); color: var(--ink); border-radius: 0.14em; clip-path: inset(0 100% 0 0); white-space: nowrap; }
+.mk-fill > span { position: relative; top: -0.04em; }
+
+.pill { display: inline-flex; align-items: center; gap: 0.55em; border-radius: 999px; font-family: 'Jakarta', sans-serif; font-weight: 700; white-space: nowrap; }
+.dot { width: 0.55em; height: 0.55em; border-radius: 50%; background: currentColor; flex: none; }
+.eyebrow { font-size: 24px; padding: 12px 22px; border: 1.5px solid; }
+
+/* S1 */
+.icard { width: 156px; height: 156px; border-radius: 36px; background: var(--card-d); border: 2px solid var(--bone-d); display: grid; place-items: center; }
+.icard svg { width: 76px; height: 76px; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.word-wrap { left: 0; right: 0; top: 0; text-align: center; overflow: hidden; padding: 0.04em 0 0.12em; }
+.word { display: inline-block; color: var(--white); }
+
+/* S3 */
+.dcard { background: var(--card-d); border: 1.5px solid var(--bone-d); border-radius: 36px; padding: 44px; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.cal .wd { font: 600 18px 'Inter'; color: var(--ash-d); text-align: center; padding-bottom: 4px; }
+.cal .c { height: 52px; border-radius: 12px; background: var(--merc-d); font: 600 16px 'Inter'; color: var(--ash-d); padding: 7px 10px; }
+.cal .c.e { background: transparent; }
+
+/* S4 */
+.phone { width: 430px; height: 880px; border-radius: 68px; background: var(--night); padding: 14px; box-shadow: 0 50px 100px rgba(15, 15, 16, 0.22), 0 0 0 2px #2a2a2e inset; }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 55px; background: var(--white); overflow: hidden; padding: 64px 26px 0; }
+.field-l { font: 600 15px 'Inter'; color: var(--slate); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+.field-i { height: 52px; border: 1.5px solid var(--line); border-radius: 12px; display: flex; align-items: center; padding: 0 16px; font: 600 20px 'Inter'; letter-spacing: 0.12em; color: var(--ink); margin-bottom: 14px; }
+.paper { width: 300px; height: 390px; border-radius: 16px; background: var(--white); box-shadow: 0 40px 80px rgba(15, 15, 16, 0.2), 0 0 0 1px var(--bone); padding: 26px; }
+.bar { height: 10px; border-radius: 5px; background: var(--mercury); margin-bottom: 12px; }
+
+/* S5 */
+.lcard { width: 500px; height: 580px; border-radius: 32px; background: var(--white); box-shadow: 0 34px 70px rgba(15, 15, 16, 0.12), 0 0 0 1px rgba(15, 15, 16, 0.04); padding: 36px; display: flex; flex-direction: column; }
+.chip { width: 60px; height: 60px; border-radius: 18px; background: var(--night); display: grid; place-items: center; flex: none; }
+.chip svg { width: 32px; height: 32px; fill: none; stroke: var(--lime); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.ctitle { font: 700 30px 'Jakarta'; letter-spacing: -0.02em; color: var(--ink); }
+.csub { font: 500 18px 'Inter'; color: var(--slate); margin-top: 4px; }
+.row { display: flex; align-items: center; gap: 14px; height: 56px; border-bottom: 1.5px solid var(--mercury); }
+.av { width: 36px; height: 36px; border-radius: 50%; background: var(--mercury); flex: none; }
+.chk { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--cloud); margin-left: auto; display: grid; place-items: center; }
+.chk svg { width: 16px; height: 16px; fill: none; stroke: var(--white); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.tbar { width: 48px; border-radius: 12px 12px 6px 6px; background: var(--lime); transform-origin: bottom; }
+.shine { position: absolute; top: 0; bottom: 0; width: 140px; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.75), transparent); }
