@@ -109,7 +109,9 @@
     "menu": "Menu",
     "dashboard": "Dashboard",
     "shares": "Shared links",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "sectionMain": "Workspace",
+    "sectionSettings": "Settings"
   },
   "properties": {
     "title": "Properties",
@@ -146,7 +148,21 @@
       "STANDARD": "Standard account",
       "CONVERTIBLE_DIRHAM": "Convertible dirham account",
       "FOREIGN_CURRENCY": "Foreign currency account"
-    }
+    },
+    "portfolio": "{count, plural, one {Portfolio · # property} other {Portfolio · # properties}}",
+    "filterLabel": "Filter by status",
+    "filterAll": "All",
+    "filter": {
+      "LICENSED": "Licensed",
+      "UNLICENSED": "Unlicensed",
+      "PENDING": "Pending"
+    },
+    "noneWithStatus": "No property with this status.",
+    "address": "Address",
+    "nightsLabel": "Nights counted in {year}",
+    "counterTitle": "Night counter",
+    "view": "View property",
+    "addHint": "The property, its licence and its owner."
   },
   "wizard": {
     "title": "Add a property",
@@ -245,7 +261,32 @@
       "RED": "Critical",
       "INFO": "Info"
     },
-    "open": "Open"
+    "open": "Open",
+    "heroLabel": "Nights counted in {year}",
+    "heroCaption": "{count, plural, =0 {No property with a night counter} one {Across # property with a night counter} other {Across # properties with a night counter}}",
+    "seeProperties": "See my properties",
+    "overview": "Overview",
+    "nightsPanel": "Nights per property",
+    "quickActions": "Quick actions",
+    "qaInvite": "Invite a member",
+    "qaShares": "Manage shares",
+    "qaReports": "See the estimates",
+    "qaAlerts": "Set up alerts",
+    "rulesTitle": "Night thresholds",
+    "rulesConfirmed": "Confirmed",
+    "rulesToConfirm": "To confirm",
+    "rulesValidated": "The thresholds come from your rules and have been confirmed by a professional.",
+    "rulesAmber": "Early alert at {count} nights",
+    "rulesRed": "Critical alert at {count} nights",
+    "rulesCap": "Limit at {count} nights",
+    "monthlyTitle": "Nights per month",
+    "monthlySubtitle": "Nights counted in {year}, all properties.",
+    "currentMonth": "Current month",
+    "month": "Month",
+    "platformTitle": "By platform",
+    "platformSubtitle": "Nights counted in {year}.",
+    "platformCenter": "nights",
+    "arrivals": "Arrivals within {days} days"
   },
   "property": {
     "back": "Properties",
@@ -280,7 +321,11 @@
     "importTitle": "Import stays",
     "year": "Year",
     "openRegisters": "Police register",
-    "openTax": "Tax estimate"
+    "openTax": "Tax estimate",
+    "overview": "Overview",
+    "sections": "Property sections",
+    "details": "Property details",
+    "staysCount": "{count, plural, =0 {No stay in {year}} one {# stay in {year}} other {# stays in {year}}}"
   },
   "feeds": {
     "intro": "Paste the iCal link of each platform. The link is confidential: anyone who has it can read the calendar.",
@@ -947,5 +992,106 @@
     "failure_REPORTED_FAILED": "WhatsApp could not deliver it.",
     "failure_MAIL_FAILED": "The email could not be sent.",
     "skipped_RECIPIENT_LIMIT": "This number has already received several messages today: copy the link and send it yourself."
+  },
+  "shell": {
+    "greeting": "Hello, {name}",
+    "subtitle": "Your properties, stays and declarations in one place.",
+    "helpTitle": "Need help?",
+    "helpText": "A question about the app or your account? Write to us.",
+    "helpContact": "Write to us"
+  },
+  "home": {
+    "metaTitle": "Dari — your short-term rentals in Marrakech, without the paperwork",
+    "metaDescription": "Night counter, guest check-in, police forms and register, monthly tax estimate. For property managers and owners in Marrakech.",
+    "nav": {
+      "label": "Page sections",
+      "features": "Features",
+      "how": "How it works",
+      "security": "Security",
+      "faq": "Questions",
+      "login": "Log in",
+      "contact": "Contact us"
+    },
+    "hero": {
+      "eyebrow": "For property managers and owners in Marrakech",
+      "title": "Your short-term rentals,",
+      "titleStrong": "without the paperwork.",
+      "text": "Dari counts the nights of each property, registers your guests for the police form and prepares a tax estimate every month. You stay in control, your accountant confirms.",
+      "cta": "Request access",
+      "note": "Access by invitation during the pilot."
+    },
+    "illus": {
+      "label": "App preview, sample data",
+      "nights": "Nights counted this year",
+      "unit": "nights",
+      "property": "Riad Yasmine",
+      "type": "Riad",
+      "status": "Unlicensed",
+      "rules": "Thresholds set by your rules",
+      "arrivals": "Arrivals today",
+      "guests": "2 of 3 guests registered",
+      "fiche": "Police form ready"
+    },
+    "features": {
+      "eyebrow": "Features",
+      "title": "Everything you need, in one place",
+      "nights": {
+        "title": "Night counter",
+        "text": "Your Airbnb and Booking.com calendars are read automatically. Dari counts the nights of each property and warns you before the thresholds you set."
+      },
+      "checkin": {
+        "title": "Check-in and police register",
+        "text": "The guest gets a link, takes a photo of their ID and checks their details. Dari prepares the form and the monthly register, to share through a secure link."
+      },
+      "tax": {
+        "title": "Monthly tax estimate",
+        "badge": "Beta",
+        "text": "Stay amounts, tax regime and tourist tax: one estimate per property and per month, as PDF and Excel. An estimate to confirm with your accountant."
+      }
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "Three steps, then Dari keeps track for you",
+      "s1": {
+        "title": "Add your properties",
+        "text": "The property, its licence, its owner and the link to its calendars."
+      },
+      "s2": {
+        "title": "Send the check-in link",
+        "text": "By WhatsApp or e-mail, before arrival. The guest fills everything in from their phone."
+      },
+      "s3": {
+        "title": "Share what is needed",
+        "text": "Forms, register and estimates, with your team, your accountant or the authorities, through a time-limited link."
+      }
+    },
+    "security": {
+      "eyebrow": "Security",
+      "title": "Your guests' data stays protected",
+      "encrypted": "ID documents are encrypted and never available at a public address.",
+      "audited": "Only the owner or manager can read them, and every read is logged.",
+      "retention": "Automatic deletion at the end of the retention period.",
+      "noAi": "No ID photo is sent to an external artificial intelligence service.",
+      "roles": "Each role sees what it needs: cleaning staff do not see amounts, the accountant does not see guests."
+    },
+    "faq": {
+      "eyebrow": "Questions",
+      "title": "Frequently asked questions",
+      "q1": "Does Dari replace my accountant?",
+      "a1": "No. Tax estimates remain estimates: they prepare the conversation with your accountant, who confirms them.",
+      "q2": "Which platforms are supported?",
+      "a2": "Any calendar exported as an iCal link, including Airbnb and Booking.com. You can also import stays from a CSV file.",
+      "q3": "Do my guests need to install an app?",
+      "a3": "No. They open a link in their browser, in French or English.",
+      "q4": "How do I get access?",
+      "a4": "Dari is in a pilot in Marrakech. Write to us and we will open your account."
+    },
+    "cta": {
+      "title": "Ready to lighten your season?",
+      "text": "We open pilot accounts one by one. Write to us, we reply quickly."
+    },
+    "footer": {
+      "rights": "© {year} Dari"
+    }
   }
 }

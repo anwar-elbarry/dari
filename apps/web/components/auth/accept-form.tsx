@@ -36,7 +36,7 @@ export function AcceptForm() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    if (await run(() => api('POST', '/invitations/accept', { token, name: f.get('name'), password: f.get('password') }))) router.replace('/');
+    if (await run(() => api('POST', '/invitations/accept', { token, name: f.get('name'), password: f.get('password') }))) router.replace('/dashboard');
   }
 
   if (preview === null) return <p className="text-sm text-slate">{tc('loading')}</p>;

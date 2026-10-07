@@ -43,7 +43,7 @@ test('manager onboarding and accountant invitation', async ({ page, browser }) =
     await expect(page.getByRole('heading', { name: 'Riad Yasmine', level: 1 })).toBeVisible();
     await expect(page.getByText('Sans autorisation')).toBeVisible();
     await page.getByRole('link', { name: 'Biens' }).first().click();
-    await expect(page.getByText('Propriétaire : Karim Benali')).toBeVisible();
+    await expect(page.getByText('Karim Benali · Propriétaire')).toBeVisible();
   });
 
   await test.step('the Starter plan has one seat: Staff is refused, the accountant (no seat) is invited', async () => {

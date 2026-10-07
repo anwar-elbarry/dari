@@ -3,30 +3,16 @@
 import Link from 'next/link';
 import { useEffect, useId, useRef } from 'react';
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import { buttonBase, buttonVariant, cx, type Variant } from './button-class';
 
 /* Components follow the RiadTax design system: pill buttons and tags, 44px controls, bone borders,
    status colours always with a word. See design/README.md. */
 
-const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
-
-type Variant = 'primary' | 'dark' | 'ghost' | 'ghost-brand' | 'danger';
-
-const buttonBase =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-pill border border-transparent font-display text-sm leading-[1.43] font-bold no-underline transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60';
-const buttonVariant: Record<Variant, string> = {
-  primary: 'bg-primary px-6 text-on-primary hover:bg-primary-hover active:bg-brand-deep',
-  dark: 'bg-ink px-6 text-canvas hover:bg-carbon',
-  ghost: 'border-bone bg-transparent px-5 text-ink hover:bg-mercury',
-  'ghost-brand': 'border-link bg-transparent px-5 text-link hover:bg-brand-50',
-  danger: 'bg-transparent px-4 text-danger hover:bg-danger-soft',
-};
+export { buttonClass } from './button-class';
 
 export function Button({ variant = 'primary', className, type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return <button type={type} {...props} className={cx(buttonBase, buttonVariant[variant], className)} />;
 }
-
-/** Class names of a button, for elements that are not <button> or a Next link (an external <a>). */
-export const buttonClass = (variant: Variant = 'primary', className?: string) => cx(buttonBase, buttonVariant[variant], className);
 
 /** A link that looks like a button (navigation, not an action). */
 export function LinkButton({ variant = 'primary', className, ...props }: React.ComponentProps<typeof Link> & { variant?: Variant } & AnchorHTMLAttributes<HTMLAnchorElement>) {
@@ -131,6 +117,49 @@ export function StatCard({ label, value, unit, caption }: { label: string; value
       </p>
       {caption && <p className="text-sm text-slate">{caption}</p>}
     </Card>
+  );
+}
+
+/**
+ * Bento tile of the dashboard-style screens: large radius, hairline border, soft shadow. The title is an h2 and
+ * `action` sits at the end of the header (a selector, a link, a button).
+ */
+export function Panel({ title, subtitle, action, className, children }: { title?: string; subtitle?: ReactNode; action?: ReactNode; className?: string; children: ReactNode }) {
+  return (
+    <section className={cx('flex flex-col rounded-card-lg border border-bone bg-card p-5 shadow-sm', className)}>
+      {(title || action) && (
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            {title && <h2 className="font-display text-base leading-[1.4] font-semibold tracking-[-0.01em] text-ink">{title}</h2>}
+            {subtitle && <p className="text-sm text-slate">{subtitle}</p>}
+          </div>
+          {action}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+/** Round icon well, the visual anchor of a tile or a list row. Decorative: the text next to it carries the meaning. */
+export function IconChip({ children, tone = 'neutral', className }: { children: ReactNode; tone?: 'neutral' | 'raised' | 'brand' | 'dark' | 'warning' | 'danger'; className?: string }) {
+  const style = { neutral: 'border border-bone bg-mist text-ink', raised: 'border border-bone bg-card text-ink', brand: 'bg-primary text-on-primary', dark: 'bg-night text-brand-500', warning: 'bg-warning-soft text-warning', danger: 'bg-danger-soft text-danger' }[tone];
+  return <span aria-hidden className={cx('inline-flex size-10 flex-none items-center justify-center rounded-pill', style, className)}>{children}</span>;
+}
+
+/** One figure inside a panel: icon, label, big number, optional status. */
+export function KpiTile({ icon, label, value, status }: { icon: ReactNode; label: string; value: ReactNode; status?: ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 rounded-card border border-bone bg-mist p-4 sm:flex-col sm:items-stretch">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:flex-none">
+        <IconChip tone="raised">{icon}</IconChip>
+        <p className="text-sm leading-tight text-carbon">{label}</p>
+      </div>
+      <div className="flex flex-wrap items-end justify-end gap-2 sm:justify-between">
+        <p className="font-display text-3xl leading-none font-bold tracking-[-0.03em] text-ink tabular-nums">{value}</p>
+        {status}
+      </div>
+    </div>
   );
 }
 

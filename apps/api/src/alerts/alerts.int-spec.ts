@@ -113,6 +113,37 @@ describe('threshold alerts and dashboard (integration)', () => {
     expect(s.properties[0]).not.toHaveProperty('feedProblems');
   });
 
+  it('dashboard activity: counted nights per month and platform, upcoming arrivals; scoped to the account', async () => {
+    await importCsv(csv(1, 7, 'ACT')); // 6 Airbnb nights in March
+    const stay = (checkIn: string, checkOut: string, source: 'BOOKING' | 'DIRECT', extra: object = {}) =>
+      t.prisma.booking.create({ data: { accountId: a.accountId, propertyId, checkIn: new Date(checkIn), checkOut: new Date(checkOut), source, ...extra } });
+    await stay(`${year}-09-01`, `${year}-09-03`, 'BOOKING');
+    await stay(`${year}-09-10`, `${year}-09-12`, 'BOOKING', { classification: 'UNCERTAIN' });
+    await stay(`${year}-10-10`, `${year}-10-12`, 'BOOKING', { classification: 'OWNER_BLOCK' });
+    await stay(`${year}-11-10`, `${year}-11-12`, 'BOOKING', { status: 'CANCELLED' });
+    const soon = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+    const after = new Date(Date.parse(`${soon}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+    await stay(soon, after, 'DIRECT'); // one night, arriving in two days
+
+    const expected = Array(12).fill(0);
+    expected[2] += 6;
+    expected[8] += 2;
+    const soonInYear = soon.startsWith(String(year));
+    if (soonInYear) expected[Number(soon.slice(5, 7)) - 1] += 1;
+
+    const m = (await a.as.OWNER_MANAGER.get('/api/dashboard').expect(200)).body;
+    expect(m.activity).toEqual({
+      nightsByMonth: expected,
+      nightsBySource: { AIRBNB: 6, BOOKING: 2, DIRECT: soonInYear ? 1 : 0, OTHER: 0 },
+      upcomingArrivals: 1,
+      upcomingDays: 7,
+    });
+    expect((await a.as.STAFF.get('/api/dashboard').expect(200)).body.activity).toEqual(m.activity);
+
+    const other = (await b.as.OWNER_MANAGER.get('/api/dashboard').expect(200)).body;
+    expect(other.activity).toEqual({ nightsByMonth: Array(12).fill(0), nightsBySource: { AIRBNB: 0, BOOKING: 0, DIRECT: 0, OTHER: 0 }, upcomingArrivals: 0, upcomingDays: 7 });
+  });
+
   it('counts feed problems for managers', async () => {
     await t.prisma.icalFeed.create({ data: { accountId: a.accountId, propertyId, platform: 'AIRBNB', url: 'https://93.184.216.34/a.ics', lastStatus: 'ERROR', lastError: 'x' } });
     const m = (await a.as.OWNER_MANAGER.get('/api/dashboard').expect(200)).body;

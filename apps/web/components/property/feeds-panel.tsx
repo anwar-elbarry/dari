@@ -2,7 +2,8 @@
 
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Field, fieldAria, Input, Select, StatusPill } from '../ui';
+import { Icon } from '../icons';
+import { Alert, Button, Field, fieldAria, IconChip, Input, Select, StatusPill } from '../ui';
 import { api, ApiError } from '../../lib/api';
 import type { Feed, Platform, SyncResult } from '../../lib/types';
 import { useSubmit } from '../../lib/use-submit';
@@ -67,19 +68,22 @@ export function FeedsPanel({ propertyId, onChanged }: { propertyId: string; onCh
   }
 
   return (
-    <Card className="space-y-5">
+    <section className="space-y-5 rounded-card-lg border border-bone bg-card p-5 shadow-sm">
       <div>
-        <h2 className="font-display text-xl font-semibold tracking-[-0.02em]">{tp('calendars')}</h2>
-        <p className="mt-1 text-sm text-slate">{t('intro')}</p>
+        <h2 className="font-display text-base leading-[1.4] font-semibold tracking-[-0.01em]">{tp('calendars')}</h2>
+        <p className="text-sm text-slate">{t('intro')}</p>
       </div>
       {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
 
       {feeds && feeds.length === 0 && <p className="text-sm text-slate">{t('none')}</p>}
       <ul className="grid gap-3">
         {feeds?.map((feed) => (
-          <li key={feed.id} className="space-y-3 rounded-card border border-bone p-4">
+          <li key={feed.id} className="space-y-3 rounded-card border border-bone bg-mist p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
+                <IconChip tone="raised">
+                  <Icon name="calendar" size={18} />
+                </IconChip>
                 <span className="font-display font-semibold">{tp(`source.${feed.platform}`)}</span>
                 <StatusPill tone={TONE[feed.lastStatus]}>{t(`status.${feed.lastStatus}`)}</StatusPill>
               </div>
@@ -101,7 +105,7 @@ export function FeedsPanel({ propertyId, onChanged }: { propertyId: string; onCh
 
       <form onSubmit={onAdd} className="grid gap-4 border-t border-bone pt-5">
         {add.error && <Alert>{add.error}</Alert>}
-        <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
+        <div className="grid gap-4 sm:grid-cols-[12rem_1fr] lg:grid-cols-1">
           <Field id="platform" label={t('platform')}>
             <Select {...fieldAria('platform')} defaultValue="AIRBNB">
               {PLATFORMS.map((p) => (
@@ -121,6 +125,6 @@ export function FeedsPanel({ propertyId, onChanged }: { propertyId: string; onCh
           </Button>
         </div>
       </form>
-    </Card>
+    </section>
   );
 }

@@ -194,6 +194,8 @@ export interface Dashboard {
   totals: { properties: number; atRisk: number; pendingReview: number };
   properties: DashboardProperty[];
   alerts: AlertItem[];
+  /** Counted nights of the year (confirmed bookings, all properties), and arrivals in the next `upcomingDays` days. */
+  activity: { nightsByMonth: number[]; nightsBySource: Record<Platform, number>; upcomingArrivals: number; upcomingDays: number };
 }
 
 export interface ImportError {

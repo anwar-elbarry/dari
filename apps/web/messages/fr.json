@@ -109,7 +109,9 @@
     "menu": "Menu",
     "dashboard": "Tableau de bord",
     "shares": "Liens partagés",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "sectionMain": "Espace de travail",
+    "sectionSettings": "Réglages"
   },
   "properties": {
     "title": "Biens",
@@ -146,7 +148,21 @@
       "STANDARD": "Compte standard",
       "CONVERTIBLE_DIRHAM": "Compte en dirhams convertibles",
       "FOREIGN_CURRENCY": "Compte en devises"
-    }
+    },
+    "portfolio": "{count, plural, one {Portefeuille · # bien} other {Portefeuille · # biens}}",
+    "filterLabel": "Filtrer par statut",
+    "filterAll": "Tous",
+    "filter": {
+      "LICENSED": "Autorisés",
+      "UNLICENSED": "Sans autorisation",
+      "PENDING": "En cours"
+    },
+    "noneWithStatus": "Aucun bien avec ce statut.",
+    "address": "Adresse",
+    "nightsLabel": "Nuits comptées en {year}",
+    "counterTitle": "Compteur de nuits",
+    "view": "Voir le bien",
+    "addHint": "Le bien, son autorisation et son propriétaire."
   },
   "wizard": {
     "title": "Ajouter un bien",
@@ -245,7 +261,32 @@
       "RED": "Critique",
       "INFO": "Info"
     },
-    "open": "Ouvrir"
+    "open": "Ouvrir",
+    "heroLabel": "Nuits comptées en {year}",
+    "heroCaption": "{count, plural, =0 {Aucun bien avec un compteur de nuits} one {Sur # bien avec un compteur de nuits} other {Sur # biens avec un compteur de nuits}}",
+    "seeProperties": "Voir mes biens",
+    "overview": "Vue d'ensemble",
+    "nightsPanel": "Nuits par bien",
+    "quickActions": "Actions rapides",
+    "qaInvite": "Inviter un membre",
+    "qaShares": "Gérer les partages",
+    "qaReports": "Voir les estimations",
+    "qaAlerts": "Régler les alertes",
+    "rulesTitle": "Seuils de nuits",
+    "rulesConfirmed": "Confirmés",
+    "rulesToConfirm": "À confirmer",
+    "rulesValidated": "Les seuils viennent de vos règles et ont été confirmés par un professionnel.",
+    "rulesAmber": "Alerte préventive à {count} nuits",
+    "rulesRed": "Alerte critique à {count} nuits",
+    "rulesCap": "Limite à {count} nuits",
+    "monthlyTitle": "Nuits par mois",
+    "monthlySubtitle": "Nuits comptées en {year}, tous biens confondus.",
+    "currentMonth": "Mois en cours",
+    "month": "Mois",
+    "platformTitle": "Par plateforme",
+    "platformSubtitle": "Nuits comptées en {year}.",
+    "platformCenter": "nuits",
+    "arrivals": "Arrivées sous {days} jours"
   },
   "property": {
     "back": "Biens",
@@ -280,7 +321,11 @@
     "importTitle": "Importer des séjours",
     "year": "Année",
     "openRegisters": "Registre de police",
-    "openTax": "Estimation fiscale"
+    "openTax": "Estimation fiscale",
+    "overview": "Vue d'ensemble",
+    "sections": "Sections du bien",
+    "details": "Fiche du bien",
+    "staysCount": "{count, plural, =0 {Aucun séjour en {year}} one {# séjour en {year}} other {# séjours en {year}}}"
   },
   "feeds": {
     "intro": "Collez le lien iCal de chaque plateforme. Le lien est confidentiel : quiconque le possède peut lire le calendrier.",
@@ -947,5 +992,106 @@
     "failure_REPORTED_FAILED": "WhatsApp n'a pas pu le remettre.",
     "failure_MAIL_FAILED": "L'e-mail n'a pas pu être envoyé.",
     "skipped_RECIPIENT_LIMIT": "Ce numéro a déjà reçu plusieurs messages aujourd'hui : copiez le lien et envoyez-le vous-même."
+  },
+  "shell": {
+    "greeting": "Bonjour, {name}",
+    "subtitle": "Vos biens, séjours et déclarations au même endroit.",
+    "helpTitle": "Besoin d'aide ?",
+    "helpText": "Une question sur l'application ou un compte ? Écrivez-nous.",
+    "helpContact": "Nous écrire"
+  },
+  "home": {
+    "metaTitle": "Dari — vos locations courtes à Marrakech, sans la paperasse",
+    "metaDescription": "Compteur de nuits, check-in des voyageurs, fiches et registre de police, estimation fiscale mensuelle. Pour les conciergeries et propriétaires à Marrakech.",
+    "nav": {
+      "label": "Sections de la page",
+      "features": "Fonctionnalités",
+      "how": "Comment ça marche",
+      "security": "Sécurité",
+      "faq": "Questions",
+      "login": "Se connecter",
+      "contact": "Nous contacter"
+    },
+    "hero": {
+      "eyebrow": "Pour les conciergeries et propriétaires à Marrakech",
+      "title": "Vos locations courtes,",
+      "titleStrong": "sans la paperasse.",
+      "text": "Dari compte les nuits de chaque bien, enregistre vos voyageurs pour la fiche de police et prépare une estimation fiscale chaque mois. Vous gardez la main, votre comptable confirme.",
+      "cta": "Demander un accès",
+      "note": "Accès sur invitation pendant la phase pilote."
+    },
+    "illus": {
+      "label": "Aperçu de l'application, données d'exemple",
+      "nights": "Nuits comptées cette année",
+      "unit": "nuits",
+      "property": "Riad Yasmine",
+      "type": "Riad",
+      "status": "Sans autorisation",
+      "rules": "Seuils fixés par vos règles",
+      "arrivals": "Arrivées aujourd'hui",
+      "guests": "2 voyageurs sur 3 enregistrés",
+      "fiche": "Fiche de police prête"
+    },
+    "features": {
+      "eyebrow": "Fonctionnalités",
+      "title": "Tout ce qu'il faut, au même endroit",
+      "nights": {
+        "title": "Compteur de nuits",
+        "text": "Vos calendriers Airbnb et Booking.com sont lus automatiquement. Dari compte les nuits de chaque bien et vous prévient avant les seuils que vous avez fixés."
+      },
+      "checkin": {
+        "title": "Check-in et registre de police",
+        "text": "Le voyageur reçoit un lien, photographie sa pièce d'identité et vérifie ses informations. Dari prépare la fiche et le registre du mois, à partager par lien sécurisé."
+      },
+      "tax": {
+        "title": "Estimation fiscale mensuelle",
+        "badge": "Bêta",
+        "text": "Montants des séjours, régime et taxe de séjour : une estimation par bien et par mois, en PDF et Excel. Une estimation à confirmer avec votre comptable."
+      }
+    },
+    "how": {
+      "eyebrow": "Comment ça marche",
+      "title": "Trois étapes, puis Dari suit pour vous",
+      "s1": {
+        "title": "Ajoutez vos biens",
+        "text": "Le bien, son autorisation, son propriétaire et le lien de ses calendriers."
+      },
+      "s2": {
+        "title": "Envoyez le lien de check-in",
+        "text": "Par WhatsApp ou par e-mail, avant l'arrivée. Le voyageur remplit tout depuis son téléphone."
+      },
+      "s3": {
+        "title": "Partagez ce qu'il faut",
+        "text": "Fiches, registre et estimations, avec votre équipe, votre comptable ou l'autorité, par un lien limité dans le temps."
+      }
+    },
+    "security": {
+      "eyebrow": "Sécurité",
+      "title": "Les données de vos voyageurs restent protégées",
+      "encrypted": "Pièces d'identité chiffrées, jamais disponibles à une adresse publique.",
+      "audited": "Lecture réservée au propriétaire ou au gérant, et chaque consultation est tracée.",
+      "retention": "Suppression automatique à la fin de la durée de conservation.",
+      "noAi": "Aucune photo d'identité n'est envoyée à un service d'intelligence artificielle externe.",
+      "roles": "Chaque rôle voit ce qu'il lui faut : l'équipe ménage ne voit pas les montants, le comptable ne voit pas les voyageurs."
+    },
+    "faq": {
+      "eyebrow": "Questions",
+      "title": "Questions fréquentes",
+      "q1": "Dari remplace-t-il mon comptable ?",
+      "a1": "Non. Les estimations fiscales restent des estimations : elles préparent l'échange avec votre comptable, qui les confirme.",
+      "q2": "Quelles plateformes sont prises en charge ?",
+      "a2": "Tout calendrier exportable par lien iCal, dont Airbnb et Booking.com. Vous pouvez aussi importer vos séjours depuis un fichier CSV.",
+      "q3": "Mes voyageurs doivent-ils installer une application ?",
+      "a3": "Non. Ils ouvrent un lien dans leur navigateur, en français ou en anglais.",
+      "q4": "Comment obtenir un accès ?",
+      "a4": "Dari est en phase pilote à Marrakech. Écrivez-nous et nous ouvrons votre compte."
+    },
+    "cta": {
+      "title": "Prêt à alléger votre saison ?",
+      "text": "Nous ouvrons les comptes pilotes un par un. Écrivez-nous, nous vous répondons rapidement."
+    },
+    "footer": {
+      "rights": "© {year} Dari"
+    }
   }
 }
