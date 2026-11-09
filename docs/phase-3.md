@@ -144,6 +144,11 @@ New capabilities: `checkin:manage`, `guest:read_meta`, `id:read`, `police:read`.
 
 Rough effort solo: 4–6 weeks full-time. Steps 3.1, 3.3, 3.4 and 3.6 carry the risk.
 
+**Progress:**
+- 3.1 partly done: envelope encryption (`apps/api/src/storage/envelope.ts`, tested). The S3 client, `StoredObject` and audit hooks wait for the hosting decision.
+- 3.3 partly done: ICAO 9303 MRZ parser (TD1/TD2/TD3) with check digits and `POST /mrz/parse` behind a shared secret (`services/ocr`, tested on synthetic specimens). Image-to-MRZ detection and the CIN approach are not built; they wait for the real-card test.
+- Human-only items are tracked in [`human-tasks.md`](human-tasks.md).
+
 ---
 
 ## Tests required
