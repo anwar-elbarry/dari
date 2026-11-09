@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { BarChart, Donut } from '../../../components/charts';
+import { Rings } from '../../../components/decor';
 import { Icon, type IconName } from '../../../components/icons';
 import { NightGauge } from '../../../components/night-gauge';
 import { Require } from '../../../components/require';
@@ -28,18 +29,6 @@ const PLATFORMS: { key: Platform; stroke: string; fill: string }[] = [
   { key: 'DIRECT', stroke: 'stroke-line-strong', fill: 'bg-line-strong' },
   { key: 'OTHER', stroke: 'stroke-cloud', fill: 'bg-cloud' },
 ];
-
-/** Decorative rings on the lime card (brand-deep on brand lime, no meaning). */
-function Rings() {
-  return (
-    <svg aria-hidden focusable="false" viewBox="0 0 200 200" className="pointer-events-none absolute -end-20 -bottom-24 size-72 text-brand-deep opacity-40 rtl:-scale-x-100">
-      <g fill="none" stroke="currentColor" strokeWidth="14" strokeLinecap="round">
-        <path d="M30 150a80 80 0 1 1 140 0" />
-        <path d="M62 150a48 48 0 1 1 86-30" opacity="0.6" />
-      </g>
-    </svg>
-  );
-}
 
 function DashboardView() {
   const t = useTranslations('dashboard');

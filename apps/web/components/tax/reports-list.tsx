@@ -7,6 +7,7 @@ import { useSession } from '../../lib/session';
 import { taxesTotal } from '../../lib/tax';
 import type { TaxReportSummary } from '../../lib/types';
 import { Alert, Card, LinkButton, Meta, StatusPill } from '../ui';
+import { PortfolioPanel } from './portfolio-panel';
 import { BetaPill, isBeta, TaxNotice, useMoney, useTaxRules } from './tax-notice';
 
 const TONE = { generated: 'success', outdated: 'warning' } as const;
@@ -56,6 +57,7 @@ export function ReportsList() {
         </Alert>
       )}
       {rules && <TaxNotice beta={anyBeta} rules={rules} />}
+      {rules && <PortfolioPanel />}
 
       {rules && reports && reports.length === 0 && (
         <Card className="space-y-1">

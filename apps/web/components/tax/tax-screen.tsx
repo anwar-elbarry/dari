@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, apiBlob } from '../../lib/api';
@@ -99,12 +98,8 @@ export function TaxScreen({ propertyId }: { propertyId: string }) {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <Link href={`/properties/${propertyId}`} className="text-sm font-medium text-link hover:underline">
-          ← {t('back')}
-        </Link>
         <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
         <p className="text-sm text-slate">
-          {name ? `${name} · ` : ''}
           {t('intro')}
         </p>
       </div>

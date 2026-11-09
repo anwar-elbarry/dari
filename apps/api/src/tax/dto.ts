@@ -14,3 +14,19 @@ export class ReportsQuery {
   @IsUUID()
   propertyId?: string;
 }
+
+/** The period of the portfolio export: a year, or one month of it. */
+export class PortfolioQuery {
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
+  @IsInt()
+  @Min(2000)
+  @Max(2099)
+  year!: number;
+
+  @IsOptional()
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  month?: number;
+}

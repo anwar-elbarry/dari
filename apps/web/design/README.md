@@ -41,3 +41,9 @@ Layout ideas taken from a premium dashboard reference; colours, logo and fonts s
   sample data (one `role="img"`), feature cards (the middle one lime), numbered steps, a `plaster` band for
   security, `<details>` FAQ, lime closing panel. Server component: import `buttonClass` from
   `components/button-class.ts`, not from the client module `ui.tsx`.
+- **Property header** (`components/property/property-header.tsx`, rendered by `app/(app)/properties/[id]/layout.tsx`):
+  breadcrumb, identity card (type icon on `night`, name, address, licence pill) and the section tabs. The name is
+  the h1 on the overview only; every section page keeps its own h1.
+- **Auth pages** (`app/(auth)/layout.tsx`): form card on the left, a lime panel on the right from `lg` up.
+- **Buttons**: each variant sets its own border colour (`components/button-class.ts`); never combine a base
+  `border-transparent` with a variant colour, the winner would depend on CSS order (ghost borders were invisible).

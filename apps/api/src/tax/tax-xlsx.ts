@@ -39,7 +39,11 @@ async function watermarkPng(lines: string[]): Promise<Buffer | null> {
   }
 }
 
-export async function buildTaxWorkbook(d: TaxTemplateData): Promise<Buffer> {
+/**
+ * A workbook and the function that frames each of its sheets with the disclaimer: the beta banner, text, print header
+ * and watermark, or the standard text. Shared by the monthly export and the portfolio export.
+ */
+export async function disclaimedWorkbook(d: Pick<TaxTemplateData, 'beta' | 'disclaimer' | 'generatedAt'>) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Dari';
   wb.created = d.generatedAt;
@@ -47,6 +51,7 @@ export async function buildTaxWorkbook(d: TaxTemplateData): Promise<Buffer> {
   const watermark = d.beta ? await watermarkPng([en.banner, fr.banner]) : null;
   const bg = watermark ? wb.addImage({ buffer: watermark as unknown as ExcelJS.Buffer, extension: 'png' }) : null;
 
+  /** Writes the disclaimer at the top of the sheet; returns the first free row. */
   function frame(ws: ExcelJS.Worksheet, columns: number) {
     ws.views = [{ showGridLines: false }];
     if (d.beta) {
@@ -84,6 +89,12 @@ export async function buildTaxWorkbook(d: TaxTemplateData): Promise<Buffer> {
     }
     return r;
   }
+  return { wb, frame };
+}
+
+export async function buildTaxWorkbook(d: TaxTemplateData): Promise<Buffer> {
+  const { wb, frame } = await disclaimedWorkbook(d);
+  const { en } = d.disclaimer;
 
   // Sheet 1: the report.
   const ws = wb.addWorksheet('Report');

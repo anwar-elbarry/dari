@@ -503,3 +503,35 @@ export interface StayAmounts {
   platformCommission: string | null;
   taxeSejourAmount: string | null;
 }
+
+/** Figures of the portfolio export, integer centimes; null = not computed. */
+export type PortfolioFigures = Record<'nights_revenue' | 'addon_revenue' | 'taxe_sejour_deducted' | 'gross_base' | 'income_tax' | 'vat' | 'local_tax', number | null>;
+
+export interface PortfolioSummary {
+  stays: number;
+  nights: number;
+  figures: PortfolioFigures;
+  problems: number;
+  beta: boolean;
+  reportsCurrent: number;
+  months: number;
+}
+
+export interface PortfolioProperty {
+  propertyId: string;
+  propertyName: string;
+  commune: string;
+  ownerName: string;
+  regime: TaxRegime;
+  taxeSejourMode: TaxeSejourMode;
+  summary: PortfolioSummary;
+}
+
+export interface TaxPortfolio {
+  year: number;
+  month: number | null;
+  months: string[];
+  beta: boolean;
+  properties: PortfolioProperty[];
+  total: PortfolioSummary;
+}

@@ -36,6 +36,7 @@
     "DISCLAIMER_MISSING": "The disclaimer is not configured: the estimate cannot be generated.",
     "REPORT_BUSY": "The estimate is being generated. Try again in a moment.",
     "REPORT_TOO_LARGE": "Too many stays this year to generate the estimate.",
+    "PORTFOLIO_TOO_LARGE": "Too many properties for one export. Contact support.",
     "NO_CHANGE": "No amount to save.",
     "SEAT_LIMIT_REACHED": "All the seats of your plan are in use. Free a seat or change plan.",
     "CANNOT_MODIFY_SELF": "You cannot change your own role or status.",
@@ -906,6 +907,26 @@
       "rate": "Rate {rate}%",
       "catch_up": "Rate {rate}% applied to the year to date (catch-up)",
       "residency": "Non-resident owner ({residency}, {account}): statement to prepare with your accountant"
+    },
+    "portfolio": {
+      "title": "Export for your accountant",
+      "intro": "All your properties over the year or one month, with the same calculations as the monthly estimates. Send the Excel file to your accountant, who confirms the amounts.",
+      "caption": "Estimates per property over the period",
+      "year": "Year",
+      "month": "Month",
+      "wholeYear": "Whole year",
+      "download": "Download the Excel export",
+      "downloading": "Preparing the file…",
+      "property": "Property",
+      "nights": "Nights",
+      "grossBase": "Gross base",
+      "taxes": "Estimated taxes",
+      "reports": "Monthly reports up to date",
+      "current": "{current} of {months}",
+      "total": "Total",
+      "empty": "No properties yet.",
+      "notStarted": "This period has not started yet.",
+      "problems": "{count, plural, one {# item to complete} other {# items to complete}} over the period: the totals concerned are incomplete."
     }
   },
   "checklist": {

@@ -1,11 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { api, apiBlob } from '../../lib/api';
 import { useSession } from '../../lib/session';
-import type { Checklist, ChecklistItem, ChecklistStatus, PropertyReduced } from '../../lib/types';
+import type { Checklist, ChecklistItem, ChecklistStatus } from '../../lib/types';
 import { useSubmit } from '../../lib/use-submit';
 import { Alert, Button, Card, Field, fieldAria, Input, Select, StatusPill, Textarea } from '../ui';
 
@@ -22,7 +21,6 @@ export function ChecklistScreen({ propertyId }: { propertyId: string }) {
   const t = useTranslations('checklist');
   const locale = useLocale();
   const { can } = useSession();
-  const [property, setProperty] = useState<PropertyReduced | null>(null);
   const [list, setList] = useState<Checklist | null>(null);
   const [failed, setFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -32,9 +30,7 @@ export function ChecklistScreen({ propertyId }: { propertyId: string }) {
 
   const load = useCallback(async () => {
     try {
-      const [p, c] = await Promise.all([api<PropertyReduced>('GET', `/properties/${propertyId}`), api<Checklist>('GET', `/properties/${propertyId}/checklist`)]);
-      setProperty(p);
-      setList(c);
+      setList(await api<Checklist>('GET', `/properties/${propertyId}/checklist`));
       setFailed(false);
     } catch {
       setFailed(true);
@@ -56,12 +52,9 @@ export function ChecklistScreen({ propertyId }: { propertyId: string }) {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <Link href={`/properties/${propertyId}`} className="text-sm font-medium text-link hover:underline">
-          ← {t('back')}
-        </Link>
         <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
         <p className="text-sm text-slate">
-          {property ? `${property.name} · ` : ''}
+          
           {t('intro')}
         </p>
         {!canWrite && <Alert tone="info">{t('staffNote')}</Alert>}

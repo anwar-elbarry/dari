@@ -53,3 +53,14 @@ export function exportFilename(propertyName: string, month: string, extension: '
 export function rulesAreBeta(status: { rules: { present: boolean; validated: boolean }[]; localTaxRules: number }): boolean {
   return status.localTaxRules === 0 || status.rules.length === 0 || status.rules.some((r) => !r.present || !r.validated);
 }
+
+/** The three estimated taxes of a portfolio line added together; null when any of them is not computed. */
+export function portfolioTaxes(f: Record<'income_tax' | 'vat' | 'local_tax', number | null>): number | null {
+  if (f.income_tax === null || f.vat === null || f.local_tax === null) return null;
+  return f.income_tax + f.vat + f.local_tax;
+}
+
+/** File name of the portfolio export: the period only. */
+export function portfolioFilename(year: number, month: number | null): string {
+  return `estimations-portefeuille-${year}${month ? `-${String(month).padStart(2, '0')}` : ''}.xlsx`;
+}

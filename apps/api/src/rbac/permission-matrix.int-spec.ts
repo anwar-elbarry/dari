@@ -157,6 +157,8 @@ export const MATRIX: Row[] = [
   { method: 'GET', route: '/api/tax/reports/:id', url: (f) => `/api/tax/reports/${f.taxReportId}`, expect: REPORT_READ },
   { method: 'GET', route: '/api/tax/reports/:id/pdf', url: (f) => `/api/tax/reports/${f.taxReportId}/pdf`, expect: REPORT_READ },
   { method: 'GET', route: '/api/tax/reports/:id/xlsx', url: (f) => `/api/tax/reports/${f.taxReportId}/xlsx`, expect: REPORT_READ },
+  { method: 'GET', route: '/api/tax/portfolio', url: () => '/api/tax/portfolio?year=2026&month=2', expect: REPORT_READ },
+  { method: 'GET', route: '/api/tax/portfolio/xlsx', url: () => '/api/tax/portfolio/xlsx?year=2026&month=2', expect: REPORT_READ },
   { method: 'GET', route: '/api/properties/:id/tax-reports', url: (f) => `/api/properties/${f.propertyId}/tax-reports`, expect: MANAGER_ONLY(200) },
   { method: 'GET', route: '/api/properties/:id/tax-reports/:month/missing', url: (f) => `/api/properties/${f.propertyId}/tax-reports/2026-03/missing`, expect: MANAGER_ONLY(200) },
   { method: 'POST', route: '/api/properties/:id/tax-reports/:month', url: (f) => `/api/properties/${f.propertyId}/tax-reports/2026-03`, body: () => ({}), expect: MANAGER_ONLY(200) },

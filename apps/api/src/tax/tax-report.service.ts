@@ -11,6 +11,8 @@ import { handOver, provisionalUntil } from '../storage/hand-over';
 import { StorageService } from '../storage/storage.service';
 import { centimesToDecimal, toCentimes } from './money';
 import { computeMonth, PipelineInput, PipelineResult, Problem, ProblemCode, stayBase, StayInput } from './pipeline';
+import { FIGURE_KEYS, Figures, figuresOf, periodMonths, PortfolioMonth, PortfolioProperty, portfolioTotals } from './portfolio';
+import { buildPortfolioWorkbook } from './portfolio-xlsx';
 import { TaxRulesService } from './tax-rules.service';
 import { renderTaxHtml, TAX_TEMPLATE_VERSION, TaxTemplateData } from './tax-template';
 import { buildTaxWorkbook } from './tax-xlsx';
@@ -26,6 +28,8 @@ const MAX_STAYS = 20_000;
 const LIST_LIMIT = 300;
 /** Parallel generations of one month retry the swap this many times before giving up. */
 const SWAP_ATTEMPTS = 5;
+/** The portfolio computes every month of every property: an account larger than this is refused rather than left to time out. */
+const MAX_PORTFOLIO_PROPERTIES = 200;
 const DAY_MS = 86_400_000;
 
 /** Only confirmed stays that count as bookings, as for the register and the day counter. */
@@ -344,6 +348,73 @@ export class TaxReportService {
     if (swap.previous) for (const old of [swap.previous.pdf, swap.previous.xlsx]) await shred(old, swap.id).catch(() => this.logger.warn(`could not remove a previous file of report ${swap!.id}`));
     await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'tax.report.generated', resourceType: 'TaxReport', resourceId: swap.id, ip: meta.ip });
     return this.detail(user, swap.id);
+  }
+
+  /**
+   * Every property of the account over a month or a year (Owner/Manager and Accountant), computed now by the same
+   * pipeline as a monthly report, with the status of each stored monthly report. Grouped by owner, for everyone with
+   * `report:read`: the income-tax rate depends on the owner's annual total, so the Accountant sees owners here (founder,
+   * 2026-10-08), still with no address or booking id.
+   */
+  async portfolio(user: AuthUser, year: number, month?: number, now = new Date()) {
+    const months = periodMonths(year, month, now);
+    if (months.length === 0) throw new UnprocessableEntityException({ code: 'MONTH_NOT_STARTED', message: 'This period has not started yet.' });
+    const db = this.prisma.forAccount(user.accountId);
+    const properties = await db.property.findMany({
+      select: { id: true, name: true, commune: true, taxRegime: true, taxeSejourMode: true, owner: { select: { name: true } } },
+      orderBy: [{ owner: { name: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
+      take: MAX_PORTFOLIO_PROPERTIES + 1,
+    });
+    if (properties.length > MAX_PORTFOLIO_PROPERTIES) throw new UnprocessableEntityException({ code: 'PORTFOLIO_TOO_LARGE', message: 'Too many properties for one export.' });
+    const stored = await db.taxReport.findMany({ where: { month: { in: months } }, select: { propertyId: true, month: true, inputDigest: true } });
+    const digestOf = new Map(stored.map((r) => [`${r.propertyId}:${r.month}`, r.inputDigest]));
+
+    const cache: Cache = new Map();
+    const rules = new Map<string, { key: string; validated: boolean; present: boolean; validatedAt: string | null }>();
+    const out: PortfolioProperty[] = [];
+    for (const p of properties) {
+      const rows: PortfolioMonth[] = [];
+      for (const m of months) {
+        const storedDigest = digestOf.get(`${p.id}:${m}`);
+        try {
+          const { input, result, digest } = await this.build(user.accountId, p.id, m, cache);
+          for (const r of result.rulesUsed) {
+            const seen = rules.get(r.key);
+            // A rule counts as validated only if it was validated for every figure it produced.
+            rules.set(r.key, seen ? { ...seen, validated: seen.validated && r.validated, present: seen.present && r.present } : { ...r });
+          }
+          rows.push({
+            month: m, computed: true, stays: input.stays.length, nights: input.stays.reduce((a, s) => a + s.nights, 0), figures: figuresOf(result.lines),
+            problems: result.problems.length, beta: result.beta, report: storedDigest === undefined ? 'none' : storedDigest === digest ? 'generated' : 'outdated',
+          });
+        } catch (e) {
+          if (!(e instanceof UnprocessableEntityException)) throw e;
+          const figures = Object.fromEntries(FIGURE_KEYS.map((k) => [k, null])) as Figures;
+          rows.push({ month: m, computed: false, stays: 0, nights: 0, figures, problems: 0, beta: true, report: storedDigest === undefined ? 'none' : 'outdated' });
+        }
+      }
+      out.push({ propertyId: p.id, propertyName: p.name, commune: p.commune, ownerName: p.owner.name, regime: p.taxRegime, taxeSejourMode: p.taxeSejourMode, months: rows });
+    }
+    const { byProperty, total } = portfolioTotals(out);
+    return {
+      year,
+      month: month ?? null,
+      months,
+      // An empty portfolio has no figure to vouch for: it carries the beta wording rather than the standard one.
+      beta: out.length === 0 || total.beta,
+      properties: out.map((p) => ({ ...p, summary: byProperty.get(p.propertyId)! })),
+      total,
+      rules: [...rules.values()].sort((a, b) => a.key.localeCompare(b.key)),
+    };
+  }
+
+  /** The portfolio as an Excel file, built on request and never stored. The read is on the audit trail before any byte is returned. */
+  async portfolioFile(user: AuthUser, year: number, month: number | undefined, meta: ClientMeta): Promise<Buffer> {
+    const p = await this.portfolio(user, year, month);
+    const disclaimer = await this.rules.disclaimer(p.beta);
+    const xlsx = await buildPortfolioWorkbook({ year, month, properties: p.properties, beta: p.beta, disclaimer, generatedAt: new Date(), rules: p.rules });
+    await this.audit.record({ accountId: user.accountId, actorId: user.id, action: 'tax.portfolio.read', resourceType: 'TaxPortfolio', resourceId: month ? `${year}-${String(month).padStart(2, '0')}` : String(year), ip: meta.ip });
+    return xlsx;
   }
 
   /** One export, decrypted in memory. The read is on the audit trail before any byte is returned. */

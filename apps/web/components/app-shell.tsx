@@ -27,8 +27,8 @@ type NavLink = { href: string; label: string; icon: IconName };
 
 /** Screens laid out as a bento grid use the wide frame; forms and lists keep a reading width. */
 const WIDE = ['/dashboard', '/properties'];
-/** A property's own page (not /properties/new or its sub-pages) is a bento screen too. */
-const isWide = (path: string) => WIDE.includes(path) || /^\/properties\/(?!new$)[^/]+$/.test(path);
+/** A property's screens (not /properties/new) share a full-width header (properties/[id]/layout.tsx). */
+const isWide = (path: string) => WIDE.includes(path) || /^\/properties\/(?!new(\/|$))[^/]+(\/.*)?$/.test(path);
 
 const initials = (name: string) =>
   name

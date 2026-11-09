@@ -278,6 +278,10 @@ describe('no personal data in logs or audit rows (integration)', () => {
     await a.as.OWNER_MANAGER.get('/api/tax/rules').expect(200);
     await a.as.ACCOUNTANT.get(`/api/tax/reports/${report.id}/pdf`).expect(200);
     await a.as.ACCOUNTANT.get(`/api/tax/reports/${report.id}/xlsx`).expect(200);
+    await a.as.OWNER_MANAGER.get('/api/tax/portfolio?year=2026&month=3').expect(200);
+    await a.as.OWNER_MANAGER.get('/api/tax/portfolio/xlsx?year=2026').expect(200);
+    await a.as.ACCOUNTANT.get('/api/tax/portfolio/xlsx?year=2026&month=3').expect(200);
+    await a.as.OWNER_MANAGER.get(`/api/tax/portfolio?year=${encodeURIComponent(PII.name)}`).expect(400);
     await a.as.OWNER_MANAGER.patch(`/api/bookings/${stay.id}/amounts`, { addonRevenue: '9191919.19' }).expect(200);
     await a.as.OWNER_MANAGER.patch(`/api/bookings/${stay.id}/amounts`, { addonRevenue: `${PII.name}` }).expect(400);
     await a.as.OWNER_MANAGER.get(`${base}/${PII.name}/missing`).expect(400);

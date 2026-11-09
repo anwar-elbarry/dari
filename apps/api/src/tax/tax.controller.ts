@@ -5,7 +5,7 @@ import { AuthUser, clientMeta } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators';
 import { NoStore } from '../checkin/no-store.decorator';
 import { Requires } from '../rbac/requires.decorator';
-import { ReportsQuery } from './dto';
+import { PortfolioQuery, ReportsQuery } from './dto';
 import { TaxReportService } from './tax-report.service';
 import { TaxReportsEnabledGuard } from './tax-reports-enabled.guard';
 import { TaxRulesService } from './tax-rules.service';
@@ -62,6 +62,24 @@ export class TaxController {
   @Header('Cross-Origin-Resource-Policy', 'same-origin')
   async xlsx(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     return new StreamableFile(await this.reports.file(user, id, 'xlsx', clientMeta(req)), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
+  /** Every property of the account over a year or a month, for the accountant. Computed now; the Accountant gets no owner. */
+  @Requires('report:read')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Get('tax/portfolio')
+  portfolio(@CurrentUser() user: AuthUser, @Query() q: PortfolioQuery) {
+    return this.reports.portfolio(user, q.year, q.month);
+  }
+
+  /** The same as an Excel file, built on request, never stored; audited before it is sent. */
+  @Requires('report:read')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Get('tax/portfolio/xlsx')
+  @Header('Content-Disposition', 'attachment; filename="estimations-portefeuille.xlsx"')
+  @Header('Cross-Origin-Resource-Policy', 'same-origin')
+  async portfolioXlsx(@CurrentUser() user: AuthUser, @Query() q: PortfolioQuery, @Req() req: Request) {
+    return new StreamableFile(await this.reports.portfolioFile(user, q.year, q.month, clientMeta(req)), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
 
   /** The months of one property with their status. */

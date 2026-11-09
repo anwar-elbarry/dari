@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
@@ -65,11 +64,8 @@ export function ArrivalsScreen({ propertyId }: { propertyId: string }) {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <Link href={`/properties/${propertyId}`} className="text-sm font-medium text-link hover:underline">
-          ← {t('back')}
-        </Link>
         <h1 className="font-display text-2xl leading-[1.33] font-bold tracking-[-0.02em]">{t('title')}</h1>
-        <p className="text-sm text-slate">{property ? `${property.name} · ` : ''}{t('intro')}</p>
+        <p className="text-sm text-slate">{t('intro')}</p>
         {!managerView && <Alert tone="info">{t('staffNote')}</Alert>}
       </div>
 

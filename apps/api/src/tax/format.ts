@@ -42,6 +42,18 @@ export const REGIME_LABELS = {
   COMPANY: { fr: 'Société', en: 'Company' },
 } as const;
 
+export const TAXE_SEJOUR_MODE_LABELS = {
+  INCLUDED: { fr: 'Incluse dans le prix', en: 'Included in the price' },
+  COLLECTED: { fr: 'Encaissée à part', en: 'Collected separately' },
+} as const;
+
+/** Whether the stored monthly report matches the figures of the portfolio export. */
+export const REPORT_STATUS_LABELS = {
+  generated: { fr: 'À jour', en: 'Up to date' },
+  outdated: { fr: 'À régénérer', en: 'To regenerate' },
+  none: { fr: 'Non généré', en: 'Not generated' },
+} as const;
+
 /** The note of a line in words, in one language. */
 export function noteText(l: ReportLine, lang: 'fr' | 'en'): string {
   const t = (fr: string, en: string) => (lang === 'fr' ? fr : en);

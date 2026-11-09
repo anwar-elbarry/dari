@@ -36,6 +36,7 @@
     "DISCLAIMER_MISSING": "L'avertissement n'est pas configuré : l'estimation ne peut pas être générée.",
     "REPORT_BUSY": "L'estimation est en cours de génération. Réessayez dans un instant.",
     "REPORT_TOO_LARGE": "Trop de séjours cette année pour générer l'estimation.",
+    "PORTFOLIO_TOO_LARGE": "Trop de biens pour un seul export. Contactez le support.",
     "NO_CHANGE": "Aucun montant à enregistrer.",
     "SEAT_LIMIT_REACHED": "Toutes les places de votre offre sont utilisées. Libérez une place ou changez d'offre.",
     "CANNOT_MODIFY_SELF": "Vous ne pouvez pas modifier votre propre rôle ni votre accès.",
@@ -906,6 +907,26 @@
       "rate": "Taux {rate} %",
       "catch_up": "Taux {rate} % appliqué au cumul annuel (régularisation)",
       "residency": "Propriétaire non résident ({residency}, {account}) : relevé à établir avec votre comptable"
+    },
+    "portfolio": {
+      "title": "Export pour le comptable",
+      "intro": "Tous vos biens sur l'année ou un mois, avec les mêmes calculs que les estimations mensuelles. Le fichier Excel est à transmettre à votre comptable, qui confirme les montants.",
+      "caption": "Estimations par bien sur la période",
+      "year": "Année",
+      "month": "Mois",
+      "wholeYear": "Toute l'année",
+      "download": "Télécharger l'export Excel",
+      "downloading": "Préparation du fichier…",
+      "property": "Bien",
+      "nights": "Nuitées",
+      "grossBase": "Base brute",
+      "taxes": "Impôts estimés",
+      "reports": "Rapports mensuels à jour",
+      "current": "{current} sur {months}",
+      "total": "Total",
+      "empty": "Aucun bien pour l'instant.",
+      "notStarted": "Cette période n'a pas encore commencé.",
+      "problems": "{count, plural, one {# point à compléter} other {# points à compléter}} sur la période : les totaux concernés sont incomplets."
     }
   },
   "checklist": {

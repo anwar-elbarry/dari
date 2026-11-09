@@ -359,3 +359,30 @@ Nothing was run against staging: the real edge (client address, body limits, the
 | 7.6 Real devices | [`pilot-checklist.md`](pilot-checklist.md) section 2. Started: a real CIN photo failed to read (a stray `K` before the `<` run of TD1 line 2, fixed in `services/ocr/app/mrz.py`); the photo step now asks passport or ID card and shows where the reading lines are (ID card: the back) | Needs real phones (iPhone Safari, low-end Android) |
 | 7.7 Legal sign-offs | Trackers in this file and in phases 3 to 6 | Counsel and the fiduciaire; record `validatedBy` in `RuleConfig` |
 | 7.8 Pilot | – | You: onboarding, weekly review, the decision on each flag; `docs/phase-8.md` from what the pilot shows |
+
+---
+
+## 7.P — Pilot positioning (product additions, written 2026-10-08)
+
+Outside advice on how to sell the pilot was reviewed against the specs and the rules in `CLAUDE.md`. What was kept, changed or refused, so the decision is not re-litigated:
+
+| Advice | Decision | Status |
+|---|---|---|
+| Lead the homepage and dashboard with the Fiche de police (daily habit), tax second | Kept. UI only; wait until the uncommitted UI refresh is committed (same files) | To do |
+| A clean Excel export for the fiduciaire, the B2B argument | Kept and **built**: the portfolio export (below). The per-report Excel already existed | Done |
+| Demo mode with fictitious data for prospects until the CNDP filing | Kept: a flagged demo account (the `db:seed` data), a permanent "Démo" banner, specimen documents only, never mixed with real accounts | To do |
+| Rename the tax module ("Simulateur", "Tableau de bord fiduciaire") | **Kept as "Estimations fiscales" / "Tax estimates"** (founder left it to us, 2026-10-08). The current name already says estimate, matches the disclaimer and the routes; "Simulateur" suggests what-if inputs the screen does not offer, and "Tableau de bord fiduciaire" suggests the fiduciaire stands behind the figures. The BETA watermark and the disclaimer are unchanged | Done (no change) |
+| Green "100 % confidentiel… aucune donnée transmise à la DGI ou aux autorités" badge | **Refused as worded**: false for this product (the Fiche and the register exist to reach the police; Secure Share and WhatsApp send to authorities; Resend and Meta process data), an absolute claim (rule 2), and an "anti-DGI" positioning. Replace with a factual line validated by counsel and stored as `RuleConfig`, like the disclaimer | Counsel (founder agreed 2026-10-08: no line on screen until counsel approves the wording) |
+| "Appliquer la réglementation marocaine" + "Paramètres avancés" to edit rates | **Changed**: the defaults are unvalidated BETA values, so the label cannot claim to be the regulation. No per-account rate editing in the MVP (rule 1); if it ever exists, customised rules make every report "non validé" like beta | Founder |
+| Hard-coded 120 threshold and "le bien passe en statut commercial" | **Refused**: thresholds are already `RuleConfig`, and the UI never states a legal consequence. The specs' figure is 120 000 MAD of revenue; a 120-night rule needs counsel | — |
+| Flexible `tax_rules`, Taxe de séjour included or collected | Already built (`TaxRule`, `RuleConfig`, `Property.taxeSejourMode`) | Done |
+| Template picker (Morocco / Algeria / France) and a visual form builder | No builder. No country picker until a second template exists and is validated; the Fiche never claims to be "required by the DGSN" (rule 2). Toggles only for fields counsel confirms are optional; an agency logo is fine | — |
+
+### Portfolio export (built)
+
+- `GET /api/tax/portfolio?year=YYYY[&month=M]` and `GET /api/tax/portfolio/xlsx?…` (`report:read`: Owner/Manager and Accountant; 10 a minute). Every property of the account, month by month, **computed now** by the same `build()` as a monthly report (the same stays, rules and catch-up), with each month's stored report shown as up to date, to regenerate or not generated.
+- Pure sums in `tax/portfolio.ts` (integer centimes; a figure not computed in any month makes its totals "not computed"; an overflow is "not computed"). Workbook in `tax/portfolio-xlsx.ts`: Summary (one line per property and the total, with the Taxe de séjour mode), Months, Rules; the same disclaimer framing as the monthly export (`disclaimedWorkbook()` in `tax-xlsx.ts`), values only, every text neutralised.
+- Never stored: built on request, `no-store`, audited `tax.portfolio.read` (resource `TaxPortfolio`, the period) before it is sent. No `DISCLAIMER_MISSING` text, no file. More than 200 properties: 422 `PORTFOLIO_TOO_LARGE`.
+- Everyone with `report:read` gets the owner name (JSON and file), sorted by owner. Founder decision 2026-10-08: the income-tax rate depends on the owner's annual total, so the accountant needs it. This is the only place the Accountant sees an owner; still no address, owner id or booking id, and the monthly report responses are unchanged.
+- Screen: the "Export pour le comptable" panel on `/reports` (year, whole year or one month, per-property table, download).
+- Tests: `tax/portfolio.spec.ts`, `tax/portfolio.int-spec.ts`, rows in the permission matrix, the tax part of `checkin-logging.int-spec.ts`, `lib/tax.spec.ts` (web).

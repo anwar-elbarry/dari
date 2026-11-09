@@ -1,4 +1,4 @@
-import { exportFilename, formatBps, formatCentimes, rulesAreBeta, taxesTotal } from './tax';
+import { exportFilename, formatBps, formatCentimes, portfolioFilename, portfolioTaxes, rulesAreBeta, taxesTotal } from './tax';
 
 describe('formatCentimes', () => {
   it('pads, groups thousands and uses the locale decimal mark', () => {
@@ -82,5 +82,16 @@ describe('rulesAreBeta', () => {
     expect(rulesAreBeta({ rules: [ok, { present: false, validated: false }], localTaxRules: 2 })).toBe(true);
     expect(rulesAreBeta({ rules: [ok], localTaxRules: 0 })).toBe(true);
     expect(rulesAreBeta({ rules: [], localTaxRules: 3 })).toBe(true);
+  });
+});
+
+describe('portfolio helpers', () => {
+  it('adds the three taxes, or gives null when one is not computed', () => {
+    expect(portfolioTaxes({ income_tax: 100, vat: 0, local_tax: 25 })).toBe(125);
+    expect(portfolioTaxes({ income_tax: 100, vat: 0, local_tax: null })).toBeNull();
+  });
+  it('names the file after the period only', () => {
+    expect(portfolioFilename(2026, null)).toBe('estimations-portefeuille-2026.xlsx');
+    expect(portfolioFilename(2026, 3)).toBe('estimations-portefeuille-2026-03.xlsx');
   });
 });
